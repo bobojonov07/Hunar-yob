@@ -21,6 +21,7 @@ export interface User {
   idPhotoUrl?: string;
   isPremium?: boolean;
   premiumExpiry?: string;
+  isArtisanFeePaid?: boolean;
 }
 
 export interface Review {
@@ -87,6 +88,7 @@ const STORAGE_KEYS = {
 
 export const VIP_PRICE = 20;
 export const PREMIUM_PRICE = 100;
+export const ARTISAN_REGISTRATION_FEE = 10;
 export const MAX_FREE_LISTINGS = 2;
 export const MAX_PREMIUM_LISTINGS = 5;
 
@@ -112,7 +114,7 @@ export function saveUser(user: User) {
   users.push({ 
     ...user, 
     favorites: [], 
-    balance: 0, 
+    balance: user.balance || 0, 
     lastSeen: new Date().toISOString(),
     identificationStatus: 'None'
   });
@@ -373,4 +375,21 @@ export function updateDealStatus(dealId: string, status: DealStatus) {
     return { success: true };
   }
   return { success: false, message: "Шартнома ёфт нашуд" };
+}
+
+export function updateLastSeen() {
+  const user = getCurrentUser();
+  if (user) {
+    user.lastSeen = new Date().toISOString();
+    updateUser(user);
+  }
+}
+
+export function incrementViews(listingId: string) {
+  const listings = getListings();
+  const index = listings.findIndex(l => l.id === listingId);
+  if (index !== -1) {
+    listings[index].views = (listings[index].views || 0) + 1;
+    localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+  }
 }
