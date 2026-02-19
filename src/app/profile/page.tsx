@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react";
@@ -10,16 +11,26 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Calendar, Camera, Wallet, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 
+const REGIONS = ["Душанбе", "Хатлон", "Суғд", "ВМКБ", "Ноҳияҳои тобеи марказ"];
+
 export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [newImage, setNewImage] = useState("");
+  
+  // Edit Profile States
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRegion, setEditRegion] = useState("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -30,6 +41,10 @@ export default function Profile() {
       return;
     }
     setUser(currentUser);
+    setEditName(currentUser.name);
+    setEditPhone(currentUser.phone || "");
+    setEditRegion(currentUser.region || "");
+    
     const listings = getListings().filter(l => l.userId === currentUser.id);
     setUserListings(listings);
   }, [router]);
@@ -54,6 +69,33 @@ export default function Profile() {
       toast({
         title: "Навсозӣ шуд",
         description: "Сурати профил бо муваффақият иваз карда шуд",
+      });
+    }
+  };
+
+  const handleUpdateProfile = () => {
+    if (user) {
+      if (editName.length < 3) {
+        toast({ title: "Хатогӣ", description: "Ном бояд на кам аз 3 аломат бошад", variant: "destructive" });
+        return;
+      }
+      if (editPhone.length !== 9) {
+        toast({ title: "Хатогӣ", description: "Рақам бояд 9 рақам бошад", variant: "destructive" });
+        return;
+      }
+
+      const updated = { 
+        ...user, 
+        name: editName, 
+        phone: editPhone, 
+        region: editRegion 
+      };
+      updateUser(updated);
+      setUser(updated);
+      setIsEditDialogOpen(false);
+      toast({
+        title: "Навсозӣ шуд",
+        description: "Маълумоти профил бо муваффақият иваз карда шуд",
       });
     }
   };
@@ -137,10 +179,44 @@ export default function Profile() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-2 pt-0">
-                <Button variant="outline" className="w-full justify-start border-border">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Танзимот
-                </Button>
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start border-border">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Танзимот
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Таҳрири профил</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="editName">Ному насаб</Label>
+                        <Input id="editName" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editPhone">Телефон (бе +992)</Label>
+                        <Input id="editPhone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} maxLength={9} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Минтақа</Label>
+                        <Select value={editRegion} onValueChange={setEditRegion}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Интихоби минтақа" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {REGIONS.map(r => (
+                              <SelectItem key={r} value={r}>{r}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={handleUpdateProfile} className="w-full bg-primary">Сабти навсозиҳо</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"

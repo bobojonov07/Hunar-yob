@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react";
@@ -7,7 +8,8 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, Star, Plus, ShieldCheck, Users, Briefcase, ChevronRight, Zap, Crown } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Search, MapPin, Star, Plus, ShieldCheck, Users, Briefcase, ChevronRight, Zap, Crown, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -23,20 +25,44 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [allListings, setAllListings] = useState<Listing[]>([]);
+  const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setListings(getListings());
+    const data = getListings();
+    setAllListings(data);
+    setFilteredListings(data);
     setUser(getCurrentUser());
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    let result = allListings;
+    
+    if (selectedCategory) {
+      result = result.filter(l => l.category === selectedCategory);
+    }
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(l => 
+        l.title.toLowerCase().includes(query) || 
+        l.description.toLowerCase().includes(query) ||
+        l.userName.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredListings(result);
+  }, [searchQuery, selectedCategory, allListings]);
+
   if (!hydrated) return null;
 
-  const vipListings = listings.filter(l => l.isVip);
-  const regularListings = listings.filter(l => !l.isVip);
+  const vipListings = filteredListings.filter(l => l.isVip);
+  const regularListings = filteredListings.filter(l => !l.isVip);
 
   const heroPlaceholder = PlaceHolderImages[0] || { imageUrl: "https://picsum.photos/seed/artisan1/1200/600", imageHint: "artisan craft" };
   const cardPlaceholder = PlaceHolderImages[1] || { imageUrl: "https://picsum.photos/seed/carpentry/600/400", imageHint: "carpentry tools" };
@@ -59,7 +85,7 @@ export default function Home() {
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-secondary via-secondary/80 to-transparent" />
         
-        <div className="container relative mx-auto px-4">
+        <div className="container relative mx-auto px-4 text-center md:text-left">
           <div className="max-w-3xl">
             <Badge className="mb-6 bg-primary/20 text-primary border-primary/30 backdrop-blur-md px-4 py-1 text-sm font-bold">
               #1 Платформаи ҳунармандон дар Тоҷикистон
@@ -68,26 +94,54 @@ export default function Home() {
               Маҳоратро <span className="text-primary italic">пайдо кун.</span> <br />
               Хидматро <span className="text-primary italic">фармоиш деҳ.</span>
             </h1>
-            <p className="text-xl md:text-2xl mb-10 opacity-90 leading-relaxed">
-              Ҳунар Ёб — ин пул миёни шумо ва беҳтарин устоҳои кишвар.
-            </p>
             
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-white text-lg px-10 h-14 rounded-2xl shadow-xl shadow-primary/20">
-                <Link href={user ? (user.role === 'Usto' ? "/create-listing" : "/profile") : "/register"}>
-                  {user?.role === 'Usto' ? "Эълон гузоштан" : "Ҳамроҳ шудан"}
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" className="border-white/30 text-white bg-white/10 backdrop-blur-md hover:bg-white/20 h-14 px-10 rounded-2xl">
-                <Search className="mr-2 h-5 w-5" />
-                Ҷустуҷӯ
-              </Button>
+            <div className="mt-10 relative max-w-2xl mx-auto md:mx-0">
+              <div className="relative flex items-center">
+                <Search className="absolute left-4 h-6 w-6 text-muted-foreground" />
+                <Input 
+                  className="h-16 pl-14 pr-4 bg-white text-secondary rounded-2xl text-lg border-none shadow-2xl focus-visible:ring-primary"
+                  placeholder="Ҷустуҷӯи усто..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* VIP Section - "Bar ba bar" horizontal scroll or grid */}
+      {/* Category Grid */}
+      <section className="py-12 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-headline font-bold text-secondary">Категорияҳо</h2>
+            {selectedCategory && (
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCategory(null)} className="text-primary font-bold">
+                <X className="h-4 w-4 mr-1" /> Тоза кардан
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+            {CATEGORIES.map((cat) => (
+              <button 
+                key={cat.name} 
+                onClick={() => setSelectedCategory(cat.name === selectedCategory ? null : cat.name)}
+                className={cn(
+                  "group flex flex-col items-center p-4 rounded-2xl border transition-all duration-300",
+                  selectedCategory === cat.name 
+                    ? "bg-primary text-white border-primary shadow-lg scale-105" 
+                    : "bg-background hover:bg-primary/5 border-border hover:border-primary/20"
+                )}
+              >
+                <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">{cat.icon}</span>
+                <span className="text-xs font-bold truncate w-full text-center">{cat.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* VIP Section */}
       {vipListings.length > 0 && (
         <section className="py-16 bg-gradient-to-b from-yellow-50/50 to-transparent">
           <div className="container mx-auto px-4">
@@ -150,28 +204,13 @@ export default function Home() {
         </section>
       )}
 
-      {/* Category Grid */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-headline font-bold text-secondary mb-10 text-center">Категорияҳои маъмул</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-6">
-            {CATEGORIES.map((cat) => (
-              <button key={cat.name} className="group flex flex-col items-center p-6 rounded-3xl bg-background hover:bg-primary/5 border border-transparent hover:border-primary/20 transition-all duration-300">
-                <span className="text-4xl mb-4 group-hover:scale-125 transition-transform duration-300">{cat.icon}</span>
-                <span className="text-sm font-bold text-secondary">{cat.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Main Content - Regular Listings */}
-      <main className="container mx-auto px-4 py-20 flex-1">
+      <main className="container mx-auto px-4 py-16 flex-1">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
           <div className="max-w-xl">
             <div className="flex items-center gap-2 text-primary font-bold mb-2">
               <Zap className="h-5 w-5 fill-primary" />
-              <span>ОХИРИН ЭЪЛОНҲО</span>
+              <span>{selectedCategory ? `ЭЪЛОНҲО ДАР БАХШИ ${selectedCategory.toUpperCase()}` : 'ОХИРИН ЭЪЛОНҲО'}</span>
             </div>
             <h2 className="text-4xl font-headline font-black text-secondary">Устоҳои моҳир инҷоянд</h2>
           </div>
@@ -226,8 +265,12 @@ export default function Home() {
         ) : (
           !vipListings.length && (
             <div className="text-center py-24 bg-muted/20 rounded-[3rem] border-2 border-dashed border-border flex flex-col items-center">
-              <h3 className="text-3xl font-headline font-bold text-secondary mb-2">Ҳоло эълонҳо нестанд</h3>
-              <p className="text-muted-foreground">Аввалин шуда эълон гузоред ва мизоҷонро пайдо кунед.</p>
+              <Search className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+              <h3 className="text-3xl font-headline font-bold text-secondary mb-2">Натиҷа ёфт нашуд</h3>
+              <p className="text-muted-foreground">Кӯшиш кунед, ки калимаҳои дигарро истифода баред ё филтрро тоза кунед.</p>
+              <Button onClick={() => {setSearchQuery(""); setSelectedCategory(null)}} className="mt-6 bg-primary">
+                Тоза кардани филтр
+              </Button>
             </div>
           )
         )}
@@ -264,14 +307,14 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-secondary text-white py-20">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 text-center md:text-left">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
             <div className="md:col-span-2">
-              <div className="flex items-center space-x-2 mb-8">
+              <div className="flex items-center justify-center md:justify-start space-x-2 mb-8">
                 <Briefcase className="h-8 w-8 text-primary" />
                 <span className="text-3xl font-black font-headline tracking-tighter text-white">ҲУНАР ЁБ</span>
               </div>
-              <p className="text-xl opacity-60 italic max-w-md">
+              <p className="text-xl opacity-60 italic max-w-md mx-auto md:mx-0">
                 "Мо боварӣ дорем, ки ҳар як маҳорат бояд дида шавад ва ҳар як мушкилӣ бояд устои худро ёбад."
               </p>
             </div>
