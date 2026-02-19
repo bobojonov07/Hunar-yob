@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react";
@@ -11,10 +10,12 @@ import { getUsers, setCurrentUser } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -53,23 +54,43 @@ export default function Login() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Почтаи электронӣ</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="example@mail.tj" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="example@mail.tj" 
+                    className="pl-10"
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Рамз</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  placeholder="******" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="password">Рамз</Label>
+                  <Link href="/forgot-password" size="sm" className="text-xs text-primary hover:underline">
+                    Рамзро фаромӯш кардед?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="password" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="******" 
+                    className="pl-10 pr-10"
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-primary"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review, makeListingVip } from "@/lib/storage";
+import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review, makeListingVip, incrementViews } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Heart, Share2, Star, Crown, Zap } from "lucide-react";
+import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Heart, Share2, Star, Crown, Zap, Eye } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -25,14 +25,13 @@ export default function ListingDetail() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const isOwner = user?.id === listing?.userId;
-
   useEffect(() => {
     const allListings = getListings();
     const found = allListings.find(l => l.id === id);
     if (found) {
       setListing(found);
       setReviews(getReviews(found.id));
+      incrementViews(found.id);
     }
     
     const currentUser = getCurrentUser();
@@ -41,6 +40,8 @@ export default function ListingDetail() {
       setIsFavorite(currentUser.favorites.includes(id as string));
     }
   }, [id]);
+
+  const isOwner = user?.id === listing?.userId;
 
   const handleFavoriteToggle = () => {
     if (!user) {
@@ -178,7 +179,13 @@ export default function ListingDetail() {
             </div>
 
             <div>
-              <h1 className="text-3xl md:text-4xl font-headline font-bold text-secondary mb-4">{listing.title}</h1>
+              <div className="flex justify-between items-start mb-4">
+                <h1 className="text-3xl md:text-4xl font-headline font-bold text-secondary">{listing.title}</h1>
+                <div className="flex items-center text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                  <Eye className="h-4 w-4 mr-2" />
+                  <span className="text-sm font-bold">{listing.views || 0} тамошо</span>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-4 mb-8">
                 <Badge className="bg-primary text-white px-4 py-1">{listing.category}</Badge>
                 <div className="flex items-center text-muted-foreground text-sm">
@@ -188,7 +195,7 @@ export default function ListingDetail() {
               </div>
               <div className="prose prose-orange max-w-none">
                 <h3 className="text-xl font-bold mb-3 text-secondary">Дар бораи хидматрасонӣ:</h3>
-                <p className="text-lg leading-relaxed text-muted-foreground bg-white p-6 rounded-xl border">
+                <p className="text-lg leading-relaxed text-muted-foreground bg-white p-6 rounded-xl border whitespace-pre-wrap">
                   {listing.description}
                 </p>
               </div>

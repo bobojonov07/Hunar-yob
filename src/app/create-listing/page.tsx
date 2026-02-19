@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { getCurrentUser, saveListing, User } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, X, Plus } from "lucide-react";
+import { Camera, X, Plus, Upload } from "lucide-react";
 import Image from "next/image";
 
 const CATEGORIES = ["Барномасоз", "Дӯзанда", "Дуредгар", "Сантехник", "Барқчӣ", "Меъмор", "Дигар"];
@@ -23,7 +23,7 @@ export default function CreateListing() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -36,8 +36,11 @@ export default function CreateListing() {
     setUser(currentUser);
   }, [router]);
 
-  const handleAddImage = () => {
-    if (imageUrls.length >= 5) {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    if (imageUrls.length + files.length > 5) {
       toast({
         title: "Маҳдудият",
         description: "Шумо метавонед танҳо то 5 сурат илова кунед",
@@ -45,10 +48,14 @@ export default function CreateListing() {
       });
       return;
     }
-    if (newImageUrl) {
-      setImageUrls([...imageUrls, newImageUrl]);
-      setNewImageUrl("");
-    }
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUrls(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const removeImage = (index: number) => {
@@ -57,6 +64,7 @@ export default function CreateListing() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!title || !category || !description) {
       toast({
         title: "Хатогӣ",
@@ -66,7 +74,15 @@ export default function CreateListing() {
       return;
     }
 
-    // Use a default placeholder from the library if no images were provided by the user
+    if (description.length < 160 || description.length > 250) {
+      toast({
+        title: "Маҳдудият",
+        description: `Тавсиф бояд аз 160 то 250 аломат бошад. Ҳозир: ${description.length}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const defaultPlaceholder = PlaceHolderImages[1]?.imageUrl || "https://picsum.photos/seed/carpentry/600/400";
 
     const listing = {
@@ -123,29 +139,38 @@ export default function CreateListing() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Тавсифи хидматрасонӣ</Label>
+                <Label htmlFor="description">Тавсифи хидматрасонӣ (160-250 аломат)</Label>
                 <Textarea 
                   id="description" 
-                  placeholder="Дар бораи маҳорат ва таҷрибаи худ нависед..." 
+                  placeholder="Дар бораи маҳорат ва таҷрибаи худ муфассал нависед..." 
                   className="min-h-[150px]"
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)}
                 />
+                <p className={`text-xs text-right ${description.length < 160 || description.length > 250 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {description.length} / 250 (камаш 160)
+                </p>
               </div>
 
               <div className="space-y-4">
                 <Label>Суратҳо (то 5 адад)</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="URL-и сурат" 
-                    value={newImageUrl} 
-                    onChange={(e) => setNewImageUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImage())}
-                  />
-                  <Button type="button" onClick={handleAddImage} variant="secondary">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full h-24 border-dashed border-2 flex flex-col gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                  <span>Иловаи суратҳо аз галерея</span>
+                </Button>
                 
                 <div className="grid grid-cols-5 gap-2 mt-4">
                   {imageUrls.map((url, index) => (

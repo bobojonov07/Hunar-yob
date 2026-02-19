@@ -48,6 +48,7 @@ export interface Listing {
   images: string[];
   createdAt: string;
   isVip?: boolean;
+  views: number;
 }
 
 const STORAGE_KEYS = {
@@ -107,16 +108,26 @@ export function getListings(): Listing[] {
   return data ? JSON.parse(data) : [];
 }
 
-export function saveListing(listing: Listing) {
+export function saveListing(listing: Omit<Listing, 'views'>) {
   const listings = getListings();
   const currentUser = getCurrentUser();
-  const listingWithPhone = {
+  const listingWithPhoneCount = {
     ...listing,
     userPhone: currentUser?.phone || listing.userPhone,
-    isVip: false
+    isVip: false,
+    views: 0
   };
-  listings.unshift(listingWithPhone);
+  listings.unshift(listingWithPhoneCount);
   localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+}
+
+export function incrementViews(listingId: string) {
+  const listings = getListings();
+  const index = listings.findIndex(l => l.id === listingId);
+  if (index !== -1) {
+    listings[index].views = (listings[index].views || 0) + 1;
+    localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+  }
 }
 
 export function makeListingVip(listingId: string): { success: boolean, message: string } {
