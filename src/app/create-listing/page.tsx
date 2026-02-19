@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react";
@@ -10,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, saveListing, User } from "@/lib/storage";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, X, Plus } from "lucide-react";
@@ -66,6 +66,9 @@ export default function CreateListing() {
       return;
     }
 
+    // Use a default placeholder from the library if no images were provided by the user
+    const defaultPlaceholder = PlaceHolderImages[1]?.imageUrl || "https://picsum.photos/seed/carpentry/600/400";
+
     const listing = {
       id: Math.random().toString(36).substr(2, 9),
       userId: user!.id,
@@ -73,7 +76,7 @@ export default function CreateListing() {
       title,
       category,
       description,
-      images: imageUrls.length > 0 ? imageUrls : ["https://picsum.photos/seed/default/600/400"],
+      images: imageUrls.length > 0 ? imageUrls : [defaultPlaceholder],
       createdAt: new Date().toISOString(),
     };
 

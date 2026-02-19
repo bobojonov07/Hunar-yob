@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react";
@@ -25,6 +24,10 @@ export default function Home() {
 
   if (!hydrated) return null;
 
+  // Safe access to placeholders to prevent crashes if the array is empty or truncated
+  const heroPlaceholder = PlaceHolderImages[0] || { imageUrl: "https://picsum.photos/seed/artisan1/1200/600", imageHint: "artisan craft" };
+  const cardPlaceholder = PlaceHolderImages[1] || { imageUrl: "https://picsum.photos/seed/carpentry/600/400", imageHint: "carpentry tools" };
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -33,11 +36,12 @@ export default function Home() {
       <section className="relative w-full py-20 lg:py-32 bg-secondary text-white overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <Image 
-            src={PlaceHolderImages[0].imageUrl} 
+            src={heroPlaceholder.imageUrl} 
             alt="Hero Background" 
             fill 
             className="object-cover"
             priority
+            data-ai-hint={heroPlaceholder.imageHint}
           />
         </div>
         <div className="container relative mx-auto px-4 text-center">
@@ -82,10 +86,11 @@ export default function Home() {
               <Card key={listing.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-border">
                 <div className="relative h-56 w-full">
                   <Image
-                    src={listing.images[0] || PlaceHolderImages[1].imageUrl}
+                    src={listing.images[0] || cardPlaceholder.imageUrl}
                     alt={listing.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    data-ai-hint={listing.images[0] ? undefined : cardPlaceholder.imageHint}
                   />
                   <Badge className="absolute top-4 left-4 bg-primary text-white border-none">
                     {listing.category}
