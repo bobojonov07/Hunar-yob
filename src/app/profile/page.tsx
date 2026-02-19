@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Navbar } from "@/components/navbar";
-import { User, getCurrentUser, getListings, Listing, deleteListing, updateUser, updateLastSeen, requestIdentification, buyPremium, PREMIUM_PRICE, ALL_REGIONS } from "@/lib/storage";
+import { User, getCurrentUser, getListings, Listing, deleteListing, updateUser, updateLastSeen, requestIdentification, buyPremium, PREMIUM_PRICE, ALL_REGIONS, getDeals, getReviews } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, Wallet, ArrowUpRight, CheckCircle2, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, Wallet, ArrowUpRight, CheckCircle2, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft, Award, Handshake, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [completion, setCompletion] = useState(0);
+  const [stats, setStats] = useState({ deals: 0, rating: 0 });
   
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -48,7 +49,26 @@ export default function Profile() {
     setEditName(currentUser.name);
     setEditPhone(currentUser.phone || "");
     setEditRegion(currentUser.region || "");
-    setUserListings(getListings().filter(l => l.userId === currentUser.id));
+    
+    const listings = getListings().filter(l => l.userId === currentUser.id);
+    setUserListings(listings);
+
+    const deals = getDeals().filter(d => (d.artisanId === currentUser.id || d.clientId === currentUser.id) && d.status === 'Confirmed');
+    
+    let totalRating = 0;
+    let reviewsCount = 0;
+    listings.forEach(l => {
+      const revs = getReviews(l.id);
+      revs.forEach(r => {
+        totalRating += r.rating;
+        reviewsCount++;
+      });
+    });
+
+    setStats({
+      deals: deals.length,
+      rating: reviewsCount > 0 ? parseFloat((totalRating / reviewsCount).toFixed(1)) : 5.0
+    });
 
     let points = 0;
     if (currentUser.name) points += 20;
@@ -197,6 +217,19 @@ export default function Profile() {
                   )}
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-muted/30 p-4 rounded-3xl text-center">
+                        <Handshake className="h-5 w-5 mx-auto text-primary mb-2" />
+                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">ШАРТНОМАҲО</p>
+                        <p className="font-black text-xl">{stats.deals}</p>
+                    </div>
+                    <div className="bg-muted/30 p-4 rounded-3xl text-center">
+                        <Star className="h-5 w-5 mx-auto text-yellow-500 mb-2 fill-yellow-500" />
+                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">РЕЙТИНГ</p>
+                        <p className="font-black text-xl">{stats.rating}</p>
+                    </div>
+                </div>
+
                 <div className="space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-1 text-secondary opacity-60"><span>Пуррагии профил</span><span>{completion}%</span></div>
                   <Progress value={completion} className="h-3 bg-muted rounded-full overflow-hidden">
@@ -242,14 +275,6 @@ export default function Profile() {
                 <Button onClick={handleBuyPremium} className="w-full bg-white text-yellow-600 h-14 rounded-2xl font-black shadow-2xl hover:scale-[1.03] transition-all uppercase tracking-widest">ФАЪОЛ КАРДАН</Button>
               </Card>
             )}
-
-            <Card className="border-none shadow-2xl bg-gradient-to-br from-secondary to-secondary/80 text-white rounded-[2.5rem] p-10 relative overflow-hidden group">
-              <div className="absolute -right-10 -bottom-10 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Wallet className="h-48 w-48" /></div>
-              <div className="flex justify-between items-start mb-10"><div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl shadow-lg border border-white/10"><Wallet className="h-7 w-7 text-primary" /></div><Badge className="bg-primary/20 text-primary border-none font-black text-[10px] px-4 py-1.5 uppercase tracking-widest rounded-full backdrop-blur-md">ҲАМЁН</Badge></div>
-              <p className="text-[10px] font-black uppercase opacity-60 mb-2 tracking-[0.2em]">Тавозуни ҷорӣ</p>
-              <div className="flex items-baseline gap-3 mb-10"><span className="text-5xl font-black tracking-tighter">{(user.balance || 0).toLocaleString()}</span><span className="text-xl font-bold opacity-60">TJS</span></div>
-              <Button asChild className="w-full bg-primary h-14 rounded-2xl font-black shadow-2xl uppercase tracking-widest hover:scale-[1.03] transition-all"><Link href="/wallet">ПУР КАРДАН <ArrowUpRight className="ml-3 h-5 w-5" /></Link></Button>
-            </Card>
           </div>
 
           <div className="lg:col-span-2 space-y-10">
@@ -288,4 +313,3 @@ export default function Profile() {
     </div>
   );
 }
-

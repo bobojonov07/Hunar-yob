@@ -3,12 +3,12 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, getCurrentUser, User, getMessages, sendMessage, Message, markMessagesAsRead, getDeals, saveDeal, updateDealStatus, Deal, calculateFee, reportUser, saveReview, Review } from "@/lib/storage";
+import { Listing, getListings, getCurrentUser, User, getMessages, sendMessage, Message, markMessagesAsRead, getDeals, saveDeal, updateDealStatus, Deal, calculateFee, reportUser, saveReview, Review, getUsers } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, Hammer, CheckCheck, MessageSquare, Handshake, Clock, ShieldCheck, DollarSign, Lock, ShieldAlert, Flag, Star } from "lucide-react";
+import { ChevronLeft, Send, Hammer, CheckCheck, MessageSquare, Handshake, ShieldCheck, Flag, Star, CheckCircle2, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,6 +20,7 @@ import Link from "next/link";
 export default function ChatPage() {
   const { id } = useParams();
   const [listing, setListing] = useState<Listing | null>(null);
+  const [artisan, setArtisan] = useState<User | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -34,7 +35,6 @@ export default function ChatPage() {
   const [dealDuration, setDealDuration] = useState("");
   const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
 
-  // Review states
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -57,6 +57,10 @@ export default function ChatPage() {
     const found = allListings.find(l => l.id === id);
     if (found) {
       setListing(found);
+      const allUsers = getUsers();
+      const artisanUser = allUsers.find(u => u.id === found.userId);
+      if (artisanUser) setArtisan(artisanUser);
+      
       setMessages(getMessages(found.id));
       setDeals(getDeals().filter(d => d.listingId === found.id));
       markMessagesAsRead(found.id, currentUser.id);
@@ -190,7 +194,10 @@ export default function ChatPage() {
             <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full"><ChevronLeft className="h-6 w-6" /></Button>
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg"><Hammer className="h-5 w-5" /></div>
             <div>
-              <h3 className="font-black text-secondary truncate text-sm">{listing.userName}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-black text-secondary truncate text-sm">{listing.userName}</h3>
+                {artisan?.identificationStatus === 'Verified' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500 fill-green-50" />}
+              </div>
               <div className="flex items-center gap-1.5"><span className={cn("h-1.5 w-1.5 rounded-full", status === "Online" ? "bg-green-500" : "bg-muted-foreground")} /><p className="text-[10px] text-muted-foreground font-bold">{status}</p></div>
             </div>
           </div>
@@ -275,7 +282,7 @@ export default function ChatPage() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className={`max-w-[80%] p-5 rounded-[2rem] shadow-sm ${msg.senderId === user.id ? 'bg-primary text-white rounded-br-none' : 'bg-muted/50 text-secondary rounded-bl-none'}`}>
+                    <div className={`max-w-[80%] p-5 rounded-[2rem] shadow-2xl ${msg.senderId === user.id ? 'bg-primary text-white rounded-br-none' : 'bg-muted/50 text-secondary rounded-bl-none'}`}>
                       <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
                       <div className="flex items-center justify-end gap-1.5 mt-2 opacity-60">
                         <p className="text-[10px] font-black">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
