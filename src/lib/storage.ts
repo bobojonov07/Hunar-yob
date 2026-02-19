@@ -13,6 +13,7 @@ export interface User {
   phone?: string;
   profileImage?: string;
   favorites?: string[]; // Array of listing IDs
+  lastSeen?: string;
 }
 
 export interface Review {
@@ -32,6 +33,7 @@ export interface Message {
   senderName: string;
   text: string;
   createdAt: string;
+  isRead?: boolean;
 }
 
 export interface Listing {
@@ -72,7 +74,11 @@ export function updateUser(updatedUser: User) {
   if (index !== -1) {
     users[index] = updatedUser;
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-    setCurrentUser(updatedUser);
+    
+    const current = getCurrentUser();
+    if (current && current.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+    }
   }
 }
 
@@ -147,16 +153,30 @@ export function saveReview(review: Review) {
 }
 
 // Message functions
-export function getMessages(listingId: string): Message[] {
+export function getAllMessages(): Message[] {
   if (typeof window === 'undefined') return [];
   const data = localStorage.getItem(STORAGE_KEYS.MESSAGES);
-  const allMessages: Message[] = data ? JSON.parse(data) : [];
+  return data ? JSON.parse(data) : [];
+}
+
+export function getMessages(listingId: string): Message[] {
+  const allMessages = getAllMessages();
   return allMessages.filter(m => m.listingId === listingId);
 }
 
 export function sendMessage(message: Message) {
-  const data = localStorage.getItem(STORAGE_KEYS.MESSAGES);
-  const allMessages: Message[] = data ? JSON.parse(data) : [];
-  allMessages.push(message);
+  const allMessages = getAllMessages();
+  allMessages.push({ ...message, isRead: false });
   localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(allMessages));
+}
+
+export function markMessagesAsRead(listingId: string, currentUserId: string) {
+  const allMessages = getAllMessages();
+  const updated = allMessages.map(m => {
+    if (m.listingId === listingId && m.senderId !== currentUserId) {
+      return { ...m, isRead: true };
+    }
+    return m;
+  });
+  localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(updated));
 }

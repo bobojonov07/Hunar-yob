@@ -1,0 +1,49 @@
+"use client"
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { MessageSquare, Heart, User as UserIcon, Hammer, Home } from "lucide-react";
+import { getCurrentUser, User } from "@/lib/storage";
+import { cn } from "@/lib/utils";
+
+export function BottomNav() {
+  const [user, setUser] = useState<User | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setUser(getCurrentUser());
+  }, [pathname]);
+
+  if (!user) return null;
+
+  const navItems = [
+    { label: "Асосӣ", icon: Home, href: "/" },
+    { label: "Паёмҳо", icon: MessageSquare, href: "/messages" },
+    { label: "Писандидаҳо", icon: Heart, href: "/favorites" },
+    user.role === 'Usto' 
+      ? { label: "Эълонҳо", icon: Hammer, href: "/profile" }
+      : { label: "Профил", icon: UserIcon, href: "/profile" },
+  ];
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border px-4 h-16 flex items-center justify-around md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        return (
+          <Link 
+            key={item.href} 
+            href={item.href}
+            className={cn(
+              "flex flex-col items-center justify-center space-y-1 transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground hover:text-secondary"
+            )}
+          >
+            <item.icon className={cn("h-6 w-6", isActive && "fill-primary/10")} />
+            <span className="text-[10px] font-bold">{item.label}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
