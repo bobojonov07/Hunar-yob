@@ -19,6 +19,8 @@ export interface User {
   balance: number;
   identificationStatus: IdentificationStatus;
   idPhotoUrl?: string;
+  isPremium?: boolean;
+  premiumExpiry?: string;
 }
 
 export interface Review {
@@ -40,6 +42,7 @@ export interface Deal {
   artisanId: string;
   title: string;
   price: number;
+  fee: number;
   durationDays: number;
   status: DealStatus;
   senderId: string;
@@ -82,7 +85,21 @@ const STORAGE_KEYS = {
   DEALS: 'hunar_yob_deals',
 };
 
-const VIP_PRICE = 20;
+export const VIP_PRICE = 20;
+export const PREMIUM_PRICE = 100;
+export const MAX_FREE_LISTINGS = 2;
+export const MAX_PREMIUM_LISTINGS = 5;
+
+export const ALL_REGIONS = [
+  "Душанбе", "Бохтар", "Кӯлоб", "Хуҷанд", "Истаравшан", "Конибодом", "Панҷакент", 
+  "Хоруғ", "Ваҳдат", "Ҳисор", "Турсунзода", "Рашт", "Данғара", "Ёвон"
+];
+
+export const ALL_CATEGORIES = [
+  "Барномасоз", "Дӯзанда", "Дуредгар", "Сантехник", "Барқчӣ", "Меъмор", 
+  "Ронанда", "Ошпаз", "Муаллим", "Табиб", "Сартарош", "Рангуборчӣ", 
+  "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
+];
 
 export function getUsers(): User[] {
   if (typeof window === 'undefined') return [];
@@ -116,6 +133,31 @@ export function updateUser(updatedUser: User) {
   }
 }
 
+export function buyPremium(): { success: boolean, message: string } {
+  const user = getCurrentUser();
+  if (!user) return { success: false, message: "Вуруд лозим аст" };
+  if (user.balance < PREMIUM_PRICE) return { success: false, message: "Маблағ нокифоя аст" };
+
+  const expiry = new Date();
+  expiry.setMonth(expiry.getMonth() + 1);
+
+  const updatedUser = { 
+    ...user, 
+    balance: user.balance - PREMIUM_PRICE,
+    isPremium: true,
+    premiumExpiry: expiry.toISOString()
+  };
+  updateUser(updatedUser);
+  return { success: true, message: "Обунаи Premium фаъол шуд!" };
+}
+
+export function calculateFee(price: number): number {
+  if (price < 100) return 10;
+  if (price < 1000) return 20;
+  if (price < 10000) return 100;
+  return 1000;
+}
+
 export function requestIdentification(photoUrl: string) {
   const user = getCurrentUser();
   if (!user) return false;
@@ -127,14 +169,6 @@ export function requestIdentification(photoUrl: string) {
   };
   updateUser(updated);
   return true;
-}
-
-export function updateLastSeen() {
-  const user = getCurrentUser();
-  if (user) {
-    const updated = { ...user, lastSeen: new Date().toISOString() };
-    updateUser(updated);
-  }
 }
 
 export function setCurrentUser(user: User | null) {
@@ -158,26 +192,32 @@ export function getListings(): Listing[] {
   return data ? JSON.parse(data) : [];
 }
 
-export function saveListing(listing: Omit<Listing, 'views'>) {
+export function saveListing(listing: Omit<Listing, 'views'>): { success: boolean, message: string } {
+  const user = getCurrentUser();
+  if (!user) return { success: false, message: "Вуруд лозим аст" };
+
+  const userListings = getListings().filter(l => l.userId === user.id);
+  const limit = user.isPremium ? MAX_PREMIUM_LISTINGS : MAX_FREE_LISTINGS;
+
+  if (userListings.length >= limit) {
+    return { 
+      success: false, 
+      message: user.isPremium 
+        ? `Шумо наметавонед зиёда аз ${MAX_PREMIUM_LISTINGS} эълон дошта бошед.` 
+        : `Маҳдудият: ${MAX_FREE_LISTINGS} эълон. Барои зиёд кардан Premium харед.` 
+    };
+  }
+
   const listings = getListings();
-  const currentUser = getCurrentUser();
   const listingWithPhoneCount = {
     ...listing,
-    userPhone: currentUser?.phone || listing.userPhone,
-    isVip: false,
+    userPhone: user.phone || listing.userPhone,
+    isVip: user.isPremium ? true : false,
     views: 0
   };
   listings.unshift(listingWithPhoneCount);
   localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
-}
-
-export function incrementViews(listingId: string) {
-  const listings = getListings();
-  const index = listings.findIndex(l => l.id === listingId);
-  if (index !== -1) {
-    listings[index].views = (listings[index].views || 0) + 1;
-    localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
-  }
+  return { success: true, message: "Эълон нашр шуд" };
 }
 
 export function makeListingVip(listingId: string): { success: boolean, message: string } {
@@ -236,29 +276,20 @@ export function toggleFavorite(listingId: string) {
 export function depositFunds(amount: number) {
   const user = getCurrentUser();
   if (!user) return false;
-  
-  if (user.identificationStatus !== 'Verified') {
-    // In a real app, we allow deposit but block withdrawal/spending until verified
-    // For this security turn, we require identification for all wallet activity
-  }
-  
   const updatedUser = { ...user, balance: (user.balance || 0) + amount };
   updateUser(updatedUser);
   return true;
 }
 
-export function getReviews(listingId: string): Review[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STORAGE_KEYS.REVIEWS);
-  const allReviews: Review[] = data ? JSON.parse(data) : [];
-  return allReviews.filter(r => r.listingId === listingId);
-}
+export function withdrawFunds(amount: number): { success: boolean, message: string } {
+  const user = getCurrentUser();
+  if (!user) return { success: false, message: "Вуруд лозим аст" };
+  if (user.identificationStatus !== 'Verified') return { success: false, message: "Аввал идентификатсия кунед" };
+  if (user.balance < amount) return { success: false, message: "Маблағи нокифоя" };
 
-export function saveReview(review: Review) {
-  const data = localStorage.getItem(STORAGE_KEYS.REVIEWS);
-  const allReviews: Review[] = data ? JSON.parse(data) : [];
-  allReviews.unshift(review);
-  localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(allReviews));
+  const updatedUser = { ...user, balance: user.balance - amount };
+  updateUser(updatedUser);
+  return { success: true, message: "Дархост барои бозхонд фиристода шуд" };
 }
 
 export function getAllMessages(): Message[] {
@@ -311,9 +342,7 @@ export function updateDealStatus(dealId: string, status: DealStatus) {
   if (index !== -1) {
     const deal = deals[index];
     const prevStatus = deal.status;
-    
-    // Security check: cannot move funds if users are not identified
-    // In production, this would be a server-side check
+    const totalToDeduct = deal.price + deal.fee;
     
     deal.status = status;
     deal.updatedAt = new Date().toISOString();
@@ -324,8 +353,8 @@ export function updateDealStatus(dealId: string, status: DealStatus) {
     const artisan = users.find(u => u.id === deal.artisanId);
 
     if (status === 'Accepted' && prevStatus === 'Pending') {
-      if (client && client.balance >= deal.price) {
-        client.balance -= deal.price;
+      if (client && client.balance >= totalToDeduct) {
+        client.balance -= totalToDeduct;
         updateUser(client);
       } else {
         return { success: false, message: "Тавозуни мизоҷ нокифоя аст" };
@@ -337,7 +366,7 @@ export function updateDealStatus(dealId: string, status: DealStatus) {
       }
     } else if (status === 'Cancelled' && prevStatus === 'Accepted') {
       if (client) {
-        client.balance += deal.price;
+        client.balance += totalToDeduct;
         updateUser(client);
       }
     }
