@@ -1,7 +1,15 @@
-# Settings to manage and configure a Firebase App Hosting backend.
-# https://firebase.google.com/docs/app-hosting/configure
+# Танзимоти нашри барнома дар Firebase App Hosting
+# Барои маълумоти бештар: https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
-  maxInstances: 1
+  # Шумораи ниҳоии серверҳо барои трафики зиёд
+  maxInstances: 2
+  # Хотираи сервер
+  memory: 512Mi
+  # Вақти интизории сервер (Timeout)
+  timeoutSeconds: 60
+
+# Муҳити корӣ
+env:
+  - variable: NODE_ENV
+    value: production
