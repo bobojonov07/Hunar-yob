@@ -15,10 +15,30 @@ export interface User {
   favorites?: string[]; // Array of listing IDs
 }
 
+export interface Review {
+  id: string;
+  listingId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  listingId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface Listing {
   id: string;
   userId: string;
   userName: string;
+  userPhone?: string;
   title: string;
   category: string;
   description: string;
@@ -30,6 +50,8 @@ const STORAGE_KEYS = {
   USERS: 'hunar_yob_users',
   CURRENT_USER: 'hunar_yob_current_user',
   LISTINGS: 'hunar_yob_listings',
+  REVIEWS: 'hunar_yob_reviews',
+  MESSAGES: 'hunar_yob_messages',
 };
 
 export function getUsers(): User[] {
@@ -77,7 +99,12 @@ export function getListings(): Listing[] {
 
 export function saveListing(listing: Listing) {
   const listings = getListings();
-  listings.unshift(listing);
+  const currentUser = getCurrentUser();
+  const listingWithPhone = {
+    ...listing,
+    userPhone: currentUser?.phone || listing.userPhone
+  };
+  listings.unshift(listingWithPhone);
   localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
 }
 
@@ -102,4 +129,34 @@ export function toggleFavorite(listingId: string) {
   const updatedUser = { ...user, favorites };
   updateUser(updatedUser);
   return true;
+}
+
+// Review functions
+export function getReviews(listingId: string): Review[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(STORAGE_KEYS.REVIEWS);
+  const allReviews: Review[] = data ? JSON.parse(data) : [];
+  return allReviews.filter(r => r.listingId === listingId);
+}
+
+export function saveReview(review: Review) {
+  const data = localStorage.getItem(STORAGE_KEYS.REVIEWS);
+  const allReviews: Review[] = data ? JSON.parse(data) : [];
+  allReviews.unshift(review);
+  localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(allReviews));
+}
+
+// Message functions
+export function getMessages(listingId: string): Message[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+  const allMessages: Message[] = data ? JSON.parse(data) : [];
+  return allMessages.filter(m => m.listingId === listingId);
+}
+
+export function sendMessage(message: Message) {
+  const data = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+  const allMessages: Message[] = data ? JSON.parse(data) : [];
+  allMessages.push(message);
+  localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(allMessages));
 }
