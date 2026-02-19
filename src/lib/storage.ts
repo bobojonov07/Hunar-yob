@@ -27,6 +27,22 @@ export interface Review {
   createdAt: string;
 }
 
+export type DealStatus = 'Pending' | 'Accepted' | 'Completed' | 'Confirmed' | 'Cancelled';
+
+export interface Deal {
+  id: string;
+  listingId: string;
+  clientId: string;
+  artisanId: string;
+  title: string;
+  price: number;
+  durationDays: number;
+  status: DealStatus;
+  senderId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Message {
   id: string;
   listingId: string;
@@ -35,6 +51,8 @@ export interface Message {
   text: string;
   createdAt: string;
   isRead?: boolean;
+  type?: 'text' | 'deal';
+  dealId?: string;
 }
 
 export interface Listing {
@@ -57,6 +75,7 @@ const STORAGE_KEYS = {
   LISTINGS: 'hunar_yob_listings',
   REVIEWS: 'hunar_yob_reviews',
   MESSAGES: 'hunar_yob_messages',
+  DEALS: 'hunar_yob_deals',
 };
 
 const VIP_PRICE = 20;
@@ -239,4 +258,59 @@ export function markMessagesAsRead(listingId: string, currentUserId: string) {
     return m;
   });
   localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(updated));
+}
+
+// Deal functions (Escrow System)
+export function getDeals(): Deal[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(STORAGE_KEYS.DEALS);
+  return data ? JSON.parse(data) : [];
+}
+
+export function saveDeal(deal: Deal) {
+  const deals = getDeals();
+  deals.push(deal);
+  localStorage.setItem(STORAGE_KEYS.DEALS, JSON.stringify(deals));
+}
+
+export function updateDealStatus(dealId: string, status: DealStatus) {
+  const deals = getDeals();
+  const index = deals.findIndex(d => d.id === dealId);
+  if (index !== -1) {
+    const deal = deals[index];
+    const prevStatus = deal.status;
+    deal.status = status;
+    deal.updatedAt = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEYS.DEALS, JSON.stringify(deals));
+
+    // Funds Logic
+    const users = getUsers();
+    const client = users.find(u => u.id === deal.clientId);
+    const artisan = users.find(u => u.id === deal.artisanId);
+
+    if (status === 'Accepted' && prevStatus === 'Pending') {
+      // Deduct from client
+      if (client && client.balance >= deal.price) {
+        client.balance -= deal.price;
+        updateUser(client);
+      } else {
+        // Should have been checked before
+        return { success: false, message: "Тавозуни мизоҷ нокифоя аст" };
+      }
+    } else if (status === 'Confirmed' && prevStatus === 'Completed') {
+      // Transfer to artisan
+      if (artisan) {
+        artisan.balance += deal.price;
+        updateUser(artisan);
+      }
+    } else if (status === 'Cancelled' && prevStatus === 'Accepted') {
+      // Refund client
+      if (client) {
+        client.balance += deal.price;
+        updateUser(client);
+      }
+    }
+    return { success: true };
+  }
+  return { success: false, message: "Шартнома ёфт нашуд" };
 }
