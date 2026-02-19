@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react";
@@ -10,11 +9,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { saveUser, setCurrentUser, UserRole, getUsers, ALL_REGIONS, ARTISAN_REGISTRATION_FEE } from "@/lib/storage";
+import { UserRole, ALL_REGIONS, ARTISAN_REGISTRATION_FEE, UserProfile } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Calendar, Lock, Eye, EyeOff, Info, CheckCircle2, CreditCard, ShieldCheck } from "lucide-react";
+import { Hammer, User as UserIcon, Lock, Eye, EyeOff, Info, CheckCircle2, CreditCard, ShieldCheck } from "lucide-react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useAuth, useFirestore } from "@/firebase";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -32,11 +36,12 @@ export default function Register() {
   const [cardNo, setCardNo] = useState("");
   const [cardExp, setCardExp] = useState("");
   const [isPaying, setIsPaying] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const db = useFirestore();
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,26 +76,35 @@ export default function Register() {
     }
   };
 
-  const finalizeRegistration = () => {
-    const newUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      email,
-      role,
-      password,
-      birthDate,
-      region,
-      phone: phone.replace(/\D/g, ""),
-      favorites: [],
-      balance: 0,
-      identificationStatus: 'None',
-      isArtisanFeePaid: role === 'Usto'
-    };
+  const finalizeRegistration = async () => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    saveUser(newUser);
-    setCurrentUser(newUser);
-    toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
-    router.push("/");
+      const profile: UserProfile = {
+        id: user.uid,
+        name,
+        email,
+        role,
+        phone: phone.replace(/\D/g, ""),
+        region,
+        balance: 0,
+        identificationStatus: 'None',
+        isArtisanFeePaid: role === 'Usto',
+        isPremium: false,
+        isBlocked: false,
+        warningCount: 0,
+        createdAt: serverTimestamp()
+      };
+
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, profile);
+      
+      toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
+      router.push("/");
+    } catch (error: any) {
+      toast({ title: "Хатогии сабти ном", description: error.message, variant: "destructive" });
+    }
   };
 
   const handlePayment = (e: React.FormEvent) => {
@@ -204,13 +218,6 @@ export default function Register() {
                     Ман бо <span className="text-primary hover:underline">шартҳои истифода</span> ва <span className="text-primary hover:underline">сиёсати амният</span> розӣ ҳастам. Истифодаи дашном ва ҳақорат боиси блок шудани акаунт мегардад.
                   </Label>
                 </div>
-                
-                <div className="p-6 bg-red-50 border-2 border-dashed border-red-100 rounded-[2rem] flex items-start gap-4">
-                  <Info className="h-6 w-6 text-red-400 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-red-900 font-black uppercase tracking-widest leading-relaxed opacity-60">
-                    БАРНОМАСОЗ БАРОИ МУНДАРИҶАИ ЭЪЛОНҲО, СИФАТИ ХИДМАТРАСОНӢ ВА МУОМИЛАҲО ҶАВОБГАР НЕСТ. БАРНОМА ТАНҲО БАРОИ КУМАК СОХТА ШУДААСТ.
-                  </p>
-                </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
                 <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ДАВОМ ДОДАН</Button>
@@ -276,9 +283,6 @@ export default function Register() {
                 <Button type="submit" disabled={isPaying} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">
                   {isPaying ? "ДАР ҲОЛИ ПАРДОХТ..." : `ПАРДОХТ ВА ФАЪОЛКУНӢ`}
                 </Button>
-                <p className="text-[10px] text-center text-muted-foreground px-10 leading-relaxed font-black uppercase tracking-widest opacity-40 italic">
-                  Ин маблағ барои филтр кардани шахсони беҳунар ва таъмини амнияти платформа ҷамъоварӣ карда мешавад.
-                </p>
               </CardFooter>
             </form>
           )}

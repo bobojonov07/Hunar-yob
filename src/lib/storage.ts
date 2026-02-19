@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -16,7 +15,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export type UserRole = 'Usto' | 'Client';
 export type IdentificationStatus = 'None' | 'Pending' | 'Verified' | 'Rejected';
 
-export interface User {
+export interface UserProfile {
   id: string;
   name: string;
   email: string;
@@ -30,6 +29,7 @@ export interface User {
   isArtisanFeePaid?: boolean;
   warningCount?: number;
   isBlocked?: boolean;
+  createdAt: any;
 }
 
 export interface Listing {

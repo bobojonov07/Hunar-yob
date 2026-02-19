@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react";
@@ -8,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { getUsers, setCurrentUser } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Eye, EyeOff, Lock, Mail, ShieldCheck, ChevronLeft } from "lucide-react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { useAuth } from "@/firebase";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,8 +21,9 @@ export default function Login() {
   const [agreed, setAgreed] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!agreed) {
@@ -34,20 +35,17 @@ export default function Login() {
       return;
     }
 
-    const users = getUsers();
-    const user = users.find(u => u.email === email && u.password === password);
-
-    if (user) {
-      setCurrentUser(user);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: "Хуш омадед",
-        description: `Салом, ${user.name}! Шумо бо муваффақият ворид шудед.`,
+        description: "Шумо бо муваффақият ворид шудед.",
       });
       router.push("/");
-    } else {
+    } catch (error: any) {
       toast({
-        title: "Хатогӣ",
-        description: "Почта ё рамзи нодуруст",
+        title: "Хатогии воридшавӣ",
+        description: "Почта ё рамзи нодуруст.",
         variant: "destructive",
       });
     }
