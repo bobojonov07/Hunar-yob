@@ -10,8 +10,6 @@ import {
   Firestore,
   increment
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export type UserRole = 'Usto' | 'Client';
 export type IdentificationStatus = 'None' | 'Pending' | 'Verified' | 'Rejected';
@@ -106,6 +104,3 @@ export function calculateFee(price: number): number {
   if (price < 10000) return 100;
   return 1000;
 }
-
-// Нигоҳ доштани Types ва константаҳо барои мутобиқат.
-// Логикаи LocalStorage нест карда шуд ва бо Firebase Hooks иваз гардид.
