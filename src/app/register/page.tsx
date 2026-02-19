@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { saveUser, setCurrentUser, UserRole, getUsers } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Calendar, MapPin, Phone, Lock, Eye, EyeOff } from "lucide-react";
+import { Hammer, User as UserIcon, Calendar, MapPin, Phone, Lock, Eye, EyeOff, Info } from "lucide-react";
 
 const REGIONS = ["Душанбе", "Хатлон", "Суғд", "ВМКБ", "Ноҳияҳои тобеи марказ"];
 
@@ -25,6 +26,7 @@ export default function Register() {
   const [region, setRegion] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<UserRole>("Client");
+  const [agreed, setAgreed] = useState(false);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -35,7 +37,11 @@ export default function Register() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validations
+    if (!agreed) {
+      toast({ title: "Хатогӣ", description: "Лутфан бо шартҳои истифода розӣ шавед", variant: "destructive" });
+      return;
+    }
+
     if (!name || !email || !password || !birthDate || !region || !phone) {
       toast({ title: "Хатогӣ", description: "Лутфан ҳамаи майдонҳоро пур кунед", variant: "destructive" });
       return;
@@ -46,7 +52,6 @@ export default function Register() {
       return;
     }
 
-    // Age validation (18+)
     const birth = new Date(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -59,10 +64,9 @@ export default function Register() {
       return;
     }
 
-    // Phone validation (exactly 9 digits)
     const phoneDigits = phone.replace(/\D/g, "");
     if (phoneDigits.length !== 9) {
-      toast({ title: "Хатогӣ", description: "Рақами телефон бояд рости 9 рақам бошад (масалан: 900000000)", variant: "destructive" });
+      toast({ title: "Хатогӣ", description: "Рақами телефон бояд рости 9 рақам бошад", variant: "destructive" });
       return;
     }
 
@@ -71,7 +75,6 @@ export default function Register() {
       return;
     }
 
-    // Duplicate check
     const existingUsers = getUsers();
     const isDuplicate = existingUsers.some(u => u.email === email || u.phone === phoneDigits);
     if (isDuplicate) {
@@ -89,6 +92,7 @@ export default function Register() {
       region,
       phone: phoneDigits,
       favorites: [],
+      balance: 0
     };
 
     saveUser(newUser);
@@ -99,23 +103,23 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background pb-12">
+    <div className="min-h-screen flex flex-col bg-background pb-20">
       <Navbar />
       <div className="flex-1 flex items-center justify-center p-4 pt-10">
-        <Card className="w-full max-w-lg border-border shadow-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-headline text-secondary">Сабти ном</CardTitle>
-            <CardDescription>Маълумоти худро барои оғоз ворид кунед</CardDescription>
+        <Card className="w-full max-w-xl border-border shadow-2xl rounded-[2rem] overflow-hidden">
+          <CardHeader className="text-center bg-muted/20 pb-10 pt-12">
+            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter">САБТИ НОМ</CardTitle>
+            <CardDescription className="text-base font-medium">Маълумоти худро барои оғоз ворид кунед</CardDescription>
           </CardHeader>
           <form onSubmit={handleRegister}>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-6 pt-10">
               <div className="space-y-2">
-                <Label htmlFor="name">Ному насаб (на кам ай 3 ҳарф)</Label>
+                <Label htmlFor="name" className="font-bold">Ному насаб</Label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <UserIcon className="absolute left-4 top-3 h-5 w-5 text-muted-foreground" />
                   <Input 
                     id="name" 
-                    className="pl-10"
+                    className="pl-12 h-12 rounded-xl"
                     placeholder="Алиев Валӣ" 
                     value={name} 
                     onChange={(e) => setName(e.target.value)}
@@ -123,27 +127,27 @@ export default function Register() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="birthDate">Санаи таваллуд (18+)</Label>
+                  <Label htmlFor="birthDate" className="font-bold">Санаи таваллуд</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Calendar className="absolute left-4 top-3 h-5 w-5 text-muted-foreground" />
                     <Input 
                       id="birthDate" 
                       type="date"
-                      className="pl-10"
+                      className="pl-12 h-12 rounded-xl"
                       value={birthDate} 
                       onChange={(e) => setBirthDate(e.target.value)}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="region">Минтақа</Label>
+                  <Label htmlFor="region" className="font-bold">Минтақа</Label>
                   <Select onValueChange={setRegion}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="h-12 rounded-xl">
                       <SelectValue placeholder="Интихоби минтақа" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                       {REGIONS.map(r => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
                       ))}
@@ -152,14 +156,14 @@ export default function Register() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Рақами телефон (9 рақам)</Label>
+                  <Label htmlFor="phone" className="font-bold">Телефон (бе +992)</Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-2.5 text-sm text-muted-foreground">+992</div>
+                    <div className="absolute left-4 top-3 text-sm font-bold text-muted-foreground">+992</div>
                     <Input 
                       id="phone" 
-                      className="pl-14"
+                      className="pl-16 h-12 rounded-xl"
                       placeholder="900000000" 
                       value={phone} 
                       onChange={(e) => setPhone(e.target.value)}
@@ -168,26 +172,27 @@ export default function Register() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Почтаи электронӣ</Label>
+                  <Label htmlFor="email" className="font-bold">Почтаи электронӣ</Label>
                   <Input 
                     id="email" 
                     type="email" 
                     placeholder="example@mail.tj" 
+                    className="h-12 rounded-xl"
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Рамз</Label>
+                  <Label htmlFor="password" className="font-bold">Рамз</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-4 top-3 h-5 w-5 text-muted-foreground" />
                     <Input 
                       id="password" 
                       type={showPassword ? "text" : "password"} 
-                      className="pl-10 pr-10"
+                      className="pl-12 pr-12 h-12 rounded-xl"
                       placeholder="******" 
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)}
@@ -195,20 +200,20 @@ export default function Register() {
                     <button 
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-primary"
+                      className="absolute right-4 top-3 text-muted-foreground hover:text-primary"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Тасдиқи рамз</Label>
+                  <Label htmlFor="confirmPassword" className="font-bold">Тасдиқи рамз</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-4 top-3 h-5 w-5 text-muted-foreground" />
                     <Input 
                       id="confirmPassword" 
                       type={showConfirmPassword ? "text" : "password"} 
-                      className="pl-10 pr-10"
+                      className="pl-12 pr-12 h-12 rounded-xl"
                       placeholder="******" 
                       value={confirmPassword} 
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -216,45 +221,66 @@ export default function Register() {
                     <button 
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-primary"
+                      className="absolute right-4 top-3 text-muted-foreground hover:text-primary"
                     >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
               </div>
               
-              <div className="space-y-3">
-                <Label>Шумо кистед?</Label>
-                <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <Label className="font-bold">Шумо кистед?</Label>
+                <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="grid grid-cols-2 gap-6">
                   <div>
                     <RadioGroupItem value="Client" id="client" className="peer sr-only" />
                     <Label
                       htmlFor="client"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-between rounded-2xl border-2 border-muted bg-popover p-6 hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all duration-300"
                     >
-                      <UserIcon className="mb-3 h-6 w-6" />
-                      Мизоҷ
+                      <UserIcon className="mb-3 h-8 w-8 text-primary" />
+                      <span className="font-black text-secondary">МИЗОҶ</span>
                     </Label>
                   </div>
                   <div>
                     <RadioGroupItem value="Usto" id="usto" className="peer sr-only" />
                     <Label
                       htmlFor="usto"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-between rounded-2xl border-2 border-muted bg-popover p-6 hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all duration-300"
                     >
-                      <Hammer className="mb-3 h-6 w-6" />
-                      Усто
+                      <Hammer className="mb-3 h-8 w-8 text-primary" />
+                      <span className="font-black text-secondary">УСТО</span>
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
+
+              <div className="flex items-start space-x-3 pt-4">
+                <Checkbox 
+                  id="agreed" 
+                  checked={agreed} 
+                  onCheckedChange={(v) => setAgreed(!!v)} 
+                  className="mt-1 rounded-md h-5 w-5"
+                />
+                <Label htmlFor="agreed" className="text-sm leading-relaxed text-muted-foreground font-medium cursor-pointer">
+                  Ман бо <span className="text-primary hover:underline">шартҳои истифода</span> ва <span className="text-primary hover:underline">сиёсати маҳфият</span> розӣ ҳастам.
+                </Label>
+              </div>
+
+              <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-start gap-3">
+                <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                  Барномасоз барои мундариҷаи эълонҳо ҷавобгар нест. Ин барнома танҳо бо мақсади кумак ба ҳамватанон дар пайдо кардани устоҳои моҳир сохта шудааст.
+                </p>
+              </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white py-6">Сабти ном</Button>
-              <p className="text-sm text-center text-muted-foreground">
+            <CardFooter className="flex flex-col space-y-6 pb-12">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white py-8 text-xl font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95">
+                САБТИ НОМ ШАВЕД
+              </Button>
+              <p className="text-base text-center text-muted-foreground font-medium">
                 Аллакай аъзо ҳастед?{" "}
-                <Link href="/login" className="text-primary hover:underline font-semibold">Ворид шавед</Link>
+                <Link href="/login" className="text-primary hover:underline font-black">Ворид шавед</Link>
               </p>
             </CardFooter>
           </form>
