@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Calendar, Camera } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Calendar, Camera, Wallet, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -66,7 +66,7 @@ export default function Profile() {
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* User Info Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <Card className="border-border shadow-sm">
               <CardHeader className="text-center pb-2">
                 <div className="flex justify-center mb-4 relative group">
@@ -153,6 +153,29 @@ export default function Profile() {
                   Баромад
                 </Button>
               </CardFooter>
+            </Card>
+
+            {/* Wallet Card */}
+            <Card className="border-border shadow-md bg-gradient-to-br from-secondary to-secondary/80 text-white overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="h-12 w-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                    <Wallet className="h-6 w-6 text-primary" />
+                  </div>
+                  <Badge className="bg-primary/20 text-primary border-primary/20">Ҳамён</Badge>
+                </div>
+                <p className="text-sm opacity-60 mb-1">Тавозуни ҷорӣ</p>
+                <div className="flex items-baseline gap-2 mb-8">
+                  <span className="text-4xl font-black">{(user.balance || 0).toLocaleString()}</span>
+                  <span className="text-xl font-bold opacity-60">TJS</span>
+                </div>
+                <Button asChild className="w-full bg-primary hover:bg-primary/90 text-white border-none h-12 rounded-xl group">
+                  <Link href="/wallet">
+                    ПУР КАРДАН
+                    <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </Link>
+                </Button>
+              </CardContent>
             </Card>
           </div>
 

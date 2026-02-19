@@ -14,6 +14,7 @@ export interface User {
   profileImage?: string;
   favorites?: string[]; // Array of listing IDs
   lastSeen?: string;
+  balance: number; // User's wallet balance
 }
 
 export interface Review {
@@ -64,7 +65,7 @@ export function getUsers(): User[] {
 
 export function saveUser(user: User) {
   const users = getUsers();
-  users.push({ ...user, favorites: [] });
+  users.push({ ...user, favorites: [], balance: 0 });
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
 }
 
@@ -133,6 +134,15 @@ export function toggleFavorite(listingId: string) {
   }
 
   const updatedUser = { ...user, favorites };
+  updateUser(updatedUser);
+  return true;
+}
+
+export function depositFunds(amount: number) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  
+  const updatedUser = { ...user, balance: (user.balance || 0) + amount };
   updateUser(updatedUser);
   return true;
 }
