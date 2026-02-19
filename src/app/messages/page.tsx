@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageSquare, Clock, CheckCheck } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface Conversation {
   listing: Listing;
