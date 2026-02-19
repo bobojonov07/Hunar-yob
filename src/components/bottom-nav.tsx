@@ -1,28 +1,33 @@
 
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageSquare, User as UserIcon, Hammer, Home, Search } from "lucide-react";
-import { getCurrentUser, User, getAllMessages } from "@/lib/storage";
 import { cn } from "@/lib/utils";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collectionGroup, query, where } from "firebase/firestore";
 
 export function BottomNav() {
-  const [user, setUser] = useState<User | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useUser();
+  const db = useFirestore();
   const pathname = usePathname();
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-    
-    if (currentUser) {
-      const messages = getAllMessages();
-      const count = messages.filter(m => !m.isRead && m.senderId !== currentUser.id).length;
-      setUnreadCount(count);
-    }
-  }, [pathname]);
+  // Query for unread messages where the user is NOT the sender
+  // Note: For this to work efficiently in a real app, you'd need a more specific schema,
+  // but for this MVP we look for all unread messages.
+  const unreadMessagesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collectionGroup(db, "messages"),
+      where("isRead", "==", false),
+      where("senderId", "!=", user.uid)
+    );
+  }, [db, user]);
+
+  const { data: unreadMessages = [] } = useCollection(unreadMessagesQuery);
+  const unreadCount = unreadMessages.length;
 
   if (!user) return null;
 
@@ -49,7 +54,7 @@ export function BottomNav() {
             <item.icon className={cn("h-6 w-6", isActive && "fill-primary/10")} />
             {item.hasBadge && (
               <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-                <span className="text-[8px] text-white font-bold leading-none">{unreadCount}</span>
+                <span className="text-[8px] text-white font-bold leading-none">{unreadCount > 9 ? '9+' : unreadCount}</span>
               </span>
             )}
             <span className="text-[10px] font-bold">{item.label}</span>

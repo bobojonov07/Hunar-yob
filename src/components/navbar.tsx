@@ -1,24 +1,21 @@
+
 "use client"
 
-import { useEffect, useState } from "react";
-import { User, getCurrentUser, setCurrentUser } from "@/lib/storage";
+import { useUser, useAuth } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Hammer, LogOut, Heart, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 
 export function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    setUser(getCurrentUser());
-  }, []);
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setUser(null);
+  const handleLogout = async () => {
+    await signOut(auth);
     router.push("/");
   };
 
@@ -38,14 +35,13 @@ export function Navbar() {
                 <span className="hidden md:inline text-sm font-semibold">Писандидаҳо</span>
               </Link>
               <div className="hidden md:flex flex-col items-end mr-1">
-                <span className="text-sm font-bold text-secondary">{user.name}</span>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{user.role === 'Usto' ? 'Усто' : 'Мизоҷ'}</span>
+                <span className="text-sm font-bold text-secondary">{user.displayName || "Корбар"}</span>
               </div>
               <Link href="/profile" className="hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10 border-2 border-primary/20">
-                  <AvatarImage src={user.profileImage} className="object-cover" />
+                  <AvatarImage src={user.photoURL || ""} className="object-cover" />
                   <AvatarFallback className="bg-primary text-white text-xs">
-                    {user.name.charAt(0)}
+                    {user.displayName?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
               </Link>
