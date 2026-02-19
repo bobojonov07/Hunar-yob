@@ -1,15 +1,17 @@
-
 "use client"
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { User, getCurrentUser, getListings, Listing, deleteListing } from "@/lib/storage";
+import { User, getCurrentUser, getListings, Listing, deleteListing, updateUser } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Settings, LogOut, Plus, Trash2, MapPin } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Calendar, Camera } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [userListings, setUserListings] = useState<Listing[]>([]);
+  const [newImage, setNewImage] = useState("");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -42,44 +45,99 @@ export default function Profile() {
     }
   };
 
+  const handleUpdateImage = () => {
+    if (user && newImage) {
+      const updated = { ...user, profileImage: newImage };
+      updateUser(updated);
+      setUser(updated);
+      setNewImage("");
+      toast({
+        title: "Навсозӣ шуд",
+        description: "Сурати профил бо муваффақият иваз карда шуд",
+      });
+    }
+  };
+
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-12">
       <Navbar />
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* User Info Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="border-border">
+            <Card className="border-border shadow-sm">
               <CardHeader className="text-center pb-2">
-                <div className="flex justify-center mb-4">
-                  <Avatar className="h-24 w-24 ring-4 ring-primary/20">
-                    <AvatarFallback className="text-2xl bg-primary text-white">
+                <div className="flex justify-center mb-4 relative group">
+                  <Avatar className="h-32 w-32 ring-4 ring-primary/20">
+                    <AvatarImage src={user.profileImage} className="object-cover" />
+                    <AvatarFallback className="text-4xl bg-primary text-white">
                       {user.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="absolute bottom-0 right-1/2 translate-x-12 bg-secondary text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform">
+                        <Camera className="h-4 w-4" />
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Ивази сурати профил</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label>URL-и сурат</Label>
+                          <Input 
+                            placeholder="https://example.com/image.jpg" 
+                            value={newImage}
+                            onChange={(e) => setNewImage(e.target.value)}
+                          />
+                        </div>
+                        <Button onClick={handleUpdateImage} className="w-full bg-primary">Сабт кардан</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-                <CardTitle className="text-2xl font-headline">{user.name}</CardTitle>
+                <CardTitle className="text-2xl font-headline font-bold">{user.name}</CardTitle>
                 <Badge variant="outline" className="mt-2 border-primary text-primary px-4 py-1">
                   {user.role === 'Usto' ? 'Усто' : 'Мизоҷ'}
                 </Badge>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground mb-1">Почтаи электронӣ</p>
-                  <p className="font-medium">{user.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Макон</p>
-                  <p className="font-medium flex items-center">
-                    <MapPin className="h-4 w-4 mr-1 text-primary" />
-                    Душанбе, Тоҷикистон
-                  </p>
+              <CardContent className="space-y-5 pt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-muted p-2 rounded-md">
+                      <Phone className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Телефон</p>
+                      <p className="text-sm font-medium">{user.phone || "Маълумот нест"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-muted p-2 rounded-md">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Минтақа</p>
+                      <p className="text-sm font-medium">{user.region || "Маълумот нест"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-muted p-2 rounded-md">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Санаи таваллуд</p>
+                      <p className="text-sm font-medium">{user.birthDate || "Маълумот нест"}</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full justify-start">
+              <CardFooter className="flex flex-col gap-2 pt-0">
+                <Button variant="outline" className="w-full justify-start border-border">
                   <Settings className="mr-2 h-4 w-4" />
                   Танзимот
                 </Button>
@@ -117,7 +175,7 @@ export default function Profile() {
             {userListings.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {userListings.map(listing => (
-                  <Card key={listing.id} className="overflow-hidden border-border group">
+                  <Card key={listing.id} className="overflow-hidden border-border group hover:shadow-md transition-shadow">
                     <div className="relative h-48 w-full">
                       <Image 
                         src={listing.images[0]} 
@@ -130,10 +188,10 @@ export default function Profile() {
                       </Badge>
                     </div>
                     <CardHeader className="py-4">
-                      <CardTitle className="text-lg font-headline line-clamp-1">{listing.title}</CardTitle>
+                      <CardTitle className="text-lg font-headline line-clamp-1 group-hover:text-primary transition-colors">{listing.title}</CardTitle>
                     </CardHeader>
                     <CardFooter className="py-4 border-t flex justify-between">
-                      <Button variant="outline" size="sm" asChild>
+                      <Button variant="outline" size="sm" asChild className="border-primary text-primary hover:bg-primary hover:text-white">
                         <Link href={`/listing/${listing.id}`}>Бингар</Link>
                       </Button>
                       <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(listing.id)}>
@@ -144,10 +202,10 @@ export default function Profile() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-20 bg-muted/20 rounded-xl border-2 border-dashed">
-                <p className="text-muted-foreground mb-4">Шумо ҳоло эълон надоред.</p>
+              <div className="text-center py-24 bg-muted/20 rounded-xl border-2 border-dashed flex flex-col items-center">
+                <p className="text-muted-foreground mb-6 text-lg">Шумо ҳоло эълон надоред.</p>
                 {user.role === 'Usto' && (
-                  <Button asChild className="bg-primary">
+                  <Button asChild className="bg-primary px-8">
                     <Link href="/create-listing">Аввалин эълонро гузоред</Link>
                   </Button>
                 )}

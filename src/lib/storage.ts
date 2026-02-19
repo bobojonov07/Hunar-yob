@@ -1,4 +1,3 @@
-
 "use client"
 
 export type UserRole = 'Usto' | 'Client';
@@ -8,7 +7,11 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  password?: string; // In a real app we wouldn't store this like this
+  password?: string;
+  birthDate?: string;
+  region?: string;
+  phone?: string;
+  profileImage?: string;
 }
 
 export interface Listing {
@@ -38,6 +41,16 @@ export function saveUser(user: User) {
   const users = getUsers();
   users.push(user);
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+}
+
+export function updateUser(updatedUser: User) {
+  const users = getUsers();
+  const index = users.findIndex(u => u.id === updatedUser.id);
+  if (index !== -1) {
+    users[index] = updatedUser;
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    setCurrentUser(updatedUser);
+  }
 }
 
 export function setCurrentUser(user: User | null) {
