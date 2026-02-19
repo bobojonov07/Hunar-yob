@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { User, getCurrentUser, setCurrentUser } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Hammer, LogOut, User as UserIcon, LogIn, UserPlus } from "lucide-react";
+import { Hammer, LogOut, Heart, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -33,6 +33,10 @@ export function Navbar() {
         <div className="flex items-center space-x-3 md:space-x-4">
           {user ? (
             <>
+              <Link href="/favorites" className="text-secondary hover:text-primary transition-colors flex items-center mr-2">
+                <Heart className="h-5 w-5 md:mr-1" />
+                <span className="hidden md:inline text-sm font-semibold">Писандидаҳо</span>
+              </Link>
               <div className="hidden md:flex flex-col items-end mr-1">
                 <span className="text-sm font-bold text-secondary">{user.name}</span>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{user.role === 'Usto' ? 'Усто' : 'Мизоҷ'}</span>

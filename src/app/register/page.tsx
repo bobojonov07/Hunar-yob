@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { saveUser, setCurrentUser, UserRole } from "@/lib/storage";
+import { saveUser, setCurrentUser, UserRole, getUsers } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Calendar, MapPin, Phone, Lock } from "lucide-react";
+import { Hammer, User as UserIcon, Calendar, MapPin, Phone, Lock, Eye, EyeOff } from "lucide-react";
 
 const REGIONS = ["Душанбе", "Хатлон", "Суғд", "ВМКБ", "Ноҳияҳои тобеи марказ"];
 
@@ -25,27 +25,57 @@ export default function Register() {
   const [region, setRegion] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<UserRole>("Client");
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const router = useRouter();
   const { toast } = useToast();
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validations
     if (!name || !email || !password || !birthDate || !region || !phone) {
-      toast({
-        title: "Хатогӣ",
-        description: "Лутфан ҳамаи майдонҳоро пур кунед",
-        variant: "destructive",
-      });
+      toast({ title: "Хатогӣ", description: "Лутфан ҳамаи майдонҳоро пур кунед", variant: "destructive" });
+      return;
+    }
+
+    if (name.length < 3) {
+      toast({ title: "Хатогӣ", description: "Ном бояд на кам аз 3 аломат бошад", variant: "destructive" });
+      return;
+    }
+
+    // Age validation (18+)
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    if (age < 18) {
+      toast({ title: "Хатогӣ", description: "Сабти ном танҳо барои шахсони аз 18-сола боло", variant: "destructive" });
+      return;
+    }
+
+    // Phone validation (exactly 9 digits)
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length !== 9) {
+      toast({ title: "Хатогӣ", description: "Рақами телефон бояд рости 9 рақам бошад (масалан: 900000000)", variant: "destructive" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Хатогӣ",
-        description: "Рамзҳо мувофиқат намекунанд",
-        variant: "destructive",
-      });
+      toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
+      return;
+    }
+
+    // Duplicate check
+    const existingUsers = getUsers();
+    const isDuplicate = existingUsers.some(u => u.email === email || u.phone === phoneDigits);
+    if (isDuplicate) {
+      toast({ title: "Хатогӣ", description: "Ин почта ё рақами телефон аллакай истифода шудааст", variant: "destructive" });
       return;
     }
 
@@ -57,17 +87,14 @@ export default function Register() {
       password,
       birthDate,
       region,
-      phone,
+      phone: phoneDigits,
+      favorites: [],
     };
 
     saveUser(newUser);
     setCurrentUser(newUser);
     
-    toast({
-      title: "Муваффақият",
-      description: "Шумо бо муваффақият сабти ном шудед!",
-    });
-    
+    toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
     router.push("/");
   };
 
@@ -78,18 +105,18 @@ export default function Register() {
         <Card className="w-full max-w-lg border-border shadow-md">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-headline text-secondary">Сабти ном</CardTitle>
-            <CardDescription>Барои истифода аз хизматрасониҳо маълумоти худро ворид кунед</CardDescription>
+            <CardDescription>Маълумоти худро барои оғоз ворид кунед</CardDescription>
           </CardHeader>
           <form onSubmit={handleRegister}>
             <CardContent className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name">Ному насаб</Label>
+                <Label htmlFor="name">Ному насаб (на кам ай 3 ҳарф)</Label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="name" 
                     className="pl-10"
-                    placeholder="Масалан: Алиев Валӣ" 
+                    placeholder="Алиев Валӣ" 
                     value={name} 
                     onChange={(e) => setName(e.target.value)}
                   />
@@ -98,7 +125,7 @@ export default function Register() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="birthDate">Санаи таваллуд</Label>
+                  <Label htmlFor="birthDate">Санаи таваллуд (18+)</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -127,15 +154,16 @@ export default function Register() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Рақами телефон</Label>
+                  <Label htmlFor="phone">Рақами телефон (9 рақам)</Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <div className="absolute left-3 top-2.5 text-sm text-muted-foreground">+992</div>
                     <Input 
                       id="phone" 
-                      className="pl-10"
-                      placeholder="+992 900 00 00 00" 
+                      className="pl-14"
+                      placeholder="900000000" 
                       value={phone} 
                       onChange={(e) => setPhone(e.target.value)}
+                      maxLength={9}
                     />
                   </div>
                 </div>
@@ -158,12 +186,19 @@ export default function Register() {
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input 
                       id="password" 
-                      type="password" 
-                      className="pl-10"
+                      type={showPassword ? "text" : "password"} 
+                      className="pl-10 pr-10"
                       placeholder="******" 
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)}
                     />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-primary"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -172,12 +207,19 @@ export default function Register() {
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input 
                       id="confirmPassword" 
-                      type="password" 
-                      className="pl-10"
+                      type={showConfirmPassword ? "text" : "password"} 
+                      className="pl-10 pr-10"
                       placeholder="******" 
                       value={confirmPassword} 
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
+                    <button 
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-primary"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -189,7 +231,7 @@ export default function Register() {
                     <RadioGroupItem value="Client" id="client" className="peer sr-only" />
                     <Label
                       htmlFor="client"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-all"
                     >
                       <UserIcon className="mb-3 h-6 w-6" />
                       Мизоҷ
@@ -199,7 +241,7 @@ export default function Register() {
                     <RadioGroupItem value="Usto" id="usto" className="peer sr-only" />
                     <Label
                       htmlFor="usto"
-                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-all"
                     >
                       <Hammer className="mb-3 h-6 w-6" />
                       Усто

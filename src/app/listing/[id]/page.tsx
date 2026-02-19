@@ -1,22 +1,24 @@
-
 "use client"
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings } from "@/lib/storage";
+import { Listing, getListings, toggleFavorite, getCurrentUser, User } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon } from "lucide-react";
+import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Heart } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ListingDetail() {
   const { id } = useParams();
   const [listing, setListing] = useState<Listing | null>(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const allListings = getListings();
@@ -24,7 +26,30 @@ export default function ListingDetail() {
     if (found) {
       setListing(found);
     }
+    
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
+    if (currentUser && currentUser.favorites) {
+      setIsFavorite(currentUser.favorites.includes(id as string));
+    }
   }, [id]);
+
+  const handleFavoriteToggle = () => {
+    if (!user) {
+      toast({ title: "Вуруд лозим аст", description: "Барои илова ба писандидаҳо вориди акаунт шавед", variant: "destructive" });
+      router.push("/login");
+      return;
+    }
+    
+    const success = toggleFavorite(listing!.id);
+    if (success) {
+      setIsFavorite(!isFavorite);
+      toast({
+        title: isFavorite ? "Хориҷ карда шуд" : "Илова шуд",
+        description: isFavorite ? "Эълон аз рӯйхати писандидаҳо хориҷ шуд" : "Эълон ба рӯйхати писандидаҳо илова шуд",
+      });
+    }
+  };
 
   if (!listing) return null;
 
@@ -32,10 +57,20 @@ export default function ListingDetail() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-8 lg:py-12">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6 hover:text-primary p-0">
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Бозгашт
-        </Button>
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="ghost" onClick={() => router.back()} className="hover:text-primary p-0">
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Бозгашт
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleFavoriteToggle}
+            className={`rounded-full px-6 ${isFavorite ? 'border-red-500 text-red-500 bg-red-50' : 'border-border'}`}
+          >
+            <Heart className={`mr-2 h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
+            {isFavorite ? "Дар писандидаҳо" : "Ба писандидаҳо"}
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Images Section */}
@@ -116,10 +151,6 @@ export default function ListingDetail() {
                       Чат бо усто
                     </Button>
                   </div>
-                </div>
-
-                <div className="mt-8 p-4 bg-muted/30 rounded-lg text-xs text-muted-foreground">
-                  Лутфан ҳангоми тамос бигӯед, ки эълонро аз платформаи "Ҳунар Ёб" пайдо кардед.
                 </div>
               </CardContent>
             </Card>

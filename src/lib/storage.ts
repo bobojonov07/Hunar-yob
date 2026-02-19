@@ -12,6 +12,7 @@ export interface User {
   region?: string;
   phone?: string;
   profileImage?: string;
+  favorites?: string[]; // Array of listing IDs
 }
 
 export interface Listing {
@@ -39,7 +40,7 @@ export function getUsers(): User[] {
 
 export function saveUser(user: User) {
   const users = getUsers();
-  users.push(user);
+  users.push({ ...user, favorites: [] });
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
 }
 
@@ -83,4 +84,22 @@ export function saveListing(listing: Listing) {
 export function deleteListing(listingId: string) {
   const listings = getListings().filter(l => l.id !== listingId);
   localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+}
+
+export function toggleFavorite(listingId: string) {
+  const user = getCurrentUser();
+  if (!user) return false;
+
+  const favorites = user.favorites || [];
+  const index = favorites.indexOf(listingId);
+  
+  if (index === -1) {
+    favorites.push(listingId);
+  } else {
+    favorites.splice(index, 1);
+  }
+
+  const updatedUser = { ...user, favorites };
+  updateUser(updatedUser);
+  return true;
 }
