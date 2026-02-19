@@ -69,7 +69,7 @@ export function getUsers(): User[] {
 
 export function saveUser(user: User) {
   const users = getUsers();
-  users.push({ ...user, favorites: [], balance: 0 });
+  users.push({ ...user, favorites: [], balance: 0, lastSeen: new Date().toISOString() });
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
 }
 
@@ -84,6 +84,14 @@ export function updateUser(updatedUser: User) {
     if (current && current.id === updatedUser.id) {
       setCurrentUser(updatedUser);
     }
+  }
+}
+
+export function updateLastSeen() {
+  const user = getCurrentUser();
+  if (user) {
+    const updated = { ...user, lastSeen: new Date().toISOString() };
+    updateUser(updated);
   }
 }
 

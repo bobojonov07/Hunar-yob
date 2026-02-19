@@ -2,13 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review, makeListingVip, incrementViews } from "@/lib/storage";
+import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review, makeListingVip, incrementViews, updateLastSeen } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Heart, Share2, Star, Crown, Zap, Eye } from "lucide-react";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from "@/components/ui/carousel";
+import { 
+  MapPin, 
+  Phone, 
+  MessageSquare, 
+  ChevronLeft, 
+  Calendar, 
+  User as UserIcon, 
+  Heart, 
+  Share2, 
+  Star, 
+  Crown, 
+  Eye,
+  CheckCircle2
+} from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -16,7 +36,6 @@ import { Separator } from "@/components/ui/separator";
 export default function ListingDetail() {
   const { id } = useParams();
   const [listing, setListing] = useState<Listing | null>(null);
-  const [activeImage, setActiveImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -26,6 +45,7 @@ export default function ListingDetail() {
   const { toast } = useToast();
 
   useEffect(() => {
+    updateLastSeen();
     const allListings = getListings();
     const found = allListings.find(l => l.id === id);
     if (found) {
@@ -161,15 +181,31 @@ export default function ListingDetail() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-8">
-            <div className="relative aspect-video rounded-2xl overflow-hidden shadow-lg border bg-muted">
-              <Image 
-                src={listing.images[activeImage]} 
-                alt={listing.title} 
-                fill 
-                className="object-cover"
-              />
+            <div className="relative rounded-2xl overflow-hidden shadow-lg border bg-muted">
+              <Carousel className="w-full">
+                <CarouselContent>
+                  {listing.images.map((img, index) => (
+                    <CarouselItem key={index}>
+                      <div className="relative aspect-video">
+                        <Image 
+                          src={img} 
+                          alt={`${listing.title} - ${index + 1}`} 
+                          fill 
+                          className="object-cover"
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {listing.images.length > 1 && (
+                  <>
+                    <CarouselPrevious className="left-4" />
+                    <CarouselNext className="right-4" />
+                  </>
+                )}
+              </Carousel>
               {listing.isVip && (
-                <div className="absolute top-6 right-6">
+                <div className="absolute top-6 right-6 pointer-events-none">
                   <Badge className="bg-yellow-500 text-white text-lg px-4 py-1.5 shadow-2xl">
                     <Crown className="mr-2 h-5 w-5 fill-white" />
                     VIP ЭЪЛОН
@@ -272,7 +308,7 @@ export default function ListingDetail() {
                     </Card>
                   ))
                 ) : (
-                  <p className="text-center text-muted-foreground py-10">Ҳанӯз шарҳе нест.</p>
+                  <p className="text-center text-muted-foreground py-10">Ҳанӯз шарҳе неет.</p>
                 )}
               </div>
             </div>
@@ -289,7 +325,7 @@ export default function ListingDetail() {
                   <div>
                     <h3 className="font-bold text-xl text-secondary">{listing.userName}</h3>
                     <p className="text-xs text-muted-foreground flex items-center bg-green-100 text-green-700 px-2 py-0.5 rounded-full w-fit mt-1">
-                      <UserIcon className="h-3 w-3 mr-1" />
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
                       Устои тасдиқшуда
                     </p>
                   </div>

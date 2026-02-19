@@ -1,9 +1,8 @@
-
 "use client"
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { User, getCurrentUser, getListings, Listing, deleteListing, updateUser } from "@/lib/storage";
+import { User, getCurrentUser, getListings, Listing, deleteListing, updateUser, updateLastSeen } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Calendar, Camera, Wallet, ArrowUpRight } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Calendar, Camera, Wallet, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [newImage, setNewImage] = useState("");
+  const [completion, setCompletion] = useState(0);
   
   // Edit Profile States
   const [editName, setEditName] = useState("");
@@ -35,6 +36,7 @@ export default function Profile() {
   const { toast } = useToast();
 
   useEffect(() => {
+    updateLastSeen();
     const currentUser = getCurrentUser();
     if (!currentUser) {
       router.push("/login");
@@ -47,6 +49,15 @@ export default function Profile() {
     
     const listings = getListings().filter(l => l.userId === currentUser.id);
     setUserListings(listings);
+
+    // Calculate completion
+    let points = 0;
+    if (currentUser.name) points += 20;
+    if (currentUser.email) points += 20;
+    if (currentUser.phone) points += 20;
+    if (currentUser.region) points += 20;
+    if (currentUser.profileImage) points += 20;
+    setCompletion(points);
   }, [router]);
 
   const handleDelete = (id: string) => {
@@ -70,6 +81,7 @@ export default function Profile() {
         title: "Навсозӣ шуд",
         description: "Сурати профил бо муваффақият иваз карда шуд",
       });
+      setCompletion(prev => Math.min(100, prev + 20));
     }
   };
 
@@ -142,13 +154,26 @@ export default function Profile() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                <CardTitle className="text-2xl font-headline font-bold">{user.name}</CardTitle>
-                <Badge variant="outline" className="mt-2 border-primary text-primary px-4 py-1">
-                  {user.role === 'Usto' ? 'Усто' : 'Мизоҷ'}
-                </Badge>
+                <div className="flex flex-col items-center">
+                  <CardTitle className="text-2xl font-headline font-bold flex items-center gap-2">
+                    {user.name}
+                    {user.role === 'Usto' && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                  </CardTitle>
+                  <Badge variant="outline" className="mt-2 border-primary text-primary px-4 py-1">
+                    {user.role === 'Usto' ? 'Усто' : 'Мизоҷ'}
+                  </Badge>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-5 pt-4">
-                <div className="space-y-4">
+              <CardContent className="space-y-6 pt-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold mb-1">
+                    <span>Пуррагии профил</span>
+                    <span>{completion}%</span>
+                  </div>
+                  <Progress value={completion} className="h-2 bg-muted" />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
                   <div className="flex items-center gap-3">
                     <div className="bg-muted p-2 rounded-md">
                       <Phone className="h-4 w-4 text-primary" />
@@ -165,15 +190,6 @@ export default function Profile() {
                     <div>
                       <p className="text-xs text-muted-foreground">Минтақа</p>
                       <p className="text-sm font-medium">{user.region || "Маълумот нест"}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-muted p-2 rounded-md">
-                      <Calendar className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Санаи таваллуд</p>
-                      <p className="text-sm font-medium">{user.birthDate || "Маълумот нест"}</p>
                     </div>
                   </div>
                 </div>
