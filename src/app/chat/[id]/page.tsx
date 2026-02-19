@@ -7,16 +7,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, Hammer, CheckCheck, MessageSquare, Handshake, ShieldCheck, Flag, CheckCircle2, ShieldAlert, Star } from "lucide-react";
+import { ChevronLeft, Send, Hammer, MessageSquare, ShieldCheck, ShieldAlert, Star, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
-import { doc, collection, query, orderBy, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, collection, query, orderBy, setDoc, serverTimestamp, where } from "firebase/firestore";
 import { Listing, Message, Deal, calculateFee, UserProfile } from "@/lib/storage";
 
 export default function ChatPage() {
@@ -32,9 +29,6 @@ export default function ChatPage() {
   const [dealPrice, setDealPrice] = useState("");
   const [dealDuration, setDealDuration] = useState("");
   const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
-  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-  const [rating, setRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState("");
 
   // Firestore Data
   const listingRef = useMemo(() => listingId ? doc(db, "listings", listingId as string) : null, [db, listingId]);
@@ -48,12 +42,6 @@ export default function ChatPage() {
     return query(collection(db, "listings", listingId as string, "messages"), orderBy("createdAt", "asc"));
   }, [db, listingId]);
   const { data: messages = [] } = useCollection<Message>(messagesQuery as any);
-
-  const dealsQuery = useMemo(() => {
-    if (!db || !listingId) return null;
-    return query(collection(db, "deals"), where("listingId", "==", listingId));
-  }, [db, listingId]);
-  const { data: deals = [] } = useCollection<Deal>(dealsQuery as any);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -130,6 +118,7 @@ export default function ChatPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="font-black text-secondary truncate text-sm">{listing.userName}</h3>
+                {listing.isVip && <CheckCircle2 className="h-4 w-4 text-primary" />}
               </div>
               <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-green-500" /><p className="text-[10px] text-muted-foreground font-bold">Online</p></div>
             </div>

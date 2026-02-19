@@ -1,9 +1,9 @@
 
 "use client"
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { User, getCurrentUser, getListings, Listing, deleteListing, updateUser, updateLastSeen, requestIdentification, buyPremium, PREMIUM_PRICE, ALL_REGIONS, getDeals, getReviews } from "@/lib/storage";
+import { UserProfile, ALL_REGIONS, PREMIUM_PRICE, Listing } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,94 +14,81 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, Wallet, ArrowUpRight, CheckCircle2, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft, Award, Handshake, Star } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { doc, updateDoc, serverTimestamp, collection, query, where, deleteDoc } from "firebase/firestore";
+import { signOut } from "firebase/auth";
+import { useAuth } from "@/firebase";
 
 export default function Profile() {
-  const [user, setUser] = useState<User | null>(null);
-  const [userListings, setUserListings] = useState<Listing[]>([]);
-  const [completion, setCompletion] = useState(0);
-  const [stats, setStats] = useState({ deals: 0, rating: 0 });
-  
+  const { user, loading: authLoading } = useUser();
+  const db = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
+
+  const listingsQuery = useMemo(() => {
+    if (!user) return null;
+    return query(collection(db, "listings"), where("userId", "==", user.uid));
+  }, [db, user]);
+  const { data: userListings = [] } = useCollection<Listing>(listingsQuery as any);
+
   const [editName, setEditName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
   const [editRegion, setEditRegion] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
   const [isIdDialogOpen, setIsIdDialogOpen] = useState(false);
   const [idPhotoPreview, setIdPhotoPreview] = useState<string | null>(null);
   const idFileInputRef = useRef<HTMLInputElement>(null);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
 
-  const router = useRouter();
-  const { toast } = useToast();
-
   useEffect(() => {
-    updateLastSeen();
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      router.push("/login");
-      return;
+    if (profile) {
+      setEditName(profile.name);
+      setEditRegion(profile.region || "");
     }
-    setUser(currentUser);
-    setEditName(currentUser.name);
-    setEditPhone(currentUser.phone || "");
-    setEditRegion(currentUser.region || "");
-    
-    const listings = getListings().filter(l => l.userId === currentUser.id);
-    setUserListings(listings);
+  }, [profile]);
 
-    const deals = getDeals().filter(d => (d.artisanId === currentUser.id || d.clientId === currentUser.id) && d.status === 'Confirmed');
-    
-    let totalRating = 0;
-    let reviewsCount = 0;
-    listings.forEach(l => {
-      const revs = getReviews(l.id);
-      revs.forEach(r => {
-        totalRating += r.rating;
-        reviewsCount++;
-      });
-    });
-
-    setStats({
-      deals: deals.length,
-      rating: reviewsCount > 0 ? parseFloat((totalRating / reviewsCount).toFixed(1)) : 5.0
-    });
-
+  const completion = useMemo(() => {
+    if (!profile) return 0;
     let points = 0;
-    if (currentUser.name) points += 20;
-    if (currentUser.email) points += 20;
-    if (currentUser.phone) points += 20;
-    if (currentUser.region) points += 20;
-    if (currentUser.profileImage) points += 20;
-    setCompletion(points);
-  }, [router]);
+    if (profile.name) points += 20;
+    if (profile.email) points += 20;
+    if (profile.phone) points += 20;
+    if (profile.region) points += 20;
+    if (profile.profileImage) points += 20;
+    return points;
+  }, [profile]);
 
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && user) {
+    if (file && user && userProfileRef) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
-        const updated = { ...user, profileImage: base64String };
-        updateUser(updated);
-        setUser(updated);
+        await updateDoc(userProfileRef, { profileImage: base64String });
         toast({ title: "Сурати профил навсозӣ шуд" });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleBuyPremium = () => {
-    const res = buyPremium();
-    if (res.success) {
-      setUser(getCurrentUser());
-      toast({ title: res.message });
-    } else {
-      toast({ title: "Хатогӣ", description: res.message, variant: "destructive" });
+  const handleBuyPremium = async () => {
+    if (!userProfileRef || !profile) return;
+    if (profile.balance < PREMIUM_PRICE) {
+      toast({ title: "Маблағ нокифоя аст", description: "Лутфан ҳамёнро пур кунед", variant: "destructive" });
+      return;
     }
+    await updateDoc(userProfileRef, { 
+      isPremium: true, 
+      balance: profile.balance - PREMIUM_PRICE 
+    });
+    toast({ title: "Premium фаъол шуд!" });
   };
 
   const handleIdPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,34 +100,34 @@ export default function Profile() {
     }
   };
 
-  const handleSubmitId = () => {
-    if (!idPhotoPreview) return;
-    if (requestIdentification(idPhotoPreview)) {
-      setUser(getCurrentUser());
-      setIsIdDialogOpen(false);
-      toast({ title: "Дархост фиристода шуд" });
-    }
+  const handleSubmitId = async () => {
+    if (!idPhotoPreview || !userProfileRef) return;
+    await updateDoc(userProfileRef, { identificationStatus: 'Pending' });
+    setIsIdDialogOpen(false);
+    toast({ title: "Дархост фиристода шуд" });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDeleteListing = async (listingId: string) => {
     if (confirm("Нест кунем?")) {
-      deleteListing(id);
-      setUserListings(userListings.filter(l => l.id !== id));
+      await deleteDoc(doc(db, "listings", listingId));
       toast({ title: "Нест карда шуд" });
     }
   };
 
-  const handleUpdateProfile = () => {
-    if (user) {
-      const updated = { ...user, name: editName, phone: editPhone, region: editRegion };
-      updateUser(updated);
-      setUser(updated);
+  const handleUpdateProfile = async () => {
+    if (userProfileRef) {
+      await updateDoc(userProfileRef, { name: editName, region: editRegion });
       setIsEditDialogOpen(false);
       toast({ title: "Навсозӣ шуд" });
     }
   };
 
-  if (!user) return null;
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/");
+  };
+
+  if (authLoading || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
 
   return (
     <div className="min-h-screen bg-background pb-12">
@@ -157,49 +144,40 @@ export default function Profile() {
               <CardHeader className="text-center pb-2 pt-10">
                 <div className="flex justify-center mb-4 relative group">
                   <Avatar className="h-32 w-32 ring-8 ring-primary/5 shadow-2xl">
-                    <AvatarImage src={user.profileImage} className="object-cover" />
-                    <AvatarFallback className="text-4xl bg-primary text-white font-black">{user.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={profile.profileImage} className="object-cover" />
+                    <AvatarFallback className="text-4xl bg-primary text-white font-black">{profile.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <button 
-                    onClick={() => profileFileInputRef.current?.click()}
-                    className="absolute bottom-0 right-1/2 translate-x-12 bg-secondary text-white p-3 rounded-2xl shadow-xl hover:scale-110 transition-transform active:scale-95"
-                  >
+                  <button onClick={() => profileFileInputRef.current?.click()} className="absolute bottom-0 right-1/2 translate-x-12 bg-secondary text-white p-3 rounded-2xl shadow-xl hover:scale-110 transition-transform active:scale-95">
                     <Camera className="h-5 w-5" />
                   </button>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    ref={profileFileInputRef} 
-                    onChange={handleProfileImageChange} 
-                    accept="image/*" 
-                  />
+                  <input type="file" className="hidden" ref={profileFileInputRef} onChange={handleProfileImageChange} accept="image/*" />
                 </div>
                 <div className="flex flex-col items-center">
                   <CardTitle className="text-2xl font-black flex items-center gap-2 tracking-tighter text-secondary">
-                    {user.name}
-                    {user.identificationStatus === 'Verified' && <CheckCircle2 className="h-6 w-6 text-green-500 fill-green-50" />}
+                    {profile.name}
+                    {profile.identificationStatus === 'Verified' && <CheckCircle2 className="h-6 w-6 text-green-500 fill-green-50" />}
                   </CardTitle>
                   <div className="flex gap-2 mt-2">
-                    <Badge variant="outline" className="border-primary text-primary px-4 py-1 font-black rounded-xl uppercase tracking-widest text-[10px]">{user.role === 'Usto' ? 'УСТО' : 'МИЗОҶ'}</Badge>
-                    {user.isPremium && <Badge className="bg-yellow-500 text-white px-4 py-1 font-black rounded-xl text-[10px]"><Crown className="h-3 w-3 mr-1" /> PREMIUM</Badge>}
+                    <Badge variant="outline" className="border-primary text-primary px-4 py-1 font-black rounded-xl uppercase tracking-widest text-[10px]">{profile.role === 'Usto' ? 'УСТО' : 'МИЗОҶ'}</Badge>
+                    {profile.isPremium && <Badge className="bg-yellow-500 text-white px-4 py-1 font-black rounded-xl text-[10px]"><Crown className="h-3 w-3 mr-1" /> PREMIUM</Badge>}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-4 px-8">
                 <div className={`p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 ${
-                  user.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
-                  user.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                  profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
+                  profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
                   'bg-red-50 border-red-200 text-red-700'
                 }`}>
                   <div className="h-10 w-10 rounded-2xl bg-white/50 flex items-center justify-center shrink-0">
-                    {user.identificationStatus === 'Verified' ? <ShieldCheck className="h-6 w-6" /> : 
-                     user.identificationStatus === 'Pending' ? <Clock className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
+                    {profile.identificationStatus === 'Verified' ? <ShieldCheck className="h-6 w-6" /> : 
+                     profile.identificationStatus === 'Pending' ? <Clock className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
                   </div>
                   <div className="flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">{user.identificationStatus === 'Verified' ? 'Тасдиқшуда' : user.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 'Идентификатсия лозим'}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">{profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 'Идентификатсия лозим'}</p>
                     <p className="text-[9px] font-medium opacity-60">Барои шартномаҳои бехатар</p>
                   </div>
-                  {user.identificationStatus === 'None' && (
+                  {profile.identificationStatus === 'None' && (
                     <Dialog open={isIdDialogOpen} onOpenChange={setIsIdDialogOpen}>
                       <DialogTrigger asChild><Button size="sm" className="h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black px-4">ФАЪОЛ</Button></DialogTrigger>
                       <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
@@ -221,25 +199,23 @@ export default function Profile() {
                     <div className="bg-muted/30 p-4 rounded-3xl text-center">
                         <Handshake className="h-5 w-5 mx-auto text-primary mb-2" />
                         <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">ШАРТНОМАҲО</p>
-                        <p className="font-black text-xl">{stats.deals}</p>
+                        <p className="font-black text-xl">0</p>
                     </div>
                     <div className="bg-muted/30 p-4 rounded-3xl text-center">
                         <Star className="h-5 w-5 mx-auto text-yellow-500 mb-2 fill-yellow-500" />
                         <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">РЕЙТИНГ</p>
-                        <p className="font-black text-xl">{stats.rating}</p>
+                        <p className="font-black text-xl">5.0</p>
                     </div>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-1 text-secondary opacity-60"><span>Пуррагии профил</span><span>{completion}%</span></div>
-                  <Progress value={completion} className="h-3 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${completion}%` }} />
-                  </Progress>
+                  <Progress value={completion} className="h-3" />
                 </div>
 
                 <div className="space-y-5 pt-6 border-t border-muted">
-                  <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl"><Phone className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Телефон</p><p className="text-sm font-black text-secondary">+992 {user.phone || "---"}</p></div></div>
-                  <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl"><MapPin className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Минтақа</p><p className="text-sm font-black text-secondary">{user.region || "---"}</p></div></div>
+                  <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl"><Phone className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Телефон</p><p className="text-sm font-black text-secondary">+992 {profile.phone || "---"}</p></div></div>
+                  <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl"><MapPin className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Минтақа</p><p className="text-sm font-black text-secondary">{profile.region || "---"}</p></div></div>
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3 p-8 pt-0">
@@ -263,13 +239,12 @@ export default function Profile() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button variant="ghost" className="w-full h-14 rounded-2xl text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-50" onClick={() => { localStorage.removeItem('hunar_yob_current_user'); router.push('/'); }}><LogOut className="mr-3 h-5 w-5" /> Баромад</Button>
+                <Button variant="ghost" className="w-full h-14 rounded-2xl text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-50" onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> Баромад</Button>
               </CardFooter>
             </Card>
 
-            {user.role === 'Usto' && !user.isPremium && (
+            {profile.role === 'Usto' && !profile.isPremium && (
               <Card className="border-none shadow-2xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 text-white rounded-[2.5rem] p-10 space-y-6 relative overflow-hidden group">
-                <div className="absolute -right-10 -top-10 h-40 w-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
                 <div className="flex items-center gap-4"><div className="bg-white/20 p-3 rounded-2xl backdrop-blur-xl shadow-lg"><Crown className="h-8 w-8" /></div><h3 className="text-2xl font-black tracking-tighter">PREMIUM ХАРЕД</h3></div>
                 <p className="text-xs font-bold leading-relaxed opacity-90">Барои гузоштани то 5 эълон ва VIP-статуси автоматикӣ. Нархи обуна: <span className="text-xl font-black">{PREMIUM_PRICE} TJS</span> / моҳ.</p>
                 <Button onClick={handleBuyPremium} className="w-full bg-white text-yellow-600 h-14 rounded-2xl font-black shadow-2xl hover:scale-[1.03] transition-all uppercase tracking-widest">ФАЪОЛ КАРДАН</Button>
@@ -279,8 +254,8 @@ export default function Profile() {
 
           <div className="lg:col-span-2 space-y-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <h2 className="text-4xl font-black text-secondary flex items-center gap-4 tracking-tighter"><div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Zap className="h-7 w-7 text-primary" /></div> {user.role === 'Usto' ? 'ЭЪЛОНҲОИ МАН' : 'ПИСАНДИДАҲО'}</h2>
-              {user.role === 'Usto' && (<Button asChild className="bg-primary h-14 rounded-2xl font-black px-8 shadow-xl uppercase tracking-widest transition-all hover:scale-[1.03]"><Link href="/create-listing"><Plus className="mr-3 h-5 w-5" /> ЭЪЛОНИ НАВ</Link></Button>)}
+              <h2 className="text-4xl font-black text-secondary flex items-center gap-4 tracking-tighter"><div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Zap className="h-7 w-7 text-primary" /></div> {profile.role === 'Usto' ? 'ЭЪЛОНҲОИ МАН' : 'ПИСАНДИДАҲО'}</h2>
+              {profile.role === 'Usto' && (<Button asChild className="bg-primary h-14 rounded-2xl font-black px-8 shadow-xl uppercase tracking-widest transition-all hover:scale-[1.03]"><Link href="/create-listing"><Plus className="mr-3 h-5 w-5" /> ЭЪЛОНИ НАВ</Link></Button>)}
             </div>
 
             {userListings.length > 0 ? (
@@ -289,14 +264,13 @@ export default function Profile() {
                   <Card key={listing.id} className="overflow-hidden border-none shadow-xl rounded-[3rem] bg-white group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700">
                     <div className="relative h-64 w-full overflow-hidden">
                       <Image src={listing.images[0]} alt={listing.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <Badge className="absolute top-6 left-6 bg-primary/95 text-white border-none px-6 py-2.5 font-black rounded-2xl backdrop-blur-xl shadow-xl">{listing.category}</Badge>
                       {listing.isVip && <Badge className="absolute top-6 right-6 bg-yellow-500 text-white border-none px-6 py-2.5 font-black rounded-2xl shadow-xl animate-pulse">VIP</Badge>}
                     </div>
                     <CardHeader className="p-10 pb-4"><CardTitle className="text-2xl font-black text-secondary line-clamp-1 tracking-tight group-hover:text-primary transition-colors">{listing.title}</CardTitle></CardHeader>
                     <CardFooter className="p-10 pt-0 flex justify-between gap-4">
                       <Button variant="outline" asChild className="flex-1 rounded-2xl border-muted text-secondary h-12 px-6 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-secondary hover:text-white border-2"><Link href={`/listing/${listing.id}`}>БИНЕД</Link></Button>
-                      <Button variant="ghost" className="text-red-400 h-12 w-12 p-0 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors" onClick={() => handleDelete(listing.id)}><Trash2 className="h-6 w-6" /></Button>
+                      <Button variant="ghost" className="text-red-400 h-12 w-12 p-0 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors" onClick={() => handleDeleteListing(listing.id)}><Trash2 className="h-6 w-6" /></Button>
                     </CardFooter>
                   </Card>
                 ))}

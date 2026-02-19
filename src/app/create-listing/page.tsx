@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,32 +9,36 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser, saveListing, User, ALL_CATEGORIES } from "@/lib/storage";
+import { ALL_CATEGORIES, UserProfile } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, X, Upload, Crown } from "lucide-react";
+import { Camera, X, Upload, Crown, ChevronLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
 
 export default function CreateListing() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useUser();
+  const db = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
+
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  const { toast } = useToast();
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser || currentUser.role !== 'Usto') {
-      router.push("/");
-      return;
+    if (!authLoading && !user) {
+      router.push("/login");
     }
-    setUser(currentUser);
-  }, [router]);
+  }, [user, authLoading, router]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -56,8 +60,9 @@ export default function CreateListing() {
     setImageUrls(imageUrls.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!profile || !user) return;
     if (!title || !category || !description) {
       toast({ title: "Хатогӣ", description: "Ҳамаи майдонҳоро пур кунед", variant: "destructive" });
       return;
@@ -67,33 +72,41 @@ export default function CreateListing() {
       return;
     }
 
+    const listingRef = doc(collection(db, "listings"));
     const defaultPlaceholder = PlaceHolderImages[1]?.imageUrl || "https://picsum.photos/seed/carpentry/600/400";
-    const result = saveListing({
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user!.id,
-      userName: user!.name,
-      title,
-      category,
-      description,
-      images: imageUrls.length > 0 ? imageUrls : [defaultPlaceholder],
-      createdAt: new Date().toISOString(),
-    });
-
-    if (result.success) {
+    
+    try {
+      await setDoc(listingRef, {
+        id: listingRef.id,
+        userId: user.uid,
+        userName: profile.name,
+        title,
+        category,
+        description,
+        images: imageUrls.length > 0 ? imageUrls : [defaultPlaceholder],
+        createdAt: serverTimestamp(),
+        isVip: profile.isPremium || false,
+        views: 0
+      });
       toast({ title: "Эълон гузошта шуд" });
       router.push("/");
-    } else {
-      toast({ title: "Хатогӣ", description: result.message, variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
     }
   };
 
-  if (!user) return null;
+  if (authLoading || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
-        {!user.isPremium && (
+        <Button variant="ghost" onClick={() => router.back()} className="mb-6 hover:text-primary p-0 font-black">
+          <ChevronLeft className="mr-2 h-5 w-5" />
+          БОЗГАШТ
+        </Button>
+
+        {!profile.isPremium && (
           <Card className="mb-8 border-yellow-500/20 bg-yellow-500/5 p-6 rounded-3xl flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Crown className="h-10 w-10 text-yellow-500" />

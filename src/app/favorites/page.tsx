@@ -1,9 +1,9 @@
 
 "use client"
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, getCurrentUser, User } from "@/lib/storage";
+import { Listing, UserProfile } from "@/lib/storage";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,27 +11,30 @@ import { MapPin, Star, Heart, ChevronLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
+import { collection, query, where, doc } from "firebase/firestore";
 
 export default function Favorites() {
-  const [favorites, setFavorites] = useState<Listing[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useUser();
+  const db = useFirestore();
   const router = useRouter();
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-    setUser(currentUser);
-    
-    const allListings = getListings();
-    const favIds = currentUser.favorites || [];
-    const filtered = allListings.filter(l => favIds.includes(l.id));
-    setFavorites(filtered);
-  }, [router]);
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
-  if (!user) return null;
+  const listingsQuery = useMemo(() => {
+    if (!db || !profile?.favorites || profile.favorites.length === 0) return null;
+    // Firestore has a limit of 10 for 'in' queries, for MVP this is fine
+    return query(collection(db, "listings"), where("id", "in", profile.favorites.slice(0, 10)));
+  }, [db, profile]);
+
+  const { data: favorites = [], loading: listingsLoading } = useCollection<Listing>(listingsQuery as any);
+
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
+  if (!user) {
+    router.push("/login");
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -48,7 +51,9 @@ export default function Favorites() {
           </div>
         </div>
 
-        {favorites.length > 0 ? (
+        {listingsLoading ? (
+          <div className="text-center py-20 opacity-50">Дар ҳоли ҷустуҷӯ...</div>
+        ) : favorites.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
             {favorites.map((listing) => (
               <Card key={listing.id} className="overflow-hidden group hover:shadow-3xl transition-all duration-700 border-none bg-white rounded-[3rem] shadow-xl">
@@ -83,7 +88,7 @@ export default function Favorites() {
                   </p>
                 </CardContent>
                 <CardFooter className="p-10 pt-6 flex justify-between items-center bg-muted/10 border-t mt-4">
-                  <div className="flex items-center text-[10px] text-muted-foreground font-black uppercase tracking-[0.15em]">
+                  <div className="flex items-center text-[10px] text-muted-foreground font-black uppercase tracking-widest">
                     <MapPin className="h-4 w-4 mr-2 text-primary" />
                     Душанбе
                   </div>
@@ -107,4 +112,3 @@ export default function Favorites() {
     </div>
   );
 }
-
