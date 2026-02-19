@@ -1,0 +1,35 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-artisan",
+      "description": "Artisan working on a craft",
+      "imageUrl": "https://picsum.photos/seed/artisan1/1200/600",
+      "imageHint": "artisan craft"
+    },
+    {
+      "id": "carpentry",
+      "description": "Woodworking tools and project",
+      "imageUrl": "https://picsum.photos/seed/carpentry/600/400",
+      "imageHint": "carpentry tools"
+    },
+    {
+      "id": "tailoring",
+      "description": "Tailor measuring fabric",
+      "imageUrl": "https://picsum.photos/seed/tailor/600/400",
+      "imageHint": "tailor sewing"
+    },
+    {
+      "id": "tech-repair",
+      "description": "Technician repairing electronics",
+      "imageUrl": "https://picsum.photos/seed/repair/600/400",
+      "imageHint": "electronics repair"
+    },
+    {
+      "id": "cooking",
+      "description": "Chef preparing a traditional meal",
+      "imageUrl": "https://picsum.photos/seed/chef/600/400",
+      "imageHint": "chef cooking"
+    }
+  ]
+}
