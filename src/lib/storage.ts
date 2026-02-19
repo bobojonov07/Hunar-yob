@@ -393,3 +393,18 @@ export function incrementViews(listingId: string) {
     localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
   }
 }
+
+export function getReviews(listingId: string): Review[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(STORAGE_KEYS.REVIEWS);
+  const allReviews: Review[] = data ? JSON.parse(data) : [];
+  return allReviews.filter(r => r.listingId === listingId);
+}
+
+export function saveReview(review: Review) {
+  if (typeof window === 'undefined') return;
+  const data = localStorage.getItem(STORAGE_KEYS.REVIEWS);
+  const allReviews: Review[] = data ? JSON.parse(data) : [];
+  allReviews.push(review);
+  localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(allReviews));
+}
