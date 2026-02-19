@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Heart, User as UserIcon, Hammer, Home } from "lucide-react";
+import { MessageSquare, User as UserIcon, Hammer, Home, Search } from "lucide-react";
 import { getCurrentUser, User, getAllMessages } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +28,9 @@ export function BottomNav() {
 
   const navItems = [
     { label: "Асосӣ", icon: Home, href: "/" },
+    { label: "Эълонҳо", icon: Search, href: "/listings" },
     { label: "Паёмҳо", icon: MessageSquare, href: "/messages", hasBadge: unreadCount > 0 },
-    { label: "Писандидаҳо", icon: Heart, href: "/favorites" },
-    user.role === 'Usto' 
-      ? { label: "Эълонҳо", icon: Hammer, href: "/profile" }
-      : { label: "Профил", icon: UserIcon, href: "/profile" },
+    { label: "Профил", icon: UserIcon, href: "/profile" },
   ];
 
   return (
