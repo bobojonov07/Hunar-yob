@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review } from "@/lib/storage";
+import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review, makeListingVip } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Heart, Share2, Star } from "lucide-react";
+import { MapPin, Phone, MessageSquare, ChevronLeft, Calendar, User as UserIcon, Heart, Share2, Star, Crown, Zap } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +24,8 @@ export default function ListingDetail() {
   const [rating, setRating] = useState(5);
   const router = useRouter();
   const { toast } = useToast();
+
+  const isOwner = user?.id === listing?.userId;
 
   useEffect(() => {
     const allListings = getListings();
@@ -66,30 +68,42 @@ export default function ListingDetail() {
   };
 
   const handleCall = () => {
+    if (isOwner) {
+      toast({ title: "Хатогӣ", description: "Шумо ба худатон занг зада наметавонед", variant: "destructive" });
+      return;
+    }
     if (listing?.userPhone) {
       window.location.href = `tel:+992${listing.userPhone}`;
     } else {
-      toast({
-        title: "Рақам дастрас нест",
-        description: "Мутаассифона рақами телефони ин усто сабт нашудааст",
-        variant: "destructive"
-      });
+      toast({ title: "Рақам дастрас нест", variant: "destructive" });
+    }
+  };
+
+  const handleVipUpgrade = () => {
+    if (!listing) return;
+    const res = makeListingVip(listing.id);
+    if (res.success) {
+      setListing({ ...listing, isVip: true });
+      toast({ title: "Муваффақият", description: res.message });
+    } else {
+      toast({ title: "Хатогӣ", description: res.message, variant: "destructive" });
     }
   };
 
   const handleReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      toast({ title: "Вуруд лозим аст", description: "Барои гузоштани баҳо вориди акаунт шавед", variant: "destructive" });
+      toast({ title: "Вуруд лозим аст", variant: "destructive" });
+      return;
+    }
+
+    if (isOwner) {
+      toast({ title: "Хатогӣ", description: "Шумо ба эълони худ баҳо дода наметавонед", variant: "destructive" });
       return;
     }
 
     if (newReview.length < 60 || newReview.length > 150) {
-      toast({
-        title: "Маҳдудият",
-        description: "Шарҳ бояд аз 60 то 150 ҳарф бошад",
-        variant: "destructive"
-      });
+      toast({ title: "Маҳдудият", description: "Шарҳ бояд аз 60 то 150 ҳарф бошад", variant: "destructive" });
       return;
     }
 
@@ -106,10 +120,7 @@ export default function ListingDetail() {
     saveReview(review);
     setReviews([review, ...reviews]);
     setNewReview("");
-    toast({
-      title: "Ташаккур",
-      description: "Баҳои шумо бо муваффақият қабул шуд",
-    });
+    toast({ title: "Ташаккур", description: "Баҳои шумо қабул шуд" });
   };
 
   if (!listing) return null;
@@ -128,14 +139,22 @@ export default function ListingDetail() {
               <Share2 className="mr-2 h-4 w-4" />
               Мубодила
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleFavoriteToggle}
-              className={`flex-1 md:flex-none rounded-full px-6 ${isFavorite ? 'border-red-500 text-red-500 bg-red-50' : 'border-border'}`}
-            >
-              <Heart className={`mr-2 h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
-              {isFavorite ? "Дар писандидаҳо" : "Ба писандидаҳо"}
-            </Button>
+            {!isOwner && (
+              <Button 
+                variant="outline" 
+                onClick={handleFavoriteToggle}
+                className={`flex-1 md:flex-none rounded-full px-6 ${isFavorite ? 'border-red-500 text-red-500 bg-red-50' : 'border-border'}`}
+              >
+                <Heart className={`mr-2 h-5 w-5 ${isFavorite ? 'fill-red-500' : ''}`} />
+                {isFavorite ? "Дар писандидаҳо" : "Ба писандидаҳо"}
+              </Button>
+            )}
+            {isOwner && !listing.isVip && (
+              <Button onClick={handleVipUpgrade} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold">
+                <Crown className="mr-2 h-4 w-4 fill-white" />
+                VIP кардан (20 TJS)
+              </Button>
+            )}
           </div>
         </div>
 
@@ -148,20 +167,15 @@ export default function ListingDetail() {
                 fill 
                 className="object-cover"
               />
+              {listing.isVip && (
+                <div className="absolute top-6 right-6">
+                  <Badge className="bg-yellow-500 text-white text-lg px-4 py-1.5 shadow-2xl">
+                    <Crown className="mr-2 h-5 w-5 fill-white" />
+                    VIP ЭЪЛОН
+                  </Badge>
+                </div>
+              )}
             </div>
-            {listing.images.length > 1 && (
-              <div className="flex gap-4 overflow-x-auto py-2">
-                {listing.images.map((img, idx) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => setActiveImage(idx)}
-                    className={`relative w-24 h-24 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${activeImage === idx ? 'border-primary shadow-md scale-105' : 'border-transparent opacity-70'}`}
-                  >
-                    <Image src={img} alt={`Thumb ${idx}`} fill className="object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
 
             <div>
               <h1 className="text-3xl md:text-4xl font-headline font-bold text-secondary mb-4">{listing.title}</h1>
@@ -186,36 +200,42 @@ export default function ListingDetail() {
             <div className="space-y-8">
               <h3 className="text-2xl font-headline font-bold text-secondary">Баҳо ва шарҳҳо</h3>
               
-              <Card className="border-primary/20 bg-primary/5">
-                <CardHeader>
-                  <CardTitle className="text-lg">Баҳо диҳед</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleReviewSubmit} className="space-y-4">
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star 
-                          key={s} 
-                          className={`h-8 w-8 cursor-pointer transition-colors ${s <= rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`}
-                          onClick={() => setRating(s)}
+              {!isOwner ? (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Баҳо диҳед</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleReviewSubmit} className="space-y-4">
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star 
+                            key={s} 
+                            className={`h-8 w-8 cursor-pointer transition-colors ${s <= rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`}
+                            onClick={() => setRating(s)}
+                          />
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Textarea 
+                          placeholder="Таҷрибаи худро нависед (60-150 ҳарф)..." 
+                          value={newReview}
+                          onChange={(e) => setNewReview(e.target.value)}
+                          className="min-h-[100px] bg-white"
                         />
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      <Textarea 
-                        placeholder="Таҷрибаи худро нависед (60-150 ҳарф)..." 
-                        value={newReview}
-                        onChange={(e) => setNewReview(e.target.value)}
-                        className="min-h-[100px] bg-white"
-                      />
-                      <p className="text-xs text-muted-foreground text-right">
-                        {newReview.length} / 150 (камаш 60 ҳарф)
-                      </p>
-                    </div>
-                    <Button type="submit" className="bg-primary text-white">Ирсол</Button>
-                  </form>
-                </CardContent>
-              </Card>
+                        <p className="text-xs text-muted-foreground text-right">
+                          {newReview.length} / 150 (камаш 60 ҳарф)
+                        </p>
+                      </div>
+                      <Button type="submit" className="bg-primary text-white">Ирсол</Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="p-6 bg-muted/30 rounded-xl border-2 border-dashed text-center text-muted-foreground">
+                  Шумо ба эълони худ баҳо дода наметавонед.
+                </div>
+              )}
 
               <div className="space-y-6">
                 {reviews.length > 0 ? (
@@ -245,7 +265,7 @@ export default function ListingDetail() {
                     </Card>
                   ))
                 ) : (
-                  <p className="text-center text-muted-foreground py-10">Ҳанӯз шарҳе нест. Аввалин шуда баҳо диҳед!</p>
+                  <p className="text-center text-muted-foreground py-10">Ҳанӯз шарҳе нест.</p>
                 )}
               </div>
             </div>
@@ -253,7 +273,7 @@ export default function ListingDetail() {
 
           <div className="lg:col-span-1">
             <Card className="sticky top-24 border-border shadow-md overflow-hidden">
-              <div className="h-2 bg-primary w-full" />
+              <div className={`h-2 ${listing.isVip ? 'bg-yellow-500' : 'bg-primary'} w-full`} />
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 mb-6 pb-6 border-b">
                   <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-sm">
@@ -278,21 +298,29 @@ export default function ListingDetail() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
-                    <Button 
-                      onClick={handleCall}
-                      className="w-full bg-secondary hover:bg-secondary/90 text-white py-7 text-lg rounded-xl transition-all hover:scale-[1.02]"
-                    >
-                      <Phone className="mr-3 h-6 w-6" />
-                      Занг задан
-                    </Button>
-                    <Button 
-                      onClick={() => router.push(`/chat/${listing.id}`)}
-                      variant="outline" 
-                      className="w-full border-primary text-primary hover:bg-primary/10 py-7 text-lg rounded-xl transition-all hover:scale-[1.02]"
-                    >
-                      <MessageSquare className="mr-3 h-6 w-6" />
-                      Чат бо усто
-                    </Button>
+                    {!isOwner ? (
+                      <>
+                        <Button 
+                          onClick={handleCall}
+                          className="w-full bg-secondary hover:bg-secondary/90 text-white py-7 text-lg rounded-xl transition-all hover:scale-[1.02]"
+                        >
+                          <Phone className="mr-3 h-6 w-6" />
+                          Занг задан
+                        </Button>
+                        <Button 
+                          onClick={() => router.push(`/chat/${listing.id}`)}
+                          variant="outline" 
+                          className="w-full border-primary text-primary hover:bg-primary/10 py-7 text-lg rounded-xl transition-all hover:scale-[1.02]"
+                        >
+                          <MessageSquare className="mr-3 h-6 w-6" />
+                          Чат бо усто
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="text-center p-4 bg-muted/20 rounded-xl text-sm text-muted-foreground italic">
+                        Ин эълони шумост.
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

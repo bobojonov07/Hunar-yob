@@ -47,6 +47,7 @@ export interface Listing {
   description: string;
   images: string[];
   createdAt: string;
+  isVip?: boolean;
 }
 
 const STORAGE_KEYS = {
@@ -56,6 +57,8 @@ const STORAGE_KEYS = {
   REVIEWS: 'hunar_yob_reviews',
   MESSAGES: 'hunar_yob_messages',
 };
+
+const VIP_PRICE = 20;
 
 export function getUsers(): User[] {
   if (typeof window === 'undefined') return [];
@@ -109,10 +112,38 @@ export function saveListing(listing: Listing) {
   const currentUser = getCurrentUser();
   const listingWithPhone = {
     ...listing,
-    userPhone: currentUser?.phone || listing.userPhone
+    userPhone: currentUser?.phone || listing.userPhone,
+    isVip: false
   };
   listings.unshift(listingWithPhone);
   localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+}
+
+export function makeListingVip(listingId: string): { success: boolean, message: string } {
+  const user = getCurrentUser();
+  if (!user) return { success: false, message: "Вуруд лозим аст" };
+  
+  if ((user.balance || 0) < VIP_PRICE) {
+    return { success: false, message: `Тавозуни нокифоя. Нархи VIP ${VIP_PRICE} сомонӣ аст.` };
+  }
+
+  const listings = getListings();
+  const index = listings.findIndex(l => l.id === listingId);
+  
+  if (index !== -1) {
+    if (listings[index].isVip) return { success: false, message: "Эълон аллакай VIP аст" };
+    
+    listings[index].isVip = true;
+    localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+    
+    // Deduct funds
+    const updatedUser = { ...user, balance: user.balance - VIP_PRICE };
+    updateUser(updatedUser);
+    
+    return { success: true, message: "Эълон VIP шуд!" };
+  }
+  
+  return { success: false, message: "Эълон пайдо нашуд" };
 }
 
 export function deleteListing(listingId: string) {
