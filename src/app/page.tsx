@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, getCurrentUser, User } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +12,6 @@ import {
   Search, 
   MapPin, 
   Plus, 
-  ShieldCheck, 
-  Users, 
   Briefcase, 
   ChevronRight, 
   Zap, 
@@ -32,6 +29,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection, useUser } from "@/firebase";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
 
 const CATEGORIES = [
   { name: "Барномасоз", icon: "💻" },
@@ -46,26 +46,22 @@ const CATEGORIES = [
 const REGIONS = ["Душанбе", "Хатлон", "Суғд", "ВМКБ", "Ноҳияҳои тобеи марказ"];
 
 export default function Home() {
-  const [allListings, setAllListings] = useState<Listing[]>([]);
-  const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  
+  const { user } = useUser();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const data = getListings();
-    setAllListings(data);
-    setFilteredListings(data);
-    setUser(getCurrentUser());
-    setHydrated(true);
-  }, []);
+  const listingsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "listings"), orderBy("createdAt", "desc"), limit(20));
+  }, [db]);
 
-  useEffect(() => {
+  const { data: allListings = [] } = useCollection(listingsQuery);
+
+  const filteredListings = useMemo(() => {
     let result = allListings;
     
     if (!user) {
@@ -76,23 +72,17 @@ export default function Home() {
       result = result.filter(l => l.category === selectedCategory);
     }
     
-    if (selectedRegion) {
-      // Basic region filtering logic if data has region info
-    }
-    
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
       result = result.filter(l => 
-        l.title.toLowerCase().includes(query) || 
-        l.description.toLowerCase().includes(query) ||
-        l.userName.toLowerCase().includes(query)
+        l.title.toLowerCase().includes(q) || 
+        l.description.toLowerCase().includes(q) ||
+        l.userName.toLowerCase().includes(q)
       );
     }
     
-    setFilteredListings(result);
-  }, [searchQuery, selectedCategory, selectedRegion, allListings, user]);
-
-  if (!hydrated) return null;
+    return result;
+  }, [allListings, user, selectedCategory, searchQuery]);
 
   const vipListings = filteredListings.filter(l => l.isVip);
   const regularListings = user ? filteredListings.filter(l => !l.isVip) : [];
@@ -192,7 +182,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Clean Category Section */}
+      {/* Category Section */}
       <section className="py-28 bg-white relative">
         <div className="container mx-auto px-4 relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between mb-20 gap-6">
@@ -351,7 +341,7 @@ export default function Home() {
                   </div>
                   <Button variant="ghost" asChild className="text-primary font-black group/btn hover:bg-primary/10 rounded-2xl px-10 h-14">
                     <Link href={`/listing/${listing.id}`} className="flex items-center">
-                      МУФАССАЛ
+                      MUFASSAL
                       <ChevronRight className="ml-2 h-6 w-6 group-hover:translate-x-2 transition-transform duration-500" />
                     </Link>
                   </Button>
@@ -391,7 +381,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer with Disclaimer */}
+      {/* Footer */}
       <footer className="bg-white pt-32 pb-20 border-t">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-20 mb-32">
