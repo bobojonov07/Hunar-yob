@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -106,97 +107,5 @@ export function calculateFee(price: number): number {
   return 1000;
 }
 
-// Firestore Mutation Functions
-export function saveListingToFirestore(db: Firestore, userId: string, userName: string, phone: string, listing: Partial<Listing>) {
-  const listingRef = doc(collection(db, 'listings'));
-  const data = {
-    ...listing,
-    id: listingRef.id,
-    userId,
-    userName,
-    userPhone: phone,
-    views: 0,
-    createdAt: serverTimestamp(),
-  };
-
-  setDoc(listingRef, data)
-    .catch(async (err) => {
-      const error = new FirestorePermissionError({
-        path: listingRef.path,
-        operation: 'create',
-        requestResourceData: data,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', error);
-    });
-  
-  return listingRef.id;
-}
-
-export function sendMessageToFirestore(db: Firestore, listingId: string, senderId: string, senderName: string, text: string, type: 'text' | 'deal' = 'text', dealId?: string) {
-  const msgRef = doc(collection(db, 'listings', listingId, 'messages'));
-  const data = {
-    listingId,
-    senderId,
-    senderName,
-    text,
-    type,
-    dealId: dealId || null,
-    createdAt: serverTimestamp(),
-    isRead: false
-  };
-
-  setDoc(msgRef, data)
-    .catch(async (err) => {
-      const error = new FirestorePermissionError({
-        path: msgRef.path,
-        operation: 'create',
-        requestResourceData: data,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', error);
-    });
-}
-
-export function createDealInFirestore(db: Firestore, deal: Partial<Deal>) {
-  const dealRef = doc(collection(db, 'deals'));
-  const data = {
-    ...deal,
-    id: dealRef.id,
-    status: 'Pending',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  setDoc(dealRef, data)
-    .catch(async (err) => {
-      const error = new FirestorePermissionError({
-        path: dealRef.path,
-        operation: 'create',
-        requestResourceData: data,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', error);
-    });
-  
-  return dealRef.id;
-}
-
-export function updateDealStatusInFirestore(db: Firestore, dealId: string, status: string) {
-  const dealRef = doc(db, 'deals', dealId);
-  updateDoc(dealRef, {
-    status,
-    updatedAt: serverTimestamp()
-  }).catch(async (err) => {
-      const error = new FirestorePermissionError({
-        path: dealRef.path,
-        operation: 'update',
-        requestResourceData: { status },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', error);
-    });
-}
-
-export function incrementListingViews(db: Firestore, listingId: string) {
-  const listingRef = doc(db, 'listings', listingId);
-  updateDoc(listingRef, {
-    views: increment(1)
-  }).catch(() => {});
-}
+// Нигоҳ доштани Types ва константаҳо барои мутобиқат.
+// Логикаи LocalStorage нест карда шуд ва бо Firebase Hooks иваз гардид.

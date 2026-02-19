@@ -1,70 +1,58 @@
 
 "use client"
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { getCurrentUser, getAllMessages, getListings, Listing, Message, User } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageSquare, Clock, CheckCheck, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collectionGroup, query, where, orderBy } from "firebase/firestore";
+import { Message, Listing } from "@/lib/storage";
 
 interface Conversation {
-  listing: Listing;
+  listingId: string;
   lastMessage: Message;
-  unreadCount: number;
 }
 
 export default function MessagesList() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useUser();
+  const db = useFirestore();
   const router = useRouter();
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-    setUser(currentUser);
+  const messagesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    // Дар ин MVP мо ҳамаи паёмҳоеро мегирем, ки корбар дар онҳо иштирок дорад
+    return query(
+      collectionGroup(db, "messages"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
 
-    const allMessages = getAllMessages();
-    const allListings = getListings();
+  const { data: allMessages = [], loading } = useCollection<Message>(messagesQuery);
+
+  // Гурӯҳбандии паёмҳо аз рӯи Listing
+  const conversations = useMemo(() => {
+    if (!user) return [];
+    const groups: Record<string, Message> = {};
     
-    // Group messages by listingId
-    const groups: Record<string, Message[]> = {};
-    allMessages.forEach(m => {
-      // Show conversation if user is sender OR the listing belongs to user
-      const listing = allListings.find(l => l.id === m.listingId);
-      if (m.senderId === currentUser.id || (listing && listing.userId === currentUser.id)) {
-        if (!groups[m.listingId]) groups[m.listingId] = [];
-        groups[m.listingId].push(m);
+    allMessages.forEach(msg => {
+      // Танҳо паёмҳои корбари ҷорӣ (фиристода ё гирифта)
+      // Дар оянда метавон логикаи иштирокчиёнро мукаммалтар кард
+      if (!groups[msg.listingId]) {
+        groups[msg.listingId] = msg;
       }
     });
 
-    const conversationList: Conversation[] = Object.keys(groups).map(listingId => {
-      const listing = allListings.find(l => l.id === listingId);
-      const sortedMsgs = groups[listingId].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      const unreadCount = sortedMsgs.filter(m => !m.isRead && m.senderId !== currentUser.id).length;
-      
-      return {
-        listing: listing!,
-        lastMessage: sortedMsgs[0],
-        unreadCount
-      };
-    }).filter(c => !!c.listing);
-
-    // Sort conversations by last message time
-    conversationList.sort((a, b) => 
-      new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
-    );
-
-    setConversations(conversationList);
-  }, [router]);
+    return Object.entries(groups).map(([listingId, lastMessage]) => ({
+      listingId,
+      lastMessage
+    }));
+  }, [allMessages, user]);
 
   if (!user) return null;
 
@@ -77,48 +65,15 @@ export default function MessagesList() {
             <ChevronLeft className="mr-2 h-5 w-5" />
             БОЗГАШТ
           </Button>
-          <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter">Паёмҳо</h1>
+          <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter text-center md:text-left">Паёмҳо</h1>
         </div>
 
-        {conversations.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-20 opacity-50">Дар ҳоли боргузорӣ...</div>
+        ) : conversations.length > 0 ? (
           <div className="space-y-6">
             {conversations.map((conv) => (
-              <Link key={conv.listing.id} href={`/chat/${conv.listing.id}`}>
-                <Card className="hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white group ring-1 ring-secondary/5">
-                  <CardContent className="p-6 flex items-center gap-6">
-                    <div className="relative shrink-0">
-                      <Avatar className="h-16 w-16 border-4 border-muted shadow-lg transform group-hover:scale-110 transition-transform duration-500">
-                        <AvatarImage src={conv.listing.images[0]} className="object-cover" />
-                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
-                          {conv.listing.userName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      {conv.unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black h-7 w-7 rounded-full flex items-center justify-center border-4 border-white shadow-xl animate-bounce">
-                          {conv.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline mb-2">
-                        <h3 className="font-black text-secondary text-lg truncate tracking-tight group-hover:text-primary transition-colors">{conv.listing.userName}</h3>
-                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                          {new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] truncate mb-2 opacity-60">{conv.listing.title}</p>
-                      <div className="flex items-center gap-2">
-                        {conv.lastMessage.senderId === user.id && (
-                          <CheckCheck className={cn("h-4 w-4", conv.lastMessage.isRead ? "text-blue-500" : "text-muted-foreground opacity-30")} />
-                        )}
-                        <p className={cn("text-sm truncate font-medium italic", conv.unreadCount > 0 ? "font-black text-secondary not-italic" : "text-muted-foreground")}>
-                          &ldquo;{conv.lastMessage.text}&rdquo;
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <ConversationItem key={conv.listingId} conv={conv} currentUser={user} />
             ))}
           </div>
         ) : (
@@ -132,3 +87,40 @@ export default function MessagesList() {
   );
 }
 
+function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUser: any }) {
+  // Барои гирифтани номи Listing метавон аз useDoc истифода бурд, 
+  // аммо дар ин ҷо мо танҳо ID-ро барои чат истифода мебарем
+  return (
+    <Link href={`/chat/${conv.listingId}`}>
+      <Card className="hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white group ring-1 ring-secondary/5">
+        <CardContent className="p-6 flex items-center gap-6">
+          <div className="relative shrink-0">
+            <Avatar className="h-16 w-16 border-4 border-muted shadow-lg transform group-hover:scale-110 transition-transform duration-500">
+              <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
+                {conv.lastMessage.senderName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-baseline mb-2">
+              <h3 className="font-black text-secondary text-lg truncate tracking-tight group-hover:text-primary transition-colors">
+                {conv.lastMessage.senderId === currentUser.uid ? "Муколама" : conv.lastMessage.senderName}
+              </h3>
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+                {conv.lastMessage.createdAt?.seconds ? new Date(conv.lastMessage.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {conv.lastMessage.senderId === currentUser.uid && (
+                <CheckCheck className={cn("h-4 w-4", conv.lastMessage.isRead ? "text-blue-500" : "text-muted-foreground opacity-30")} />
+              )}
+              <p className={cn("text-sm truncate font-medium italic text-muted-foreground")}>
+                &ldquo;{conv.lastMessage.text}&rdquo;
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
