@@ -22,6 +22,9 @@ export interface User {
   isPremium?: boolean;
   premiumExpiry?: string;
   isArtisanFeePaid?: boolean;
+  warningCount?: number;
+  isBlocked?: boolean;
+  blockedUntil?: string;
 }
 
 export interface Review {
@@ -32,9 +35,10 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  dealId?: string;
 }
 
-export type DealStatus = 'Pending' | 'Accepted' | 'Completed' | 'Confirmed' | 'Cancelled';
+export type DealStatus = 'Pending' | 'Accepted' | 'Completed' | 'Confirmed' | 'Cancelled' | 'Expired';
 
 export interface Deal {
   id: string;
@@ -49,6 +53,7 @@ export interface Deal {
   senderId: string;
   createdAt: string;
   updatedAt: string;
+  isReviewed?: boolean;
 }
 
 export interface Message {
@@ -92,6 +97,9 @@ export const ARTISAN_REGISTRATION_FEE = 10;
 export const MAX_FREE_LISTINGS = 2;
 export const MAX_PREMIUM_LISTINGS = 5;
 
+// List of prohibited words (placeholders for demonstration)
+const BANNED_WORDS = ['дашном1', 'дашном2', 'ҳақорат', 'бетарбия'];
+
 export const ALL_REGIONS = [
   "Душанбе", "Бохтар", "Кӯлоб", "Хуҷанд", "Истаравшан", "Конибодом", "Панҷакент", 
   "Хоруғ", "Ваҳдат", "Ҳисор", "Турсунзода", "Рашт", "Данғара", "Ёвон"
@@ -102,6 +110,11 @@ export const ALL_CATEGORIES = [
   "Ронанда", "Ошпаз", "Муаллим", "Табиб", "Сартарош", "Рангуборчӣ", 
   "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
 ];
+
+export function containsProfanity(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return BANNED_WORDS.some(word => lowerText.includes(word));
+}
 
 export function getUsers(): User[] {
   if (typeof window === 'undefined') return [];
@@ -116,7 +129,9 @@ export function saveUser(user: User) {
     favorites: [], 
     balance: user.balance || 0, 
     lastSeen: new Date().toISOString(),
-    identificationStatus: 'None'
+    identificationStatus: 'None',
+    warningCount: 0,
+    isBlocked: false
   });
   localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
 }
@@ -132,6 +147,37 @@ export function updateUser(updatedUser: User) {
     if (current && current.id === updatedUser.id) {
       setCurrentUser(updatedUser);
     }
+  }
+}
+
+export function reportUser(userId: string) {
+  const users = getUsers();
+  const index = users.findIndex(u => u.id === userId);
+  if (index !== -1) {
+    const user = users[index];
+    user.warningCount = (user.warningCount || 0) + 1;
+    if (user.warningCount >= 3) {
+      user.isBlocked = true;
+      const blockTime = new Date();
+      blockTime.setDate(blockTime.getDate() + 7); // Block for 7 days after 3 reports
+      user.blockedUntil = blockTime.toISOString();
+    }
+    updateUser(user);
+    return { success: true, message: "Шикояти шумо қабул шуд" };
+  }
+  return { success: false, message: "Корбар ёфт нашуд" };
+}
+
+export function blockUserForProfanity(userId: string) {
+  const users = getUsers();
+  const index = users.findIndex(u => u.id === userId);
+  if (index !== -1) {
+    const user = users[index];
+    user.isBlocked = true;
+    const blockTime = new Date();
+    blockTime.setHours(blockTime.getHours() + 24); // Block for 24 hours
+    user.blockedUntil = blockTime.toISOString();
+    updateUser(user);
   }
 }
 
@@ -185,7 +231,16 @@ export function setCurrentUser(user: User | null) {
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
   const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-  return data ? JSON.parse(data) : null;
+  const user = data ? JSON.parse(data) : null;
+  
+  if (user && user.isBlocked && user.blockedUntil) {
+    if (new Date() > new Date(user.blockedUntil)) {
+      user.isBlocked = false;
+      user.blockedUntil = undefined;
+      updateUser(user);
+    }
+  }
+  return user;
 }
 
 export function getListings(): Listing[] {
@@ -197,6 +252,12 @@ export function getListings(): Listing[] {
 export function saveListing(listing: Omit<Listing, 'views'>): { success: boolean, message: string } {
   const user = getCurrentUser();
   if (!user) return { success: false, message: "Вуруд лозим аст" };
+  if (user.isBlocked) return { success: false, message: "Акаунти шумо маҳкам аст" };
+
+  if (containsProfanity(listing.title) || containsProfanity(listing.description)) {
+    blockUserForProfanity(user.id);
+    return { success: false, message: "Дашном ёфт шуд! Акаунти шумо барои 24 соат маҳкам шуд." };
+  }
 
   const userListings = getListings().filter(l => l.userId === user.id);
   const limit = user.isPremium ? MAX_PREMIUM_LISTINGS : MAX_FREE_LISTINGS;
@@ -301,11 +362,20 @@ export function getAllMessages(): Message[] {
 }
 
 export function getMessages(listingId: string): Message[] {
+  checkDealTimeouts(); // Check for expired deals whenever messages are requested
   const allMessages = getAllMessages();
   return allMessages.filter(m => m.listingId === listingId);
 }
 
 export function sendMessage(message: Message) {
+  const user = getCurrentUser();
+  if (user?.isBlocked) return;
+
+  if (containsProfanity(message.text)) {
+    if (user) blockUserForProfanity(user.id);
+    return;
+  }
+
   const allMessages = getAllMessages();
   allMessages.push({ ...message, isRead: false });
   localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(allMessages));
@@ -338,6 +408,39 @@ export function saveDeal(deal: Deal) {
   localStorage.setItem(STORAGE_KEYS.DEALS, JSON.stringify(deals));
 }
 
+export function checkDealTimeouts() {
+  const deals = getDeals();
+  let changed = false;
+  const now = new Date();
+
+  const updated = deals.map(deal => {
+    const created = new Date(deal.createdAt);
+    const diffHours = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+
+    // If pending for more than 24 hours, expire it
+    if (deal.status === 'Pending' && diffHours >= 24) {
+      changed = true;
+      return { ...deal, status: 'Expired' as DealStatus, updatedAt: now.toISOString() };
+    }
+
+    // If work duration exceeded, cancel and penalize
+    if (deal.status === 'Accepted') {
+      const acceptedAt = new Date(deal.updatedAt);
+      const diffDays = (now.getTime() - acceptedAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays > deal.durationDays) {
+        changed = true;
+        // Logic to return money and penalize artisan could go here
+        return { ...deal, status: 'Cancelled' as DealStatus, updatedAt: now.toISOString() };
+      }
+    }
+    return deal;
+  });
+
+  if (changed) {
+    localStorage.setItem(STORAGE_KEYS.DEALS, JSON.stringify(updated));
+  }
+}
+
 export function updateDealStatus(dealId: string, status: DealStatus) {
   const deals = getDeals();
   const index = deals.findIndex(d => d.id === dealId);
@@ -366,8 +469,8 @@ export function updateDealStatus(dealId: string, status: DealStatus) {
         artisan.balance += deal.price;
         updateUser(artisan);
       }
-    } else if (status === 'Cancelled' && prevStatus === 'Accepted') {
-      if (client) {
+    } else if (status === 'Cancelled') {
+      if (prevStatus === 'Accepted' && client) {
         client.balance += totalToDeduct;
         updateUser(client);
       }
@@ -407,4 +510,14 @@ export function saveReview(review: Review) {
   const allReviews: Review[] = data ? JSON.parse(data) : [];
   allReviews.push(review);
   localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(allReviews));
+
+  // Mark the deal as reviewed
+  if (review.dealId) {
+    const deals = getDeals();
+    const dealIndex = deals.findIndex(d => d.id === review.dealId);
+    if (dealIndex !== -1) {
+      deals[dealIndex].isReviewed = true;
+      localStorage.setItem(STORAGE_KEYS.DEALS, JSON.stringify(deals));
+    }
+  }
 }

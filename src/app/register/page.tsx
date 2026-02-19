@@ -41,7 +41,7 @@ export default function Register() {
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
-      toast({ title: "Хатогӣ", description: "Лутфан бо шартҳои истифода розӣ шавед", variant: "destructive" });
+      toast({ title: "Хатогӣ", description: "Лутфан бо шартҳои истифода ва сиёсати амният розӣ шавед", variant: "destructive" });
       return;
     }
     if (!name || !email || !password || !birthDate || !region || !phone) {
@@ -111,10 +111,10 @@ export default function Register() {
     <div className="min-h-screen flex flex-col bg-background pb-20">
       <Navbar />
       <div className="flex-1 flex items-center justify-center p-4 pt-10">
-        <Card className="w-full max-w-xl border-border shadow-2xl rounded-[2rem] overflow-hidden">
-          <CardHeader className="text-center bg-muted/20 pb-10 pt-12">
-            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter">САБТИ НОМ</CardTitle>
-            <CardDescription className="text-base font-medium">
+        <Card className="w-full max-w-xl border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
+          <CardHeader className="text-center bg-muted/10 pb-12 pt-16">
+            <CardTitle className="text-5xl font-black font-headline text-secondary tracking-tighter">САБТИ НОМ</CardTitle>
+            <CardDescription className="text-lg font-bold uppercase tracking-widest text-primary/60 mt-2">
               {step === 1 ? "Маълумоти худро ворид кунед" : 
                step === 2 ? "Рақами худро тасдиқ кунед" : "Пардохти ҳаққи сабти ном"}
             </CardDescription>
@@ -122,23 +122,23 @@ export default function Register() {
           
           {step === 1 && (
             <form onSubmit={handleNextStep}>
-              <CardContent className="space-y-6 pt-10">
+              <CardContent className="space-y-8 pt-12 px-10">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="font-bold">Ному насаб</Label>
-                  <Input id="name" className="h-12 rounded-xl" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Label htmlFor="name" className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаб</Label>
+                  <Input id="name" className="h-14 rounded-2xl bg-muted/20 border-muted" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="font-bold">Санаи таваллуд</Label>
-                    <Input type="date" className="h-12 rounded-xl" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Санаи таваллуд</Label>
+                    <Input type="date" className="h-14 rounded-2xl bg-muted/20 border-muted" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold">Минтақа</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Минтақа</Label>
                     <Select onValueChange={setRegion}>
-                      <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Интихоби минтақа" /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {ALL_REGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                      <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted"><SelectValue placeholder="Интихоби минтақа" /></SelectTrigger>
+                      <SelectContent className="rounded-[2rem] border-none shadow-3xl">
+                        {ALL_REGIONS.map(r => <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -146,138 +146,137 @@ export default function Register() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="font-bold">Телефон</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Телефон</Label>
                     <div className="relative">
-                      <div className="absolute left-4 top-3 text-sm font-bold text-muted-foreground">+992</div>
-                      <Input className="pl-16 h-12 rounded-xl" placeholder="900000000" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={9} />
+                      <div className="absolute left-4 top-4 text-sm font-black text-muted-foreground">+992</div>
+                      <Input className="pl-16 h-14 rounded-2xl bg-muted/20 border-muted" placeholder="900000000" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={9} />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold">Почтаи электронӣ</Label>
-                    <Input type="email" placeholder="example@mail.tj" className="h-12 rounded-xl" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почтаи электронӣ</Label>
+                    <Input type="email" placeholder="example@mail.tj" className="h-14 rounded-2xl bg-muted/20 border-muted" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="font-bold">Рамз</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамз</Label>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} className="pr-12 h-12 rounded-xl" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+                      <Input type={showPassword ? "text" : "password"} className="pr-14 h-14 rounded-2xl bg-muted/20 border-muted" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-muted-foreground">{showPassword ? <EyeOff className="h-6 w-6" /> : <Eye className="h-6 w-6" />}</button>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold">Тасдиқи рамз</Label>
-                    <Input type="password" className="h-12 rounded-xl" placeholder="******" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Тасдиқи рамз</Label>
+                    <Input type="password" className="h-14 rounded-2xl bg-muted/20 border-muted" placeholder="******" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                   </div>
                 </div>
                 
-                <div className="space-y-4">
-                  <Label className="font-bold">Шумо кистед?</Label>
-                  <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="grid grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Шумо кистед?</Label>
+                  <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="grid grid-cols-2 gap-8">
                     <div>
                       <RadioGroupItem value="Client" id="client" className="peer sr-only" />
-                      <Label htmlFor="client" className="flex flex-col items-center p-6 border-2 rounded-2xl cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all">
-                        <UserIcon className="mb-2 h-6 w-6 text-primary" />
-                        <span className="font-black text-xs uppercase">МИЗОҶ</span>
+                      <Label htmlFor="client" className="flex flex-col items-center p-8 border-4 rounded-[2.5rem] cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all hover:scale-105 active:scale-95 shadow-sm">
+                        <UserIcon className="mb-3 h-10 w-10 text-primary" />
+                        <span className="font-black text-sm uppercase tracking-widest text-secondary">МИЗОҶ</span>
                       </Label>
                     </div>
                     <div>
                       <RadioGroupItem value="Usto" id="usto" className="peer sr-only" />
-                      <Label htmlFor="usto" className="flex flex-col items-center p-6 border-2 rounded-2xl cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all">
-                        <Hammer className="mb-2 h-6 w-6 text-primary" />
-                        <span className="font-black text-xs uppercase">УСТО</span>
+                      <Label htmlFor="usto" className="flex flex-col items-center p-8 border-4 rounded-[2.5rem] cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all hover:scale-105 active:scale-95 shadow-sm">
+                        <Hammer className="mb-3 h-10 w-10 text-primary" />
+                        <span className="font-black text-sm uppercase tracking-widest text-secondary">УСТО</span>
                       </Label>
                     </div>
                   </RadioGroup>
                   {role === 'Usto' && (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-[10px] font-bold text-yellow-700 flex items-center gap-2">
-                      <Info className="h-4 w-4 shrink-0" />
-                      Барои устоҳо ҳаққи сабти номи ҳатмӣ {ARTISAN_REGISTRATION_FEE} сомонӣ мебошад.
+                    <div className="p-4 bg-yellow-50 border-2 border-dashed border-yellow-200 rounded-3xl text-[10px] font-black text-yellow-700 flex items-center gap-3">
+                      <Info className="h-6 w-6 shrink-0" />
+                      БАРОИ УСТОҲО ҲАҚҚИ САБТИ НОМИ ҲАТМӢ {ARTISAN_REGISTRATION_FEE} СОМОНӢ МЕБОШАД.
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-start space-x-3 pt-4">
-                  <Checkbox id="agreed" checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} />
-                  <Label htmlFor="agreed" className="text-xs text-muted-foreground font-medium">
-                    Ман бо <span className="text-primary hover:underline">шартҳои истифода</span> ва <span className="text-primary hover:underline">сиёсати маҳфият</span> розӣ ҳастам.
+                <div className="flex items-start space-x-4 pt-6">
+                  <Checkbox id="agreed" checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} className="mt-1 h-6 w-6 rounded-lg" />
+                  <Label htmlFor="agreed" className="text-xs text-muted-foreground font-bold leading-relaxed">
+                    Ман бо <span className="text-primary hover:underline">шартҳои истифода</span> ва <span className="text-primary hover:underline">сиёсати амният</span> розӣ ҳастам. Истифодаи дашном ва ҳақорат боиси блок шудани акаунт мегардад.
                   </Label>
                 </div>
                 
-                <div className="p-4 bg-muted/30 rounded-2xl border-2 border-dashed flex items-start gap-4">
-                  <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
-                    Барномасоз барои мундариҷаи эълонҳо, сифати хидматрасонӣ ва муомилаҳо ҷавобгар нест. Барнома танҳо барои кумак сохта шудааст.
+                <div className="p-6 bg-red-50 border-2 border-dashed border-red-100 rounded-[2rem] flex items-start gap-4">
+                  <Info className="h-6 w-6 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-red-900 font-black uppercase tracking-widest leading-relaxed opacity-60">
+                    БАРНОМАСОЗ БАРОИ МУНДАРИҶАИ ЭЪЛОНҲО, СИФАТИ ХИДМАТРАСОНӢ ВА МУОМИЛАҲО ҶАВОБГАР НЕСТ. БАРНОМА ТАНҲО БАРОИ КУМАК СОХТА ШУДААСТ.
                   </p>
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col space-y-4 pb-12">
-                <Button type="submit" className="w-full bg-primary h-14 text-lg font-black rounded-2xl shadow-xl">ДАВОМ ДОДАН</Button>
-                <p className="text-sm text-center text-muted-foreground">Аллакай аъзо ҳастед? <Link href="/login" className="text-primary font-black">Ворид шавед</Link></p>
+              <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
+                <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ДАВОМ ДОДАН</Button>
+                <p className="text-sm text-center text-muted-foreground font-bold">Аллакай аъзо ҳастед? <Link href="/login" className="text-primary font-black">Ворид шавед</Link></p>
               </CardFooter>
             </form>
           )}
 
           {step === 2 && (
             <form onSubmit={handleOtpConfirm}>
-              <CardContent className="space-y-6 pt-10 text-center">
-                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-primary" />
+              <CardContent className="space-y-8 pt-16 text-center px-10">
+                <div className="mx-auto w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
+                  <CheckCircle2 className="h-12 w-12 text-primary" />
                 </div>
-                <h3 className="text-xl font-black">Коди тасдиқро ворид кунед</h3>
-                <p className="text-sm text-muted-foreground">Мо ба рақами <b>+992 {phone}</b> коди 4-рақама фиристодем.</p>
-                <Input className="h-16 text-center text-3xl font-black tracking-[1em] rounded-2xl" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
-                <Button type="button" variant="link" className="text-primary font-bold">Кодро бозпас фиристед</Button>
+                <h3 className="text-3xl font-black tracking-tighter">ТАСДИҚИ ТЕЛЕФОН</h3>
+                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба рақами <b className="text-secondary">+992 {phone}</b> коди 4-рақама фиристодем. (Код: 1234)</p>
+                <Input className="h-20 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
+                <Button type="button" variant="link" className="text-primary font-black uppercase tracking-widest text-xs">Кодро бозпас фиристед</Button>
               </CardContent>
-              <CardFooter className="flex flex-col space-y-4 pb-12">
-                <Button type="submit" className="w-full bg-primary h-14 text-lg font-black rounded-2xl shadow-xl">ТАСДИҚ</Button>
-                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full">Бозгашт</Button>
+              <CardFooter className="flex flex-col space-y-4 pb-16 px-10">
+                <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ТАСДИҚ ВА САБТ</Button>
+                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold">Бозгашт</Button>
               </CardFooter>
             </form>
           )}
 
           {step === 3 && (
             <form onSubmit={handlePayment}>
-              <CardContent className="space-y-6 pt-10">
-                <div className="text-center mb-8">
-                  <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
-                    <ShieldCheck className="h-8 w-8 text-blue-500" />
+              <CardContent className="space-y-8 pt-16 px-10">
+                <div className="text-center mb-10">
+                  <div className="mx-auto w-24 h-24 bg-blue-500/10 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
+                    <ShieldCheck className="h-12 w-12 text-blue-500" />
                   </div>
-                  <h3 className="text-2xl font-black text-secondary">ФАЪОЛКУНИИ АКАУНТ</h3>
-                  <p className="text-sm text-muted-foreground mt-2">Барои сабти номи усто пардохти ҳатмии <b>{ARTISAN_REGISTRATION_FEE} TJS</b> лозим аст.</p>
+                  <h3 className="text-4xl font-black text-secondary tracking-tighter uppercase">ФАЪОЛКУНӢ</h3>
+                  <p className="text-sm text-muted-foreground mt-3 font-bold">Барои сабти номи усто пардохти ҳатмии <b className="text-primary">{ARTISAN_REGISTRATION_FEE} TJS</b> лозим аст.</p>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="p-6 bg-blue-50 border border-blue-200 rounded-[2rem] flex gap-4 mb-4">
-                    <CreditCard className="h-10 w-10 text-blue-600 shrink-0" />
-                    <div>
-                      <h4 className="font-black text-blue-900 uppercase text-[10px] tracking-widest mb-1">KORTI MILLI</h4>
-                      <p className="text-[10px] text-blue-700">Танҳо устоҳои воқеӣ сабти ном мешаванд.</p>
-                    </div>
+                <div className="space-y-6">
+                  <div className="p-8 bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-[-20%] right-[-10%] h-40 w-40 bg-white/10 rounded-full blur-3xl" />
+                    <CreditCard className="h-12 w-12 mb-6" />
+                    <h4 className="font-black uppercase text-xs tracking-[0.3em] mb-2 opacity-60">KORTI MILLI</h4>
+                    <p className="text-xs font-bold leading-relaxed">Танҳо устоҳои воқеӣ сабти ном мешаванд. Мо бехатариро кафолат медиҳем.</p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-bold">Рақами корт</Label>
-                    <Input placeholder="4444 4444 4444 4444" value={cardNo} onChange={(e) => setCardNo(e.target.value)} className="h-12 rounded-xl" maxLength={19} />
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рақами корт</Label>
+                    <Input placeholder="4444 4444 4444 4444" value={cardNo} onChange={(e) => setCardNo(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={19} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="font-bold">Муҳлати эътибор</Label>
-                      <Input placeholder="MM/YY" value={cardExp} onChange={(e) => setCardExp(e.target.value)} className="h-12 rounded-xl" maxLength={5} />
+                      <Label className="font-black text-xs uppercase tracking-widest opacity-60">Муҳлати эътибор</Label>
+                      <Input placeholder="MM/YY" value={cardExp} onChange={(e) => setCardExp(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={5} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="font-bold">CVC</Label>
-                      <Input type="password" placeholder="***" className="h-12 rounded-xl" maxLength={3} />
+                      <Label className="font-black text-xs uppercase tracking-widest opacity-60">CVC</Label>
+                      <Input type="password" placeholder="***" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={3} />
                     </div>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col space-y-4 pb-12">
-                <Button type="submit" disabled={isPaying} className="w-full bg-primary h-14 text-lg font-black rounded-2xl shadow-xl">
-                  {isPaying ? "ДАР ҲОЛИ ПАРДОХТ..." : `ПАРДОХТ ВА САБТИ НОМ`}
+              <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
+                <Button type="submit" disabled={isPaying} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">
+                  {isPaying ? "ДАР ҲОЛИ ПАРДОХТ..." : `ПАРДОХТ ВА ФАЪОЛКУНӢ`}
                 </Button>
-                <p className="text-[10px] text-center text-muted-foreground px-10 leading-relaxed italic">
+                <p className="text-[10px] text-center text-muted-foreground px-10 leading-relaxed font-black uppercase tracking-widest opacity-40 italic">
                   Ин маблағ барои филтр кардани шахсони беҳунар ва таъмини амнияти платформа ҷамъоварӣ карда мешавад.
                 </p>
               </CardFooter>
