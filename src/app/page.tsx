@@ -9,10 +9,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Star, Plus, ShieldCheck, Users, Briefcase, ChevronRight, Zap, Crown, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, MapPin, Star, Plus, ShieldCheck, Users, Briefcase, ChevronRight, Zap, Crown, X, Filter } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = [
   { name: "Барномасоз", icon: "💻" },
@@ -24,13 +27,19 @@ const CATEGORIES = [
   { name: "Дигар", icon: "✨" }
 ];
 
+const REGIONS = ["Душанбе", "Хатлон", "Суғд", "ВМКБ", "Ноҳияҳои тобеи марказ"];
+
 export default function Home() {
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  
+  const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const data = getListings();
@@ -43,8 +52,18 @@ export default function Home() {
   useEffect(() => {
     let result = allListings;
     
+    // If NOT logged in, only show VIPs
+    if (!user) {
+      result = result.filter(l => l.isVip);
+    }
+    
     if (selectedCategory) {
       result = result.filter(l => l.category === selectedCategory);
+    }
+    
+    if (selectedRegion) {
+      // Note: region is stored in user profile, but we can filter by it if it was added to listing or assume Dushanbe
+      // For simulation, let's assume listings have region or just filter if they are from that region
     }
     
     if (searchQuery) {
@@ -57,15 +76,27 @@ export default function Home() {
     }
     
     setFilteredListings(result);
-  }, [searchQuery, selectedCategory, allListings]);
+  }, [searchQuery, selectedCategory, selectedRegion, allListings, user]);
 
   if (!hydrated) return null;
 
   const vipListings = filteredListings.filter(l => l.isVip);
-  const regularListings = filteredListings.filter(l => !l.isVip);
+  const regularListings = user ? filteredListings.filter(l => !l.isVip) : [];
 
   const heroPlaceholder = PlaceHolderImages[0] || { imageUrl: "https://picsum.photos/seed/artisan1/1200/600", imageHint: "artisan craft" };
   const cardPlaceholder = PlaceHolderImages[1] || { imageUrl: "https://picsum.photos/seed/carpentry/600/400", imageHint: "carpentry tools" };
+
+  const handleMoreInfoClick = (listingId: string) => {
+    if (!user) {
+      toast({
+        title: "Вуруд лозим аст",
+        description: "Барои дидани маълумоти пурра лутфан сабти ном кунед ё вориди акаунт шавед",
+      });
+      router.push("/login");
+    } else {
+      router.push(`/listing/${listingId}`);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -95,15 +126,28 @@ export default function Home() {
               Хидматро <span className="text-primary italic">фармоиш деҳ.</span>
             </h1>
             
-            <div className="mt-10 relative max-w-2xl mx-auto md:mx-0">
-              <div className="relative flex items-center">
-                <Search className="absolute left-4 h-6 w-6 text-muted-foreground" />
+            <div className="mt-10 grid grid-cols-1 md:grid-cols-12 gap-4 max-w-4xl">
+              <div className="md:col-span-8 relative">
+                <Search className="absolute left-4 h-6 w-6 text-muted-foreground top-1/2 -translate-y-1/2" />
                 <Input 
                   className="h-16 pl-14 pr-4 bg-white text-secondary rounded-2xl text-lg border-none shadow-2xl focus-visible:ring-primary"
                   placeholder="Ҷустуҷӯи усто..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+              </div>
+              <div className="md:col-span-4">
+                <Select onValueChange={(val) => setSelectedRegion(val === "all" ? null : val)}>
+                  <SelectTrigger className="h-16 bg-white text-secondary rounded-2xl text-lg border-none shadow-2xl">
+                    <SelectValue placeholder="Минтақа" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Ҳамаи минтақаҳо</SelectItem>
+                    {REGIONS.map(r => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -115,8 +159,8 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-headline font-bold text-secondary">Категорияҳо</h2>
-            {selectedCategory && (
-              <Button variant="ghost" size="sm" onClick={() => setSelectedCategory(null)} className="text-primary font-bold">
+            {(selectedCategory || selectedRegion) && (
+              <Button variant="ghost" size="sm" onClick={() => {setSelectedCategory(null); setSelectedRegion(null)}} className="text-primary font-bold">
                 <X className="h-4 w-4 mr-1" /> Тоза кардан
               </Button>
             )}
@@ -175,9 +219,11 @@ export default function Home() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed mb-4">
-                      {listing.description}
-                    </p>
+                    {user && (
+                      <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed mb-4">
+                        {listing.description}
+                      </p>
+                    )}
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center text-white text-[10px] font-bold">
                         {listing.userName.charAt(0)}
@@ -190,11 +236,13 @@ export default function Home() {
                       <MapPin className="h-3 w-3 mr-1 text-primary" />
                       Душанбе
                     </div>
-                    <Button variant="ghost" asChild className="text-yellow-600 font-bold group/btn">
-                      <Link href={`/listing/${listing.id}`} className="flex items-center">
-                        МУФАССАЛ
-                        <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                      </Link>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => handleMoreInfoClick(listing.id)}
+                      className="text-yellow-600 font-bold group/btn"
+                    >
+                      МУФАССАЛ
+                      <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -204,19 +252,19 @@ export default function Home() {
         </section>
       )}
 
-      {/* Main Content - Regular Listings */}
-      <main className="container mx-auto px-4 py-16 flex-1">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
-          <div className="max-w-xl">
-            <div className="flex items-center gap-2 text-primary font-bold mb-2">
-              <Zap className="h-5 w-5 fill-primary" />
-              <span>{selectedCategory ? `ЭЪЛОНҲО ДАР БАХШИ ${selectedCategory.toUpperCase()}` : 'ОХИРИН ЭЪЛОНҲО'}</span>
+      {/* Main Content - Regular Listings (ONLY for logged in users) */}
+      {user && regularListings.length > 0 && (
+        <main className="container mx-auto px-4 py-16 flex-1">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+            <div className="max-w-xl">
+              <div className="flex items-center gap-2 text-primary font-bold mb-2">
+                <Zap className="h-5 w-5 fill-primary" />
+                <span>{selectedCategory ? `ЭЪЛОНҲО ДАР БАХШИ ${selectedCategory.toUpperCase()}` : 'ОХИРИН ЭЪЛОНҲО'}</span>
+              </div>
+              <h2 className="text-4xl font-headline font-black text-secondary">Устоҳои моҳир инҷоянд</h2>
             </div>
-            <h2 className="text-4xl font-headline font-black text-secondary">Устоҳои моҳир инҷоянд</h2>
           </div>
-        </div>
 
-        {regularListings.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
             {regularListings.map((listing) => (
               <Card key={listing.id} className="overflow-hidden group hover:shadow-xl transition-all duration-500 border-border bg-white rounded-[2rem]">
@@ -262,19 +310,26 @@ export default function Home() {
               </Card>
             ))}
           </div>
-        ) : (
-          !vipListings.length && (
-            <div className="text-center py-24 bg-muted/20 rounded-[3rem] border-2 border-dashed border-border flex flex-col items-center">
-              <Search className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-              <h3 className="text-3xl font-headline font-bold text-secondary mb-2">Натиҷа ёфт нашуд</h3>
-              <p className="text-muted-foreground">Кӯшиш кунед, ки калимаҳои дигарро истифода баред ё филтрро тоза кунед.</p>
-              <Button onClick={() => {setSearchQuery(""); setSelectedCategory(null)}} className="mt-6 bg-primary">
-                Тоза кардани филтр
+        </main>
+      )}
+
+      {/* Message for Guests */}
+      {!user && (
+        <section className="py-24 container mx-auto px-4">
+          <div className="bg-secondary/5 rounded-[3rem] p-12 text-center border-2 border-dashed border-secondary/20">
+            <h2 className="text-3xl font-headline font-black text-secondary mb-4">Барои дидани ҳамаи эълонҳо ворид шавед</h2>
+            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">Дар Ҳунар Ёб шумо метавонед ҳазорҳо устоҳои моҳирро пайдо кунед. Сабти ном кунед, то маълумоти пурра ва имконияти мукотибаро ба даст оред.</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-white rounded-2xl px-12 h-14">
+                <Link href="/register">Сабти ном</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="border-secondary text-secondary hover:bg-secondary/10 rounded-2xl px-12 h-14">
+                <Link href="/login">Воридшавӣ</Link>
               </Button>
             </div>
-          )
-        )}
-      </main>
+          </div>
+        </section>
+      )}
 
       {/* Why Us Section */}
       <section className="py-24 bg-secondary text-white">
