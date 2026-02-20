@@ -10,11 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { UserRole, ALL_REGIONS, ARTISAN_REGISTRATION_FEE, UserProfile } from "@/lib/storage";
+import { UserRole, ALL_REGIONS, UserProfile } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Lock, Eye, EyeOff, Info, CheckCircle2, CreditCard, ShieldCheck, ScrollText } from "lucide-react";
+import { Hammer, User as UserIcon, Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, ScrollText, Mail } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
@@ -33,11 +33,8 @@ export default function Register() {
   const [otp, setOtp] = useState("");
   const [role, setRole] = useState<UserRole>("Client");
   const [agreed, setAgreed] = useState(false);
-  
-  const [cardNo, setCardNo] = useState("");
-  const [cardExp, setCardExp] = useState("");
-  const [isPaying, setIsPaying] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -60,24 +57,21 @@ export default function Register() {
     }
 
     setStep(2);
-    toast({ title: "Код фиристода шуд", description: "Коди тасдиқ (1234) ба рақами шумо фиристода шуд" });
+    toast({ title: "Код фиристода шуд", description: `Коди тасдиқ (1234) ба почтаи ${email} фиристода шуд` });
   };
 
-  const handleOtpConfirm = (e: React.FormEvent) => {
+  const handleOtpConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp !== "1234") {
       toast({ title: "Хатогӣ", description: "Коди тасдиқ нодуруст аст", variant: "destructive" });
       return;
     }
 
-    if (role === 'Usto') {
-      setStep(3);
-    } else {
-      finalizeRegistration();
-    }
+    finalizeRegistration();
   };
 
   const finalizeRegistration = async () => {
+    setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -91,7 +85,7 @@ export default function Register() {
         region,
         balance: 0,
         identificationStatus: 'None',
-        isArtisanFeePaid: role === 'Usto',
+        isArtisanFeePaid: true, // Пардохт ҳоло ройгон аст
         isPremium: false,
         isBlocked: false,
         warningCount: 0,
@@ -99,7 +93,7 @@ export default function Register() {
       };
 
       const userRef = doc(db, 'users', user.uid);
-      setDoc(userRef, profileData).catch(async (err) => {
+      await setDoc(userRef, profileData).catch(async (err) => {
         const permissionError = new FirestorePermissionError({
           path: userRef.path,
           operation: 'create',
@@ -111,22 +105,10 @@ export default function Register() {
       toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
       router.push("/");
     } catch (error: any) {
-      toast({ title: "Хатогии сабти ном", description: error.message, variant: "destructive" });
+      toast({ title: "Хатогии сабти ном", description: "Ин почта аллакай истифода шудааст ё хатогие рӯй дод.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handlePayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cardNo || !cardExp) {
-      toast({ title: "Хатогӣ", description: "Маълумоти кортро пур кунед", variant: "destructive" });
-      return;
-    }
-    
-    setIsPaying(true);
-    setTimeout(() => {
-      setIsPaying(false);
-      finalizeRegistration();
-    }, 2000);
   };
 
   return (
@@ -137,8 +119,7 @@ export default function Register() {
           <CardHeader className="text-center bg-muted/10 pb-12 pt-16">
             <CardTitle className="text-5xl font-black font-headline text-secondary tracking-tighter">САБТИ НОМ</CardTitle>
             <CardDescription className="text-lg font-bold uppercase tracking-widest text-primary/60 mt-2">
-              {step === 1 ? "Маълумоти худро ворид кунед" : 
-               step === 2 ? "Рақами худро тасдиқ кунед" : "Пардохти ҳаққи сабти ном"}
+              {step === 1 ? "Маълумоти худро ворид кунед" : "Тасдиқи почтаи электронӣ"}
             </CardDescription>
           </CardHeader>
           
@@ -175,7 +156,7 @@ export default function Register() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта (Email)</Label>
                     <Input type="email" placeholder="example@mail.tj" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
@@ -241,9 +222,6 @@ export default function Register() {
                             <h4 className="font-black text-secondary uppercase tracking-widest text-xs">3. МАЪЛУМОТИ ШАХСӢ</h4>
                             <p>Мо маълумоти шуморо ба шахсони сеюм намедиҳем. Рақами телефони шумо танҳо ба мизоҷоне, ки бо шумо шартнома мебанданд, намоён мешавад.</p>
                             
-                            <h4 className="font-black text-secondary uppercase tracking-widest text-xs">4. ПАРДОХТҲО</h4>
-                            <p>Ҳаққи сабти номи устоҳо ({ARTISAN_REGISTRATION_FEE} сомонӣ) ва обунаи Premium барои нигоҳдории сервер ва рушди лоиҳа сарф мешавад ва баргардонида намешавад.</p>
-                            
                             <p className="font-black text-primary italic pt-4">Бо пахш кардани тугмаи "Ман розӣ ҳастам", шумо тамоми масъулиятро ба дӯш мегиред.</p>
                           </div>
                         </ScrollArea>
@@ -269,50 +247,17 @@ export default function Register() {
             <form onSubmit={handleOtpConfirm}>
               <CardContent className="space-y-8 pt-16 text-center px-10">
                 <div className="mx-auto w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
-                  <CheckCircle2 className="h-12 w-12 text-primary" />
+                  <Mail className="h-12 w-12 text-primary" />
                 </div>
-                <h3 className="text-3xl font-black tracking-tighter">ТАСДИҚИ ТЕЛЕФОН</h3>
-                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба рақами <b className="text-secondary">+992 {phone}</b> коди 4-рақама фиристодем. (Код: 1234)</p>
+                <h3 className="text-3xl font-black tracking-tighter">ТАСДИҚИ ПОЧТА</h3>
+                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба почтаи <b className="text-secondary">{email}</b> коди 4-рақамаи тасдиқро фиристодем. (Код: 1234)</p>
                 <Input className="h-20 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10">
-                <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ТАСДИҚ ВА САБТ</Button>
-                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold">Бозгашт</Button>
-              </CardFooter>
-            </form>
-          )}
-
-          {step === 3 && (
-            <form onSubmit={handlePayment}>
-              <CardContent className="space-y-8 pt-16 px-10">
-                <div className="text-center mb-10">
-                  <div className="mx-auto w-24 h-24 bg-blue-500/10 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
-                    <ShieldCheck className="h-12 w-12 text-blue-500" />
-                  </div>
-                  <h3 className="text-4xl font-black text-secondary tracking-tighter uppercase">ФАЪОЛКУНӢ</h3>
-                  <p className="text-sm text-muted-foreground mt-3 font-bold">Барои сабти номи усто пардохти ҳатмии <b className="text-primary">{ARTISAN_REGISTRATION_FEE} TJS</b> лозим аст.</p>
-                </div>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рақами корт</Label>
-                    <Input placeholder="4444 4444 4444 4444" value={cardNo} onChange={(e) => setCardNo(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={19} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="font-black text-xs uppercase tracking-widest opacity-60">Муҳлат</Label>
-                      <Input placeholder="MM/YY" value={cardExp} onChange={(e) => setCardExp(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={5} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-black text-xs uppercase tracking-widest opacity-60">CVC</Label>
-                      <Input type="password" placeholder="***" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={3} />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
-                <Button type="submit" disabled={isPaying} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">
-                  {isPaying ? "ДАР ҲОЛИ ПАРДОХТ..." : `ПАРДОХТ ВА ФАЪОЛКУНӢ`}
+                <Button type="submit" disabled={loading} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">
+                  {loading ? "ДАР ҲОЛИ САБТ..." : "ТАСДИҚ ВА САБТ"}
                 </Button>
+                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold">Бозгашт</Button>
               </CardFooter>
             </form>
           )}
