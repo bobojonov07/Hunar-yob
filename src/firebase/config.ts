@@ -2,18 +2,15 @@
 
 /**
  * ТАНЗИМОТИ FIREBASE (Config)
- * 
- * Барои фаъол кардани базаи маълумот ва чат:
- * 1. Дар Firebase Console лоиҳа созед.
- * 2. Web App илова кунед.
- * 3. Танзимоти (Config)-ро аз он ҷо гирифта ба ҷои ин код гузоред.
+ * Пайваст ба лоиҳаи: hunar-tj-e58cd
  */
 
 export const firebaseConfig = {
-  apiKey: "БА_ИН_ҶО_API_KEY_ГУЗОРЕД",
-  authDomain: "hunar-yob.firebaseapp.com",
-  projectId: "hunar-yob",
-  storageBucket: "hunar-yob.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  apiKey: "AIzaSyDLVl5KMbif7lmHbKejig0jM7i_1qX-Wq4",
+  authDomain: "hunar-tj-e58cd.firebaseapp.com",
+  projectId: "hunar-tj-e58cd",
+  storageBucket: "hunar-tj-e58cd.firebasestorage.app",
+  messagingSenderId: "213511973181",
+  appId: "1:213511973181:web:cf22735a6e164b58b47d54",
+  measurementId: "G-BMWH4WM9SY"
 };
