@@ -22,6 +22,16 @@ export interface UserProfile {
   createdAt: any;
 }
 
+export interface Transaction {
+  id: string;
+  userId: string;
+  amount: number;
+  type: 'Deposit' | 'Withdrawal' | 'Payment' | 'Refund';
+  status: 'Pending' | 'Completed' | 'Failed';
+  method: string;
+  createdAt: any;
+}
+
 export interface Listing {
   id: string;
   userId: string;
