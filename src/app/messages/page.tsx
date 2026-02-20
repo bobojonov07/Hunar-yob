@@ -24,6 +24,7 @@ export default function MessagesList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
 
+  // Use the OR operator to find chats where current user is either client or artisan
   const chatsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -43,17 +44,24 @@ export default function MessagesList() {
         return;
       }
 
-      const convList: Conversation[] = [];
-      for (const chat of allChats) {
-        const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
-        const otherSnap = await getDoc(doc(db, "users", otherId));
-        convList.push({
-          ...chat,
-          otherParty: otherSnap.exists() ? (otherSnap.data() as UserProfile) : null
-        });
+      setLoadingConv(true);
+      try {
+        const convList: Conversation[] = [];
+        for (const chat of allChats) {
+          // Identify the other person in the chat
+          const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
+          const otherSnap = await getDoc(doc(db, "users", otherId));
+          convList.push({
+            ...chat,
+            otherParty: otherSnap.exists() ? (otherSnap.data() as UserProfile) : null
+          });
+        }
+        setConversations(convList);
+      } catch (err) {
+        console.error("Error fetching chat details:", err);
+      } finally {
+        setLoadingConv(false);
       }
-      setConversations(convList);
-      setLoadingConv(false);
     }
 
     fetchDetails();
@@ -73,7 +81,7 @@ export default function MessagesList() {
           <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter">Паёмҳо</h1>
         </div>
 
-        {loading || loadingConv ? (
+        {(loading || loadingConv) ? (
           <div className="text-center py-20 opacity-50">Дар ҳоли боргузорӣ...</div>
         ) : conversations.length > 0 ? (
           <div className="space-y-4">
@@ -84,7 +92,7 @@ export default function MessagesList() {
         ) : (
           <div className="text-center py-32 bg-white rounded-[3rem] border-4 border-dashed border-muted/50 shadow-inner group">
             <MessageSquare className="h-20 w-20 mx-auto text-muted mb-6 opacity-30 group-hover:scale-110 transition-transform duration-500" />
-            <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40">ҲОЛО ЯГОН МУКОТИБА НАДОРЕД</p>
+            <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40 text-center px-4">ҲОЛО ЯГОН МУКОТИБА НАДОРЕД</p>
           </div>
         )}
       </div>
@@ -95,8 +103,12 @@ export default function MessagesList() {
 function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUser: any }) {
   const formattedTime = useMemo(() => {
     if (!conv.updatedAt) return "";
-    const date = conv.updatedAt.toDate();
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      const date = conv.updatedAt.toDate();
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return "";
+    }
   }, [conv.updatedAt]);
 
   const chatLink = `/chat/${conv.listingId}?client=${conv.clientId}`;
@@ -108,7 +120,7 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
           <Avatar className="h-16 w-16 border-2 border-primary/10 shadow-sm group-hover:scale-105 transition-transform">
             <AvatarImage src={conv.otherParty?.profileImage} className="object-cover" />
             <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
-              {conv.otherParty?.name.charAt(0) || "?"}
+              {conv.otherParty?.name?.charAt(0) || "?"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -121,7 +133,9 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {conv.lastSenderId === currentUser.uid && <CheckCheck className="h-4 w-4 text-blue-500" />}
+              {conv.lastSenderId === currentUser.uid && (
+                <CheckCheck className="h-4 w-4 text-blue-500" />
+              )}
               <p className={cn(
                 "text-sm truncate font-medium text-muted-foreground",
                 conv.unreadCount?.[currentUser.uid] > 0 && "font-black text-secondary"

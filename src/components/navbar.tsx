@@ -1,13 +1,15 @@
-
 "use client"
 
-import { useUser, useAuth } from "@/firebase";
+import { useUser, useAuth, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
+import { useMemo } from "react";
+import { doc } from "firebase/firestore";
+import { UserProfile } from "@/lib/storage";
 import {
   Sheet,
   SheetContent,
@@ -19,7 +21,11 @@ import {
 export function Navbar() {
   const { user } = useUser();
   const auth = useAuth();
+  const db = useFirestore();
   const router = useRouter();
+
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -95,9 +101,9 @@ export function Navbar() {
               </Link>
               <Link href="/profile" className="hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg">
-                  <AvatarImage src={user.photoURL || ""} className="object-cover" />
+                  <AvatarImage src={profile?.profileImage || user.photoURL || ""} className="object-cover" />
                   <AvatarFallback className="bg-primary text-white font-black text-xs uppercase">
-                    {user.displayName?.charAt(0) || "U"}
+                    {profile?.name?.charAt(0) || user.displayName?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
               </Link>
