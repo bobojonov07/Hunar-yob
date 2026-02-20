@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, ChevronRight, Crown, Zap, X } from "lucide-react";
+import { Search, MapPin, ChevronRight, Crown, Zap, X, ChevronLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,10 +34,6 @@ export default function ListingsPage() {
   const filteredListings = useMemo(() => {
     let result = allListings;
     
-    if (!user) {
-      result = result.filter(l => l.isVip);
-    }
-    
     if (selectedCategory) {
       result = result.filter(l => l.category === selectedCategory);
     }
@@ -52,11 +48,11 @@ export default function ListingsPage() {
     }
     
     return result;
-  }, [searchQuery, selectedCategory, allListings, user]);
+  }, [searchQuery, selectedCategory, allListings]);
 
   const handleMoreInfoClick = (listingId: string) => {
     if (!user) {
-      toast({ title: "Вуруд лозим аст" });
+      toast({ title: "Вуруд лозим аст", description: "Лутфан аввал ворид шавед" });
       router.push("/login");
     } else {
       router.push(`/listing/${listingId}`);
@@ -64,7 +60,7 @@ export default function ListingsPage() {
   };
 
   const vipListings = filteredListings.filter(l => l.isVip);
-  const regularListings = user ? filteredListings.filter(l => !l.isVip) : [];
+  const regularListings = filteredListings.filter(l => !l.isVip);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -166,8 +162,8 @@ export default function ListingsPage() {
                         </div>
                       </CardContent>
                       <CardFooter className="p-6 border-t flex justify-between items-center bg-muted/10">
-                        <Button asChild variant="ghost" className="text-primary font-black">
-                          <Link href={`/listing/${listing.id}`}>МУФАССАЛ <ChevronRight className="ml-1 h-4 w-4" /></Link>
+                        <Button onClick={() => handleMoreInfoClick(listing.id)} variant="ghost" className="text-primary font-black">
+                          МУФАССАЛ <ChevronRight className="ml-1 h-4 w-4" />
                         </Button>
                       </CardFooter>
                     </Card>
@@ -185,4 +181,3 @@ export default function ListingsPage() {
     </div>
   );
 }
-import { ChevronLeft } from "lucide-react";

@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Listing, UserProfile, Review, VIP_PRICE } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
@@ -54,6 +55,12 @@ export default function ListingDetail() {
   }, [db, id]);
   const { data: reviews = [] } = useCollection<Review>(reviewsQuery as any);
 
+  useEffect(() => {
+    if (listingRef) {
+      updateDoc(listingRef, { views: increment(1) }).catch(() => {});
+    }
+  }, [listingRef]);
+
   const isFavorite = useMemo(() => {
     return profile?.favorites?.includes(id as string) || false;
   }, [profile, id]);
@@ -93,6 +100,10 @@ export default function ListingDetail() {
   };
 
   const handleCall = () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     if (isOwner) return;
     if (listing?.userPhone) {
       window.location.href = `tel:+992${listing.userPhone}`;
@@ -206,9 +217,9 @@ export default function ListingDetail() {
               </div>
               <div className="prose prose-orange max-w-none">
                 <h3 className="text-2xl font-black mb-4 text-secondary tracking-tight">ТАВСИФИ ХИДМАТРАСОНӢ:</h3>
-                <p className="text-xl leading-relaxed text-muted-foreground bg-white p-10 rounded-[3rem] border shadow-sm whitespace-pre-wrap italic font-medium">
+                <div className="text-xl leading-relaxed text-muted-foreground bg-white p-10 rounded-[3rem] border shadow-sm whitespace-pre-wrap italic font-medium">
                   &ldquo;{listing.description}&rdquo;
-                </p>
+                </div>
               </div>
             </div>
 

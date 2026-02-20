@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -13,13 +14,13 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2 } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2, Lock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, updateDoc, serverTimestamp, collection, query, where, deleteDoc } from "firebase/firestore";
-import { signOut } from "firebase/auth";
+import { signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { useAuth } from "@/firebase";
 
 export default function Profile() {
@@ -42,6 +43,13 @@ export default function Profile() {
   const [editRegion, setEditRegion] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isIdDialogOpen, setIsIdDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loadingPass, setLoadingPass] = useState(false);
+
   const [idPhotoPreview, setIdPhotoPreview] = useState<string | null>(null);
   const idFileInputRef = useRef<HTMLInputElement>(null);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +112,27 @@ export default function Profile() {
           requestResourceData: updateData
         }));
       });
+  };
+
+  const handleChangePassword = async () => {
+    if (!user || !oldPassword || !newPassword) return;
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
+      return;
+    }
+    setLoadingPass(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email!, oldPassword);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
+      toast({ title: "Рамз иваз шуд" });
+      setIsPasswordDialogOpen(false);
+      setOldPassword(""); setNewPassword(""); setConfirmPassword("");
+    } catch (error: any) {
+      toast({ title: "Хатогӣ", description: "Рамзи кӯҳна нодуруст аст", variant: "destructive" });
+    } finally {
+      setLoadingPass(false);
+    }
   };
 
   const handleIdPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,22 +248,6 @@ export default function Profile() {
                     <p className="text-[10px] font-black uppercase tracking-[0.2em]">{profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 'Идентификатсия лозим'}</p>
                     <p className="text-[9px] font-medium opacity-60">Барои шартномаҳои бехатар</p>
                   </div>
-                  {profile.identificationStatus === 'None' && (
-                    <Dialog open={isIdDialogOpen} onOpenChange={setIsIdDialogOpen}>
-                      <DialogTrigger asChild><Button size="sm" className="h-9 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black px-4">ФАЪОЛ</Button></DialogTrigger>
-                      <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
-                        <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ИДЕНТИФИКАТСИЯ</DialogTitle></DialogHeader>
-                        <div className="space-y-6 pt-6">
-                          <p className="text-sm text-muted-foreground font-medium leading-relaxed">Барои истифодаи пурраи ҳамён ва бастани шартномаҳои амниятӣ, лутфан сурати шиносномаро бор кунед.</p>
-                          <div className="aspect-video border-4 border-dashed rounded-[2rem] bg-muted/20 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all hover:bg-muted/30 group" onClick={() => idFileInputRef.current?.click()}>
-                            {idPhotoPreview ? <Image src={idPhotoPreview} alt="Preview" width={400} height={200} className="object-cover w-full h-full" /> : <><Upload className="h-10 w-10 text-muted-foreground mb-3 group-hover:scale-110 transition-transform" /><span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Бор кардани сурат</span></>}
-                          </div>
-                          <input type="file" className="hidden" ref={idFileInputRef} onChange={handleIdPhotoChange} accept="image/*" />
-                          <Button onClick={handleSubmitId} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">ФИРИСТОДАН</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -281,6 +294,31 @@ export default function Profile() {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+                  <DialogTrigger asChild><Button variant="outline" className="w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest border-2"><Lock className="mr-3 h-5 w-5" /> Амният</Button></DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
+                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ИВАЗИ РАМЗ</DialogTitle></DialogHeader>
+                    <div className="space-y-6 pt-6">
+                      <div className="space-y-2">
+                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Рамзи кӯҳна</Label>
+                        <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Рамзи нав</Label>
+                        <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Тасдиқи рамзи нав</Label>
+                        <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
+                      </div>
+                      <Button onClick={handleChangePassword} disabled={loadingPass} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">
+                        {loadingPass ? "ДАР ҲОЛИ САБТ..." : "САБТ"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 <Button variant="ghost" className="w-full h-14 rounded-2xl text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-50" onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> Баромад</Button>
               </CardFooter>
             </Card>

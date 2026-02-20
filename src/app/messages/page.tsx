@@ -1,32 +1,35 @@
 
 "use client"
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, Clock, CheckCheck, ChevronLeft } from "lucide-react";
+import { MessageSquare, Clock, CheckCheck, ChevronLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collectionGroup, query, where, orderBy } from "firebase/firestore";
+import { collectionGroup, query, where, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
 import { Message, Listing } from "@/lib/storage";
 
 interface Conversation {
   listingId: string;
   lastMessage: Message;
+  otherPartyName: string;
+  otherPartyImage?: string;
 }
 
 export default function MessagesList() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConv, setLoadingConv] = useState(true);
 
   const messagesQuery = useMemo(() => {
     if (!db || !user) return null;
-    // Дар ин MVP мо ҳамаи паёмҳоеро мегирем, ки корбар дар онҳо иштирок дорад
     return query(
       collectionGroup(db, "messages"),
       orderBy("createdAt", "desc")
@@ -35,24 +38,48 @@ export default function MessagesList() {
 
   const { data: allMessages = [], loading } = useCollection<Message>(messagesQuery);
 
-  // Гурӯҳбандии паёмҳо аз рӯи Listing
-  const conversations = useMemo(() => {
-    if (!user) return [];
-    const groups: Record<string, Message> = {};
-    
-    allMessages.forEach(msg => {
-      // Танҳо паёмҳои корбари ҷорӣ (фиристода ё гирифта)
-      // Дар оянда метавон логикаи иштирокчиёнро мукаммалтар кард
-      if (!groups[msg.listingId]) {
-        groups[msg.listingId] = msg;
+  useEffect(() => {
+    async function fetchConversationDetails() {
+      if (!user || allMessages.length === 0) {
+        setLoadingConv(false);
+        return;
       }
-    });
 
-    return Object.entries(groups).map(([listingId, lastMessage]) => ({
-      listingId,
-      lastMessage
-    }));
-  }, [allMessages, user]);
+      const groups: Record<string, Message> = {};
+      allMessages.forEach(msg => {
+        if (!groups[msg.listingId]) {
+          groups[msg.listingId] = msg;
+        }
+      });
+
+      const convList: Conversation[] = [];
+      for (const [listingId, lastMessage] of Object.entries(groups)) {
+        // Fetch listing to find who the other person is
+        const listingSnap = await getDoc(doc(db, "listings", listingId));
+        if (listingSnap.exists()) {
+          const listing = listingSnap.data() as Listing;
+          let otherPartyName = listing.userName;
+          let otherPartyId = listing.userId;
+
+          // If current user is the artisan, find the client from messages
+          if (user.uid === listing.userId) {
+            // This is a simplification; in a real app, messages would store receiverId
+            otherPartyName = lastMessage.senderId === user.uid ? "Мизоҷ" : lastMessage.senderName;
+          }
+
+          convList.push({
+            listingId,
+            lastMessage,
+            otherPartyName
+          });
+        }
+      }
+      setConversations(convList);
+      setLoadingConv(false);
+    }
+
+    fetchConversationDetails();
+  }, [allMessages, user, db]);
 
   if (!user) return null;
 
@@ -68,7 +95,7 @@ export default function MessagesList() {
           <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter text-center md:text-left">Паёмҳо</h1>
         </div>
 
-        {loading ? (
+        {loading || loadingConv ? (
           <div className="text-center py-20 opacity-50">Дар ҳоли боргузорӣ...</div>
         ) : conversations.length > 0 ? (
           <div className="space-y-6">
@@ -88,8 +115,12 @@ export default function MessagesList() {
 }
 
 function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUser: any }) {
-  // Барои гирифтани номи Listing метавон аз useDoc истифода бурд, 
-  // аммо дар ин ҷо мо танҳо ID-ро барои чат истифода мебарем
+  const formattedTime = useMemo(() => {
+    if (!conv.lastMessage.createdAt) return "";
+    const date = conv.lastMessage.createdAt.toDate();
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }, [conv.lastMessage.createdAt]);
+
   return (
     <Link href={`/chat/${conv.listingId}`}>
       <Card className="hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white group ring-1 ring-secondary/5">
@@ -97,25 +128,34 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
           <div className="relative shrink-0">
             <Avatar className="h-16 w-16 border-4 border-muted shadow-lg transform group-hover:scale-110 transition-transform duration-500">
               <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
-                {conv.lastMessage.senderName.charAt(0)}
+                {conv.otherPartyName.charAt(0)}
               </AvatarFallback>
             </Avatar>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-baseline mb-2">
               <h3 className="font-black text-secondary text-lg truncate tracking-tight group-hover:text-primary transition-colors">
-                {conv.lastMessage.senderId === currentUser.uid ? "Муколама" : conv.lastMessage.senderName}
+                {conv.otherPartyName}
               </h3>
               <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
-                {conv.lastMessage.createdAt?.seconds ? new Date(conv.lastMessage.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                {formattedTime}
               </span>
             </div>
             <div className="flex items-center gap-2">
               {conv.lastMessage.senderId === currentUser.uid && (
-                <CheckCheck className={cn("h-4 w-4", conv.lastMessage.isRead ? "text-blue-500" : "text-muted-foreground opacity-30")} />
+                <div className="flex">
+                  {conv.lastMessage.isRead ? (
+                    <CheckCheck className="h-4 w-4 text-blue-500" />
+                  ) : (
+                    <Check className="h-4 w-4 text-muted-foreground opacity-30" />
+                  )}
+                </div>
               )}
-              <p className={cn("text-sm truncate font-medium italic text-muted-foreground")}>
-                &ldquo;{conv.lastMessage.text}&rdquo;
+              <p className={cn(
+                "text-sm truncate font-medium text-muted-foreground",
+                !conv.lastMessage.isRead && conv.lastMessage.senderId !== currentUser.uid && "font-black text-secondary"
+              )}>
+                {conv.lastMessage.text}
               </p>
             </div>
           </div>
