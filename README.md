@@ -3,35 +3,35 @@
 
 Ин барнома бо истифода аз **NextJS** ва **Firebase** сохта шудааст. Ҳамаи маълумотҳо дар базаи маълумоти воқеии Google (Firestore) сабт мешаванд.
 
-## Қадами ниҳоӣ: Танзимот дар Firebase Console
+## Қадами 1: Танзимот дар Firebase Console
 
-Пас аз он ки шумо лоиҳаро сохтед ва `firebaseConfig`-ро илова кардед, ин ду амалро ҳатман иҷро кунед:
+Пас аз он ки шумо лоиҳаро сохтед ва `firebaseConfig`-ро илова кардед, ин амалҳоро иҷро кунед:
 
-1. **Authentication (Сабти ном)**:
-   - Ба [Firebase Console](https://console.firebase.google.com/) равед.
-   - Ба бахши **Build > Authentication** гузаред.
-   - Тугмаи **Get Started**-ро пахш кунед.
-   - Дар қисми **Sign-in method**, варианти **Email/Password**-ро интихоб ва **Enable** кунед.
+1. **Authentication**: Ба бахши **Build > Authentication** равед ва **Email/Password**-ро фаъол кунед.
+2. **Firestore Database**: Ба бахши **Build > Firestore Database** равед ва базаи маълумотро дар ҳолати **Test mode** оғоз кунед.
 
-2. **Firestore Database (Базаи маълумот)**:
-   - Ба бахши **Build > Firestore Database** гузаред.
-   - Агар қаблан накарда бошед, **Create database**-ро пахш кунед.
-   - Ҷойгиршавиро (Location) интихоб кунед ва дар ҳолати **Test mode** оғоз кунед (ё баъд қоидаҳои амниятиро дар варақаи **Rules** танзим кунед).
+## Қадами 2: Гузоштани код ба GitHub
 
-## Қадами 2: Гузоштани код ба GitHub ва Нашр
+Барои нашри код дар GitHub, ин фармонҳоро дар терминали лоиҳа иҷро кунед:
 
 1. Ба [github.com](https://github.com) ворид шавед ва репозиторийи нав бо номи `hunar-yob` созед.
-2. Дар терминали лоиҳа ин фармонҳоро иҷро кунед:
+2. Дар терминал иҷро кунед:
    ```bash
    git init
    git add .
-   git commit -m "Нашри аввалин"
-   git remote add origin https://github.com/ИМЗОИ_ШУМО/hunar-yob.git
+   git commit -m "Нашри аввалини барнома"
    git branch -M main
+   git remote add origin https://github.com/ШУМО/hunar-yob.git
    git push -u origin main
    ```
+   *(Ба ҷои "ШУМО" номи корбарии GitHub-и худро нависед)*
 
-3. Дар Firebase Console ба бахши **App Hosting** гузаред ва репозиторийро пайваст кунед.
+## Қадами 3: Нашр (Deployment)
+
+Барои он ки барнома дар интернет дастрас бошад:
+1. Дар Firebase Console ба бахши **App Hosting** гузаред.
+2. Репозиторийи GitHub-и худро пайваст кунед.
+3. Тугмаи **Deploy**-ро пахш кунед.
 
 ---
 Таҳия шудааст тавассути **TAJ.WEB** барои кумак ба ҳамватанон.
