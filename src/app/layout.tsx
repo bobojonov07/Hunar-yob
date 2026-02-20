@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { BottomNav } from "@/components/bottom-nav";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
+import { NotificationHandler } from "@/components/notification-handler";
 
 export const metadata: Metadata = {
   title: 'Ҳунар Ёб - Пайдо кардани устоҳои моҳир',
@@ -23,6 +24,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen pb-16 md:pb-0">
         <FirebaseClientProvider>
+          <NotificationHandler />
           {children}
           <BottomNav />
           <Toaster />

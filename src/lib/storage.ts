@@ -1,4 +1,3 @@
-
 'use client';
 
 export type UserRole = 'Usto' | 'Client';
@@ -19,6 +18,7 @@ export interface UserProfile {
   warningCount?: number;
   isBlocked?: boolean;
   favorites?: string[];
+  fcmTokens?: string[]; // Барои огоҳиномаҳо
   createdAt: any;
 }
 
