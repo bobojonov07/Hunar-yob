@@ -18,7 +18,7 @@ export interface UserProfile {
   warningCount?: number;
   isBlocked?: boolean;
   favorites?: string[];
-  fcmTokens?: string[]; // Барои огоҳиномаҳо
+  fcmTokens?: string[];
   createdAt: any;
 }
 
@@ -36,6 +36,29 @@ export interface Listing {
   views: number;
 }
 
+export interface Chat {
+  id: string;
+  listingId: string;
+  clientId: string;
+  artisanId: string;
+  lastMessage: string;
+  lastSenderId: string;
+  updatedAt: any;
+  unreadCount: Record<string, number>;
+}
+
+export interface Message {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: any;
+  isRead: boolean;
+  type: 'text' | 'deal';
+  dealId?: string;
+}
+
 export interface Deal {
   id: string;
   listingId: string;
@@ -49,18 +72,6 @@ export interface Deal {
   senderId: string;
   createdAt: any;
   updatedAt: any;
-}
-
-export interface Message {
-  id: string;
-  listingId: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  createdAt: any;
-  isRead: boolean;
-  type: 'text' | 'deal';
-  dealId?: string;
 }
 
 export interface Review {

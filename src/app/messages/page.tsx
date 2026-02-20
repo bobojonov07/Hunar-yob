@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useEffect, useState } from "react";
@@ -11,14 +10,11 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collectionGroup, query, where, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
-import { Message, Listing } from "@/lib/storage";
+import { collection, query, where, orderBy, doc, getDoc, or } from "firebase/firestore";
+import { Chat, UserProfile } from "@/lib/storage";
 
-interface Conversation {
-  listingId: string;
-  lastMessage: Message;
-  otherPartyName: string;
-  otherPartyImage?: string;
+interface Conversation extends Chat {
+  otherParty: UserProfile | null;
 }
 
 export default function MessagesList() {
@@ -28,58 +24,40 @@ export default function MessagesList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
 
-  const messagesQuery = useMemo(() => {
+  const chatsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
-      collectionGroup(db, "messages"),
-      orderBy("createdAt", "desc")
+      collection(db, "chats"),
+      or(where("clientId", "==", user.uid), where("artisanId", "==", user.uid)),
+      orderBy("updatedAt", "desc")
     );
   }, [db, user]);
 
-  const { data: allMessages = [], loading } = useCollection<Message>(messagesQuery);
+  const { data: allChats = [], loading } = useCollection<Chat>(chatsQuery as any);
 
   useEffect(() => {
-    async function fetchConversationDetails() {
-      if (!user || allMessages.length === 0) {
+    async function fetchDetails() {
+      if (!user || allChats.length === 0) {
         setLoadingConv(false);
+        if (allChats.length === 0) setConversations([]);
         return;
       }
 
-      const groups: Record<string, Message> = {};
-      allMessages.forEach(msg => {
-        if (!groups[msg.listingId]) {
-          groups[msg.listingId] = msg;
-        }
-      });
-
       const convList: Conversation[] = [];
-      for (const [listingId, lastMessage] of Object.entries(groups)) {
-        // Fetch listing to find who the other person is
-        const listingSnap = await getDoc(doc(db, "listings", listingId));
-        if (listingSnap.exists()) {
-          const listing = listingSnap.data() as Listing;
-          let otherPartyName = listing.userName;
-          let otherPartyId = listing.userId;
-
-          // If current user is the artisan, find the client from messages
-          if (user.uid === listing.userId) {
-            // This is a simplification; in a real app, messages would store receiverId
-            otherPartyName = lastMessage.senderId === user.uid ? "Мизоҷ" : lastMessage.senderName;
-          }
-
-          convList.push({
-            listingId,
-            lastMessage,
-            otherPartyName
-          });
-        }
+      for (const chat of allChats) {
+        const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
+        const otherSnap = await getDoc(doc(db, "users", otherId));
+        convList.push({
+          ...chat,
+          otherParty: otherSnap.exists() ? (otherSnap.data() as UserProfile) : null
+        });
       }
       setConversations(convList);
       setLoadingConv(false);
     }
 
-    fetchConversationDetails();
-  }, [allMessages, user, db]);
+    fetchDetails();
+  }, [allChats, user, db]);
 
   if (!user) return null;
 
@@ -92,15 +70,15 @@ export default function MessagesList() {
             <ChevronLeft className="mr-2 h-5 w-5" />
             БОЗГАШТ
           </Button>
-          <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter text-center md:text-left">Паёмҳо</h1>
+          <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter">Паёмҳо</h1>
         </div>
 
         {loading || loadingConv ? (
           <div className="text-center py-20 opacity-50">Дар ҳоли боргузорӣ...</div>
         ) : conversations.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {conversations.map((conv) => (
-              <ConversationItem key={conv.listingId} conv={conv} currentUser={user} />
+              <ConversationItem key={conv.id} conv={conv} currentUser={user} />
             ))}
           </div>
         ) : (
@@ -116,49 +94,47 @@ export default function MessagesList() {
 
 function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUser: any }) {
   const formattedTime = useMemo(() => {
-    if (!conv.lastMessage.createdAt) return "";
-    const date = conv.lastMessage.createdAt.toDate();
+    if (!conv.updatedAt) return "";
+    const date = conv.updatedAt.toDate();
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }, [conv.lastMessage.createdAt]);
+  }, [conv.updatedAt]);
+
+  const chatLink = `/chat/${conv.listingId}?client=${conv.clientId}`;
 
   return (
-    <Link href={`/chat/${conv.listingId}`}>
-      <Card className="hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white group ring-1 ring-secondary/5">
-        <CardContent className="p-6 flex items-center gap-6">
-          <div className="relative shrink-0">
-            <Avatar className="h-16 w-16 border-4 border-muted shadow-lg transform group-hover:scale-110 transition-transform duration-500">
-              <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
-                {conv.otherPartyName.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+    <Link href={chatLink}>
+      <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border-none shadow-md rounded-[2rem] bg-white group">
+        <CardContent className="p-5 flex items-center gap-5">
+          <Avatar className="h-16 w-16 border-2 border-primary/10 shadow-sm group-hover:scale-105 transition-transform">
+            <AvatarImage src={conv.otherParty?.profileImage} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
+              {conv.otherParty?.name.charAt(0) || "?"}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-baseline mb-2">
-              <h3 className="font-black text-secondary text-lg truncate tracking-tight group-hover:text-primary transition-colors">
-                {conv.otherPartyName}
+            <div className="flex justify-between items-baseline mb-1">
+              <h3 className="font-black text-secondary text-lg truncate group-hover:text-primary transition-colors">
+                {conv.otherParty?.name || "Корбар"}
               </h3>
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-60">
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                 {formattedTime}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {conv.lastMessage.senderId === currentUser.uid && (
-                <div className="flex">
-                  {conv.lastMessage.isRead ? (
-                    <CheckCheck className="h-4 w-4 text-blue-500" />
-                  ) : (
-                    <Check className="h-4 w-4 text-muted-foreground opacity-30" />
-                  )}
-                </div>
-              )}
+              {conv.lastSenderId === currentUser.uid && <CheckCheck className="h-4 w-4 text-blue-500" />}
               <p className={cn(
                 "text-sm truncate font-medium text-muted-foreground",
-                !conv.lastMessage.isRead && conv.lastMessage.senderId !== currentUser.uid && "font-black text-secondary"
+                conv.unreadCount?.[currentUser.uid] > 0 && "font-black text-secondary"
               )}>
-                {conv.lastMessage.text}
+                {conv.lastMessage}
               </p>
             </div>
           </div>
+          {conv.unreadCount?.[currentUser.uid] > 0 && (
+            <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-[10px] text-white font-black">
+              {conv.unreadCount[currentUser.uid]}
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>
