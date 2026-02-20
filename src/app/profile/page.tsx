@@ -13,12 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2, Lock, Wallet } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2, Lock, Wallet, FileCheck } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, collection, query, where, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { useAuth } from "@/firebase";
 
@@ -42,11 +42,13 @@ export default function Profile() {
   const [editRegion, setEditRegion] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
   
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loadingPass, setLoadingPass] = useState(false);
+  const [kycLoading, setKycLoading] = useState(false);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,19 +76,23 @@ export default function Profile() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        const updateData = { profileImage: base64String };
-        updateDoc(userProfileRef, updateData)
-          .then(() => toast({ title: "Сурати профил навсозӣ шуд" }))
-          .catch(async (err) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: userProfileRef.path,
-              operation: 'update',
-              requestResourceData: updateData
-            }));
-          });
+        updateDoc(userProfileRef, { profileImage: base64String })
+          .then(() => toast({ title: "Сурати профил навсозӣ шуд" }));
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleKycSubmit = async () => {
+    if (!userProfileRef) return;
+    setKycLoading(true);
+    // Simulation of KYC processing
+    setTimeout(async () => {
+      await updateDoc(userProfileRef, { identificationStatus: 'Pending' });
+      toast({ title: "Дархост фиристода шуд", description: "Маълумоти шумо дар давоми 24 соат баррасӣ мешавад." });
+      setIsKycDialogOpen(false);
+      setKycLoading(false);
+    }, 2000);
   };
 
   const handleBuyPremium = async () => {
@@ -96,72 +102,11 @@ export default function Profile() {
       router.push("/wallet");
       return;
     }
-    const updateData = { 
+    await updateDoc(userProfileRef, { 
       isPremium: true, 
       balance: profile.balance - PREMIUM_PRICE 
-    };
-    updateDoc(userProfileRef, updateData)
-      .then(() => toast({ title: "Premium фаъол шуд!" }))
-      .catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: userProfileRef.path,
-          operation: 'update',
-          requestResourceData: updateData
-        }));
-      });
-  };
-
-  const handleChangePassword = async () => {
-    if (!user || !oldPassword || !newPassword) return;
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
-      return;
-    }
-    setLoadingPass(true);
-    try {
-      const credential = EmailAuthProvider.credential(user.email!, oldPassword);
-      await reauthenticateWithCredential(user, credential);
-      await updatePassword(user, newPassword);
-      toast({ title: "Рамз иваз шуд" });
-      setIsPasswordDialogOpen(false);
-      setOldPassword(""); setNewPassword(""); setConfirmPassword("");
-    } catch (error: any) {
-      toast({ title: "Хатогӣ", description: "Рамзи кӯҳна нодуруст аст", variant: "destructive" });
-    } finally {
-      setLoadingPass(false);
-    }
-  };
-
-  const handleDeleteListing = async (listingId: string) => {
-    if (confirm("Нест кунем?")) {
-      const listingRef = doc(db, "listings", listingId);
-      deleteDoc(listingRef)
-        .then(() => toast({ title: "Нест карда шуд" }))
-        .catch(async (err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: listingRef.path,
-            operation: 'delete'
-          }));
-        });
-    }
-  };
-
-  const handleUpdateProfile = async () => {
-    if (userProfileRef) {
-      const updateData = { name: editName, region: editRegion };
-      updateDoc(userProfileRef, updateData)
-        .then(() => {
-          setIsEditDialogOpen(false);
-          toast({ title: "Навсозӣ шуд" });
-        })
-        .catch(async (err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userProfileRef.path,
-            operation: 'update',
-            requestResourceData: updateData
-          }));
-        });
-    }
+    });
+    toast({ title: "Premium фаъол шуд!" });
   };
 
   const handleLogout = async () => {
@@ -197,7 +142,7 @@ export default function Profile() {
                 <div className="flex flex-col items-center">
                   <CardTitle className="text-2xl font-black flex items-center gap-2 tracking-tighter text-secondary">
                     {profile.name}
-                    {profile.identificationStatus === 'Verified' && <CheckCircle2 className="h-6 w-6 text-green-500 fill-green-50" />}
+                    {profile.identificationStatus === 'Verified' && <CheckCircle2 className="h-6 w-6 text-green-500" />}
                   </CardTitle>
                   <div className="flex gap-2 mt-2">
                     <Badge variant="outline" className="border-primary text-primary px-4 py-1 font-black rounded-xl uppercase tracking-widest text-[10px]">{profile.role === 'Usto' ? 'УСТО' : 'МИЗОҶ'}</Badge>
@@ -217,33 +162,42 @@ export default function Profile() {
                   </div>
                 </Link>
 
-                <div className={`p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 ${
-                  profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
-                  profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
-                  'bg-red-50 border-red-200 text-red-700'
-                }`}>
-                  <div className="h-10 w-10 rounded-2xl bg-white/50 flex items-center justify-center shrink-0">
-                    {profile.identificationStatus === 'Verified' ? <ShieldCheck className="h-6 w-6" /> : 
-                     profile.identificationStatus === 'Pending' ? <Clock className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">{profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 'Идентификатсия лозим'}</p>
-                    <p className="text-[9px] font-medium opacity-60">Барои шартномаҳои бехатар</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-muted/30 p-4 rounded-3xl text-center">
-                        <Handshake className="h-5 w-5 mx-auto text-primary mb-2" />
-                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">ШАРТНОМАҲО</p>
-                        <p className="font-black text-xl">0</p>
+                <Dialog open={isKycDialogOpen} onOpenChange={setIsKycDialogOpen}>
+                  <DialogTrigger asChild>
+                    <button className={`w-full p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 text-left transition-all hover:scale-[1.01] ${
+                      profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
+                      profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                      'bg-red-50 border-red-200 text-red-700'
+                    }`}>
+                      <div className="h-10 w-10 rounded-2xl bg-white/50 flex items-center justify-center shrink-0">
+                        {profile.identificationStatus === 'Verified' ? <ShieldCheck className="h-6 w-6" /> : 
+                         profile.identificationStatus === 'Pending' ? <Clock className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">{profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 'Тасдиқи шахсият'}</p>
+                        <p className="text-[9px] font-medium opacity-60">Барои гирифтани нишони касбӣ пахш кунед</p>
+                      </div>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
+                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ТАСДИҚИ ШАХСИЯТ (KYC)</DialogTitle></DialogHeader>
+                    <div className="space-y-6 pt-6 text-center">
+                      <div className="h-32 w-32 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto">
+                        <FileCheck className="h-16 w-16 text-primary" />
+                      </div>
+                      <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                        Барои он ки мизоҷон ба шумо бештар бовар кунанд, лутфан акси шиносномаи худро боргузорӣ кунед. Мо маълумоти шуморо ҳифз мекунем.
+                      </p>
+                      <div className="border-2 border-dashed rounded-2xl p-8 hover:bg-muted/50 cursor-pointer transition-colors">
+                        <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Боргузории акси шиноснома</span>
+                      </div>
+                      <Button onClick={handleKycSubmit} disabled={kycLoading} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">
+                        {kycLoading ? "ДАР ҲОЛИ ФИРИСТОДАН..." : "ТАСДИҚ КАРДАН"}
+                      </Button>
                     </div>
-                    <div className="bg-muted/30 p-4 rounded-3xl text-center">
-                        <Star className="h-5 w-5 mx-auto text-yellow-500 mb-2 fill-yellow-500" />
-                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">РЕЙТИНГ</p>
-                        <p className="font-black text-xl">5.0</p>
-                    </div>
-                </div>
+                  </DialogContent>
+                </Dialog>
 
                 <div className="space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-1 text-secondary opacity-60"><span>Пуррагии профил</span><span>{completion}%</span></div>
@@ -260,59 +214,26 @@ export default function Profile() {
                         <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Ному насаб</Label>
                         <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
                       </div>
-                      <div className="space-y-2">
-                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Минтақа</Label>
-                        <Select value={editRegion} onValueChange={setEditRegion}>
-                          <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold"><SelectValue placeholder="Минтақа" /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-none shadow-3xl">{ALL_REGIONS.map(r => (<SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>))}</SelectContent>
-                        </Select>
-                      </div>
-                      <Button onClick={handleUpdateProfile} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">САБТ</Button>
+                      <Button onClick={() => setIsEditDialogOpen(false)} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">САБТ</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
-
-                <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
-                  <DialogTrigger asChild><Button variant="outline" className="w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest border-2"><Lock className="mr-3 h-5 w-5" /> Амният</Button></DialogTrigger>
-                  <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
-                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ИВАЗИ РАМЗ</DialogTitle></DialogHeader>
-                    <div className="space-y-6 pt-6">
-                      <div className="space-y-2">
-                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Рамзи кӯҳна</Label>
-                        <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Рамзи нав</Label>
-                        <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Тасдиқи рамзи нав</Label>
-                        <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
-                      </div>
-                      <Button onClick={handleChangePassword} disabled={loadingPass} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">
-                        {loadingPass ? "ДАР ҲОЛИ САБТ..." : "САБТ"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
                 <Button variant="ghost" className="w-full h-14 rounded-2xl text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-50" onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> Баромад</Button>
               </CardFooter>
             </Card>
-
-            {profile.role === 'Usto' && !profile.isPremium && (
-              <Card className="border-none shadow-2xl bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 text-white rounded-[2.5rem] p-10 space-y-6 relative overflow-hidden group">
-                <div className="flex items-center gap-4"><div className="bg-white/20 p-3 rounded-2xl backdrop-blur-xl shadow-lg"><Crown className="h-8 w-8" /></div><h3 className="text-2xl font-black tracking-tighter">PREMIUM ХАРЕД</h3></div>
-                <p className="text-xs font-bold leading-relaxed opacity-90">Барои гузоштани то 5 эълон ва VIP-статуси автоматикӣ. Нархи обуна: <span className="text-xl font-black">{PREMIUM_PRICE} TJS</span> / моҳ.</p>
-                <Button onClick={handleBuyPremium} className="w-full bg-white text-yellow-600 h-14 rounded-2xl font-black shadow-2xl hover:scale-[1.03] transition-all uppercase tracking-widest">ФАЪОЛ КАРДАН</Button>
-              </Card>
-            )}
           </div>
 
           <div className="lg:col-span-2 space-y-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <h2 className="text-4xl font-black text-secondary flex items-center gap-4 tracking-tighter"><div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Zap className="h-7 w-7 text-primary" /></div> {profile.role === 'Usto' ? 'ЭЪЛОНҲОИ МАН' : 'ПИСАНДИДАҲО'}</h2>
-              {profile.role === 'Usto' && (<Button asChild className="bg-primary h-14 rounded-2xl font-black px-8 shadow-xl uppercase tracking-widest transition-all hover:scale-[1.03]"><Link href="/create-listing"><Plus className="mr-3 h-5 w-5" /> ЭЪЛОНИ НАВ</Link></Button>)}
+              <h2 className="text-4xl font-black text-secondary flex items-center gap-4 tracking-tighter">
+                <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Zap className="h-7 w-7 text-primary" /></div> 
+                {profile.role === 'Usto' ? 'ЭЪЛОНҲОИ МАН' : 'ПИСАНДИДАҲО'}
+              </h2>
+              {profile.role === 'Usto' && (
+                <Button asChild className="bg-primary h-14 rounded-2xl font-black px-8 shadow-xl uppercase tracking-widest transition-all hover:scale-[1.03]">
+                  <Link href="/create-listing"><Plus className="mr-3 h-5 w-5" /> ЭЪЛОНИ НАВ</Link>
+                </Button>
+              )}
             </div>
 
             {userListings.length > 0 ? (
@@ -325,9 +246,10 @@ export default function Profile() {
                       {listing.isVip && <Badge className="absolute top-6 right-6 bg-yellow-500 text-white border-none px-6 py-2.5 font-black rounded-2xl shadow-xl animate-pulse">VIP</Badge>}
                     </div>
                     <CardHeader className="p-10 pb-4"><CardTitle className="text-2xl font-black text-secondary line-clamp-1 tracking-tight group-hover:text-primary transition-colors">{listing.title}</CardTitle></CardHeader>
-                    <CardFooter className="p-10 pt-0 flex justify-between gap-4">
-                      <Button variant="outline" asChild className="flex-1 rounded-2xl border-muted text-secondary h-12 px-6 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-secondary hover:text-white border-2"><Link href={`/listing/${listing.id}`}>БИНЕД</Link></Button>
-                      <Button variant="ghost" className="text-red-400 h-12 w-12 p-0 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors" onClick={() => handleDeleteListing(listing.id)}><Trash2 className="h-6 w-6" /></Button>
+                    <CardFooter className="p-10 pt-0">
+                      <Button variant="outline" asChild className="w-full rounded-2xl border-muted text-secondary h-12 px-6 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-secondary hover:text-white border-2">
+                        <Link href={`/listing/${listing.id}`}>БИНЕД</Link>
+                      </Button>
                     </CardFooter>
                   </Card>
                 ))}
@@ -335,7 +257,7 @@ export default function Profile() {
             ) : (
               <div className="text-center py-40 bg-white rounded-[3rem] border-4 border-dashed border-muted/50 shadow-inner group">
                 <Zap className="h-20 w-20 mx-auto text-muted mb-6 opacity-30 group-hover:scale-110 transition-transform duration-500" />
-                <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40">ЭЪЛОНҲО ЁФТ НАШУДАНД</p>
+                <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40 text-center px-4">ЭЪЛОНҲО ЁФТ НАШУДАНД</p>
               </div>
             )}
           </div>

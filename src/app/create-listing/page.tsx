@@ -12,11 +12,12 @@ import { ALL_CATEGORIES, UserProfile } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, X, Upload, Crown, ChevronLeft } from "lucide-react";
+import { Camera, X, Upload, Crown, ChevronLeft, Sparkles, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
+import { analyzeWork } from "@/ai/flows/analyze-work-flow";
 
 export default function CreateListing() {
   const { user, loading: authLoading } = useUser();
@@ -31,6 +32,7 @@ export default function CreateListing() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,6 +57,25 @@ export default function CreateListing() {
     });
   };
 
+  const handleAiAnalyze = async () => {
+    if (imageUrls.length === 0) {
+      toast({ title: "Хатогӣ", description: "Аввал ақаллан як суратро бор кунед", variant: "destructive" });
+      return;
+    }
+    setIsAiAnalyzing(true);
+    try {
+      const result = await analyzeWork({ photoDataUri: imageUrls[0] });
+      setTitle(result.suggestedTitle);
+      setDescription(result.suggestedDescription);
+      setCategory(result.suggestedCategory);
+      toast({ title: "AI Таҳлил анҷом ёфт", description: "Маълумотҳо ба таври худкор пур шуданд" });
+    } catch (error) {
+      toast({ title: "AI Хатогӣ", description: "Таҳлили сурат имконнопазир шуд", variant: "destructive" });
+    } finally {
+      setIsAiAnalyzing(false);
+    }
+  };
+
   const removeImage = (index: number) => {
     setImageUrls(imageUrls.filter((_, i) => i !== index));
   };
@@ -66,11 +87,7 @@ export default function CreateListing() {
       toast({ title: "Хатогӣ", description: "Ҳамаи майдонҳоро пур кунед", variant: "destructive" });
       return;
     }
-    if (description.length < 160 || description.length > 250) {
-      toast({ title: "Маҳдудият", description: "Тавсиф 160-250 аломат", variant: "destructive" });
-      return;
-    }
-
+    
     const listingRef = doc(collection(db, "listings"));
     const defaultPlaceholder = PlaceHolderImages[1]?.imageUrl || "https://picsum.photos/seed/carpentry/600/400";
     
@@ -78,6 +95,7 @@ export default function CreateListing() {
       id: listingRef.id,
       userId: user.uid,
       userName: profile.name,
+      userPhone: profile.phone || "",
       title,
       category,
       description,
@@ -93,12 +111,11 @@ export default function CreateListing() {
         router.push("/");
       })
       .catch(async (err: any) => {
-        const permissionError = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: listingRef.path,
           operation: 'create',
           requestResourceData: listingData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        }));
       });
   };
 
@@ -113,46 +130,22 @@ export default function CreateListing() {
           БОЗГАШТ
         </Button>
 
-        {!profile.isPremium && (
-          <Card className="mb-8 border-yellow-500/20 bg-yellow-500/5 p-6 rounded-3xl flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Crown className="h-10 w-10 text-yellow-500" />
-              <div>
-                <h3 className="font-black text-secondary">Premium харед!</h3>
-                <p className="text-xs text-muted-foreground">Имконияти нашри то 5 эълон ва VIP-статуси автоматикӣ.</p>
-              </div>
-            </div>
-            <Button asChild className="bg-yellow-500 text-white font-bold rounded-xl"><Link href="/profile">ХАРИДАН</Link></Button>
-          </Card>
-        )}
-
         <Card className="border-border shadow-sm rounded-[2rem]">
-          <CardHeader><CardTitle className="text-3xl font-headline text-secondary">Эълони нав</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-3xl font-headline text-secondary">Эълони нав</CardTitle>
+            {imageUrls.length > 0 && (
+              <Button 
+                onClick={handleAiAnalyze} 
+                disabled={isAiAnalyzing}
+                className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full font-black text-xs gap-2 border-none"
+              >
+                {isAiAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                AI ТАВСИФ НАВИСАД
+              </Button>
+            )}
+          </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label>Номи касб ё хидмат</Label>
-                <Input placeholder="Масалан: Дуредгари моҳир" value={title} onChange={(e) => setTitle(e.target.value)} className="h-12 rounded-xl" />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Категория</Label>
-                <Select onValueChange={setCategory}>
-                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Интихоби категория" /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {ALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Тавсифи хидматрасонӣ (160-250 аломат)</Label>
-                <Textarea placeholder="Дар бораи маҳорат ва таҷрибаи худ..." className="min-h-[150px] rounded-xl" value={description} onChange={(e) => setDescription(e.target.value)} />
-                <p className={`text-xs text-right ${description.length < 160 || description.length > 250 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {description.length} / 250 (камаш 160)
-                </p>
-              </div>
-
               <div className="space-y-4">
                 <Label>Суратҳо (то 5 адад)</Label>
                 <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleFileChange} />
@@ -171,9 +164,30 @@ export default function CreateListing() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label>Номи касб ё хидмат</Label>
+                <Input placeholder="Масалан: Дуредгари моҳир" value={title} onChange={(e) => setTitle(e.target.value)} className="h-12 rounded-xl" />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Категория</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Интихоби категория" /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {ALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Тавсифи хидматрасонӣ</Label>
+                <Textarea placeholder="Дар бораи маҳорат ва таҷрибаи худ..." className="min-h-[150px] rounded-xl" value={description} onChange={(e) => setDescription(e.target.value)} />
+                <p className="text-xs text-right text-muted-foreground">{description.length} аломат</p>
+              </div>
+
               <div className="pt-4 flex gap-4">
-                <Button type="submit" className="flex-1 bg-primary h-14 font-black rounded-xl shadow-lg">НАШРИ ЭЪЛОН</Button>
-                <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1 h-14 rounded-xl">БЕКОР КАРДАН</Button>
+                <Button type="submit" className="flex-1 bg-primary h-14 font-black rounded-xl shadow-lg uppercase">НАШРИ ЭЪЛОН</Button>
+                <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1 h-14 rounded-xl font-black uppercase">БЕКОР КАРДАН</Button>
               </div>
             </form>
           </CardContent>
