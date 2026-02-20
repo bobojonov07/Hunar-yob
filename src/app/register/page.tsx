@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react";
@@ -13,10 +14,12 @@ import { UserRole, ALL_REGIONS, ARTISAN_REGISTRATION_FEE, UserProfile } from "@/
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Lock, Eye, EyeOff, Info, CheckCircle2, CreditCard, ShieldCheck } from "lucide-react";
+import { Hammer, User as UserIcon, Lock, Eye, EyeOff, Info, CheckCircle2, CreditCard, ShieldCheck, ScrollText } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -44,11 +47,11 @@ export default function Register() {
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
-      toast({ title: "Хатогӣ", description: "Лутфан бо шартҳои истифода ва сиёсати амният розӣ шавед", variant: "destructive" });
+      toast({ title: "Огоҳӣ", description: "Лутфан аввал бо қоидаҳо розӣ шавед", variant: "destructive" });
       return;
     }
     if (!name || !email || !password || !birthDate || !region || !phone) {
-      toast({ title: "Хатогӣ", description: "Лутфан ҳамаи майдонҳоро пур кунед", variant: "destructive" });
+      toast({ title: "Хатогӣ", description: "Ҳамаи майдонҳоро пур кунед", variant: "destructive" });
       return;
     }
     if (password !== confirmPassword) {
@@ -68,7 +71,7 @@ export default function Register() {
     }
 
     if (role === 'Usto') {
-      setStep(3); // Go to payment for Artisan
+      setStep(3);
     } else {
       finalizeRegistration();
     }
@@ -143,19 +146,19 @@ export default function Register() {
             <form onSubmit={handleNextStep}>
               <CardContent className="space-y-8 pt-12 px-10">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаб</Label>
-                  <Input id="name" className="h-14 rounded-2xl bg-muted/20 border-muted" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаб</Label>
+                  <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Санаи таваллуд</Label>
-                    <Input type="date" className="h-14 rounded-2xl bg-muted/20 border-muted" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                    <Input type="date" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Минтақа</Label>
                     <Select onValueChange={setRegion}>
-                      <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted"><SelectValue placeholder="Интихоби минтақа" /></SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold"><SelectValue placeholder="Интихоби минтақа" /></SelectTrigger>
                       <SelectContent className="rounded-[2rem] border-none shadow-3xl">
                         {ALL_REGIONS.map(r => <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>)}
                       </SelectContent>
@@ -168,12 +171,12 @@ export default function Register() {
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Телефон</Label>
                     <div className="relative">
                       <div className="absolute left-4 top-4 text-sm font-black text-muted-foreground">+992</div>
-                      <Input className="pl-16 h-14 rounded-2xl bg-muted/20 border-muted" placeholder="900000000" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={9} />
+                      <Input className="pl-16 h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="900000000" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={9} />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почтаи электронӣ</Label>
-                    <Input type="email" placeholder="example@mail.tj" className="h-14 rounded-2xl bg-muted/20 border-muted" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта</Label>
+                    <Input type="email" placeholder="example@mail.tj" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
 
@@ -181,13 +184,13 @@ export default function Register() {
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамз</Label>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} className="pr-14 h-14 rounded-2xl bg-muted/20 border-muted" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <Input type={showPassword ? "text" : "password"} className="pr-14 h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-muted-foreground">{showPassword ? <EyeOff className="h-6 w-6" /> : <Eye className="h-6 w-6" />}</button>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Тасдиқи рамз</Label>
-                    <Input type="password" className="h-14 rounded-2xl bg-muted/20 border-muted" placeholder="******" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    <Input type="password" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                   </div>
                 </div>
                 
@@ -209,23 +212,54 @@ export default function Register() {
                       </Label>
                     </div>
                   </RadioGroup>
-                  {role === 'Usto' && (
-                    <div className="p-4 bg-yellow-50 border-2 border-dashed border-yellow-200 rounded-3xl text-[10px] font-black text-yellow-700 flex items-center gap-3">
-                      <Info className="h-6 w-6 shrink-0" />
-                      БАРОИ УСТОҲО ҲАҚҚИ САБТИ НОМИ ҲАТМӢ {ARTISAN_REGISTRATION_FEE} СОМОНӢ МЕБОШАД.
-                    </div>
-                  )}
                 </div>
 
-                <div className="flex items-start space-x-4 pt-6">
+                <div className="flex items-start space-x-4 p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20">
                   <Checkbox id="agreed" checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} className="mt-1 h-6 w-6 rounded-lg" />
-                  <Label htmlFor="agreed" className="text-xs text-muted-foreground font-bold leading-relaxed">
-                    Ман бо <span className="text-primary hover:underline">шартҳои истифода</span> ва <span className="text-primary hover:underline">сиёсати амният</span> розӣ ҳастам. Истифодаи дашном ва ҳақорат боиси блок шудани акаунт мегардад.
-                  </Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="agreed" className="text-[10px] text-muted-foreground font-bold leading-relaxed block">
+                      Ман бо шартҳои истифода ва сиёсати махфияти барнома розӣ ҳастам.
+                    </Label>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button type="button" className="text-primary font-black uppercase text-[10px] tracking-widest flex items-center gap-2 hover:underline">
+                          <ScrollText className="h-4 w-4" /> ХОНДАНИ ҚОИДАҲО
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="rounded-[3rem] p-10 max-w-2xl border-none shadow-3xl bg-white">
+                        <DialogHeader>
+                          <DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ҚОИДАҲО ВА МАХФИЯТ</DialogTitle>
+                        </DialogHeader>
+                        <ScrollArea className="h-[400px] pr-4 mt-6">
+                          <div className="space-y-6 text-sm text-muted-foreground leading-relaxed font-medium">
+                            <h4 className="font-black text-secondary uppercase tracking-widest text-xs">1. УМУМӢ</h4>
+                            <p>Ин барнома барои пайваст кардани устоҳо ва мизоҷон дар Тоҷикистон сохта шудааст. Мо барои сифати хидматрасонии устоҳо масъулият надорем, аммо барои амнияти муомилаҳо кумак мекунем.</p>
+                            
+                            <h4 className="font-black text-secondary uppercase tracking-widest text-xs">2. ОДОБИ МУОШИРАТ</h4>
+                            <p>Истифодаи дашном, ҳақорат ва муомилаи дағалона қатъиян манъ аст. Дар сурати шикояти мизоҷон, акаунти шумо бе огоҳӣ баста (Блок) мешавад.</p>
+                            
+                            <h4 className="font-black text-secondary uppercase tracking-widest text-xs">3. МАЪЛУМОТИ ШАХСӢ</h4>
+                            <p>Мо маълумоти шуморо ба шахсони сеюм намедиҳем. Рақами телефони шумо танҳо ба мизоҷоне, ки бо шумо шартнома мебанданд, намоён мешавад.</p>
+                            
+                            <h4 className="font-black text-secondary uppercase tracking-widest text-xs">4. ПАРДОХТҲО</h4>
+                            <p>Ҳаққи сабти номи устоҳо ({ARTISAN_REGISTRATION_FEE} сомонӣ) ва обунаи Premium барои нигоҳдории сервер ва рушди лоиҳа сарф мешавад ва баргардонида намешавад.</p>
+                            
+                            <p className="font-black text-primary italic pt-4">Бо пахш кардани тугмаи "Ман розӣ ҳастам", шумо тамоми масъулиятро ба дӯш мегиред.</p>
+                          </div>
+                        </ScrollArea>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
-                <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ДАВОМ ДОДАН</Button>
+                <Button 
+                  type="submit" 
+                  disabled={!agreed}
+                  className={`w-full h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all ${agreed ? 'bg-primary hover:scale-[1.02]' : 'bg-muted opacity-50 cursor-not-allowed'}`}
+                >
+                  ДАВОМ ДОДАН
+                </Button>
                 <p className="text-sm text-center text-muted-foreground font-bold">Аллакай аъзо ҳастед? <Link href="/login" className="text-primary font-black">Ворид шавед</Link></p>
               </CardFooter>
             </form>
@@ -240,7 +274,6 @@ export default function Register() {
                 <h3 className="text-3xl font-black tracking-tighter">ТАСДИҚИ ТЕЛЕФОН</h3>
                 <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба рақами <b className="text-secondary">+992 {phone}</b> коди 4-рақама фиристодем. (Код: 1234)</p>
                 <Input className="h-20 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
-                <Button type="button" variant="link" className="text-primary font-black uppercase tracking-widest text-xs">Кодро бозпас фиристед</Button>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10">
                 <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ТАСДИҚ ВА САБТ</Button>
@@ -259,22 +292,14 @@ export default function Register() {
                   <h3 className="text-4xl font-black text-secondary tracking-tighter uppercase">ФАЪОЛКУНӢ</h3>
                   <p className="text-sm text-muted-foreground mt-3 font-bold">Барои сабти номи усто пардохти ҳатмии <b className="text-primary">{ARTISAN_REGISTRATION_FEE} TJS</b> лозим аст.</p>
                 </div>
-
                 <div className="space-y-6">
-                  <div className="p-8 bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-[-20%] right-[-10%] h-40 w-40 bg-white/10 rounded-full blur-3xl" />
-                    <CreditCard className="h-12 w-12 mb-6" />
-                    <h4 className="font-black uppercase text-xs tracking-[0.3em] mb-2 opacity-60">KORTI MILLI</h4>
-                    <p className="text-xs font-bold leading-relaxed">Танҳо устоҳои воқеӣ сабти ном мешаванд. Мо бехатариро кафолат медиҳем.</p>
-                  </div>
-
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рақами корт</Label>
                     <Input placeholder="4444 4444 4444 4444" value={cardNo} onChange={(e) => setCardNo(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={19} />
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="font-black text-xs uppercase tracking-widest opacity-60">Муҳлати эътибор</Label>
+                      <Label className="font-black text-xs uppercase tracking-widest opacity-60">Муҳлат</Label>
                       <Input placeholder="MM/YY" value={cardExp} onChange={(e) => setCardExp(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-lg" maxLength={5} />
                     </div>
                     <div className="space-y-2">
