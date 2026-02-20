@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useMemo } from "react";
@@ -22,7 +23,9 @@ import {
   Send as TelegramIcon,
   ExternalLink,
   ArrowRight,
-  Info
+  Info,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCollection, useUser } from "@/firebase";
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
+import { findArtisan } from "@/ai/flows/find-artisan-flow";
 
 const CATEGORIES = [
   { name: "Барномасоз", icon: "💻" },
@@ -49,6 +53,9 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState<any>(null);
+
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
@@ -102,6 +109,22 @@ export default function Home() {
     }
   };
 
+  const handleAiSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setAiLoading(true);
+    try {
+      const response = await findArtisan({ query: searchQuery });
+      setAiResponse(response);
+      if (response.suggestedCategory) {
+        setSelectedCategory(response.suggestedCategory);
+      }
+    } catch (error) {
+      toast({ title: "AI Хатогӣ", description: "Ёвар муваққатан кор намекунад", variant: "destructive" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/30">
       <Navbar />
@@ -129,20 +152,25 @@ export default function Home() {
               МАҲОРАТРО <span className="text-primary">ЁБ.</span> <br />
               <span className="italic opacity-90">ҲАЛ КУН.</span>
             </h1>
-            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-16 font-medium leading-relaxed">
-              Мо корбаронро бо беҳтарин устоҳои кишвар пайваст мекунем. Ҳамаи хидматҳо дар як ҷо.
-            </p>
             
             <div className="mt-12 bg-white/5 backdrop-blur-3xl p-3 rounded-[3rem] border border-white/10 shadow-3xl max-w-4xl mx-auto transition-all hover:scale-[1.01]">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                 <div className="md:col-span-8 relative">
                   <Search className="absolute left-6 h-6 w-6 text-muted-foreground top-1/2 -translate-y-1/2" />
                   <Input 
-                    className="h-16 pl-16 pr-6 bg-white text-secondary rounded-[2.5rem] text-xl border-none focus-visible:ring-primary shadow-2xl font-bold placeholder:font-medium"
-                    placeholder="Масалан: Сантехник, Дуредгар..."
+                    className="h-16 pl-16 pr-24 bg-white text-secondary rounded-[2.5rem] text-xl border-none focus-visible:ring-primary shadow-2xl font-bold placeholder:font-medium"
+                    placeholder="Масалан: Сохтани шкаф..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
+                  <Button 
+                    onClick={handleAiSearch}
+                    disabled={aiLoading}
+                    className="absolute right-2 top-2 h-12 px-6 rounded-full bg-primary hover:bg-primary/90 text-white font-black text-xs gap-2"
+                  >
+                    {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    AI ҲАЛ КУНАД
+                  </Button>
                 </div>
                 <div className="md:col-span-4">
                   <Select onValueChange={(val) => setSelectedRegion(val === "all" ? null : val)}>
@@ -159,6 +187,20 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {aiResponse && (
+              <div className="mt-8 p-8 bg-white/10 backdrop-blur-3xl rounded-[2.5rem] border border-white/20 text-left animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-3 mb-4 text-primary">
+                  <Sparkles className="h-6 w-6" />
+                  <span className="font-black uppercase tracking-widest text-xs">HUNAR-BOT ТАВСИЯ МЕДИҲАД:</span>
+                </div>
+                <p className="text-xl font-bold mb-4">{aiResponse.recommendation}</p>
+                <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
+                  <p className="text-xs font-medium italic opacity-80">{aiResponse.advice}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setAiResponse(null)} className="mt-4 text-white/50 hover:text-white font-bold h-8">ТОЗА КАРДАН</Button>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -191,7 +233,7 @@ export default function Home() {
               <p className="text-muted-foreground font-bold mt-2 uppercase tracking-widest text-xs">Маҳорати лозимаро интихоб кунед</p>
             </div>
             {(selectedCategory || selectedRegion) && (
-              <Button variant="ghost" size="lg" onClick={() => {setSelectedCategory(null); setSelectedRegion(null)}} className="text-primary font-black hover:bg-primary/5 rounded-2xl">
+              <Button variant="ghost" size="lg" onClick={() => {setSelectedCategory(null); setSelectedRegion(null); setAiResponse(null)}} className="text-primary font-black hover:bg-primary/5 rounded-2xl">
                 <X className="h-6 w-6 mr-2" /> ТОЗА КАРДАН
               </Button>
             )}
@@ -395,15 +437,6 @@ export default function Home() {
               <p className="text-xl text-muted-foreground font-medium max-w-lg leading-relaxed mb-8">
                 Мо боварӣ дорем, ки ҳар як маҳорат бояд дида шавад ва ҳар як мушкилӣ бояд устои худро ёбад. Ин платформа барои рушди ҳунармандӣ дар Тоҷикистон сохта шудааст.
               </p>
-              <div className="p-6 bg-muted/30 rounded-3xl border-2 border-dashed flex items-start gap-4">
-                <Info className="h-6 w-6 text-primary shrink-0 mt-1" />
-                <div>
-                  <h4 className="font-black text-secondary text-sm uppercase tracking-widest mb-2">ЭЗОҲИ МУҲИМ</h4>
-                  <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                    Барномасоз барои мундариҷаи эълонҳо, сифати хидматрасонӣ ва муомилаҳои байни корбарон ҷавобгар нест. Барнома танҳо ҳамчун василаи кумак ба ҳамватанон сохта шудааст.
-                  </p>
-                </div>
-              </div>
             </div>
             <div>
               <h5 className="text-xs font-black mb-10 text-primary uppercase tracking-[0.4em]">Меню</h5>
