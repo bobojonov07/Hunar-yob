@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Нуқтаи марказии Firebase барои тамоми барнома.
+ * Ин файл тамоми "Hooks" ва "Providers"-ро содир (export) мекунад.
+ */
+
 export * from './provider';
 export * from './client-provider';
 export * from './auth/use-user';
