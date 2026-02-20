@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Hammer, User as UserIcon, Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, ScrollText, Mail } from "lucide-react";
-import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -35,6 +35,7 @@ export default function Register() {
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
 
   const router = useRouter();
   const { toast } = useToast();
@@ -55,14 +56,9 @@ export default function Register() {
       toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
       return;
     }
-    if (phone.length < 9) {
-      toast({ title: "Хатогӣ", description: "Рақами телефон нодуруст аст", variant: "destructive" });
-      return;
-    }
 
     setLoading(true);
     try {
-      // Check if phone number already exists
       const cleanPhone = phone.replace(/\D/g, "");
       const phoneQuery = query(collection(db, "users"), where("phone", "==", cleanPhone));
       const phoneSnap = await getDocs(phoneQuery);
@@ -73,8 +69,19 @@ export default function Register() {
         return;
       }
 
+      // Generate a 4-digit code (In a real app, this would be sent via an API like EmailJS or a Server Action)
+      const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedOtp(newOtp);
+      
+      console.log(`Verification Code for ${email}: ${newOtp}`);
+      
+      // Simulating a real email send
+      toast({ 
+        title: "Код фиристода шуд", 
+        description: `Коди тасдиқ ба почтаи ${email} фиристода шуд. (Дар ин версия: ${newOtp})` 
+      });
+      
       setStep(2);
-      toast({ title: "Код фиристода шуд", description: `Коди тасдиқ (1234) ба почтаи ${email} фиристода шуд` });
     } catch (err) {
       toast({ title: "Хатогӣ", description: "Мушкилии техникӣ рӯй дод", variant: "destructive" });
     } finally {
@@ -84,7 +91,7 @@ export default function Register() {
 
   const handleOtpConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp !== "1234") {
+    if (otp !== generatedOtp) {
       toast({ title: "Хатогӣ", description: "Коди тасдиқ нодуруст аст", variant: "destructive" });
       return;
     }
@@ -107,7 +114,7 @@ export default function Register() {
         region,
         balance: 0,
         identificationStatus: 'None',
-        isArtisanFeePaid: true, // Сабти ном ҳоло ройгон аст
+        isArtisanFeePaid: true,
         isPremium: false,
         isBlocked: false,
         warningCount: 0,
@@ -115,23 +122,12 @@ export default function Register() {
       };
 
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, profileData).catch(async (err) => {
-        const permissionError = new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'create',
-          requestResourceData: profileData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+      await setDoc(userRef, profileData);
       
       toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
       router.push("/");
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        toast({ title: "Хатогӣ", description: "Ин почта аллакай истифода шудааст.", variant: "destructive" });
-      } else {
-        toast({ title: "Хатогии сабти ном", description: "Хатогие рӯй дод. Лутфан дубора кӯшиш кунед.", variant: "destructive" });
-      }
+      toast({ title: "Хатогӣ", description: "Сабти ном нашуд. Лутфан дубора кӯшиш кунед.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -247,8 +243,6 @@ export default function Register() {
                             
                             <h4 className="font-black text-secondary uppercase tracking-widest text-xs">3. МАЪЛУМОТИ ШАХСӢ</h4>
                             <p>Мо маълумоти шуморо ба шахсони сеюм намедиҳем. Рақами телефони шумо танҳо ба мизоҷоне, ки бо шумо шартнома мебанданд, намоён мешавад.</p>
-                            
-                            <p className="font-black text-primary italic pt-4">Бо пахш кардани тугмаи "Ман розӣ ҳастам", шумо тамоми масъулиятро ба дӯш мегиред.</p>
                           </div>
                         </ScrollArea>
                       </DialogContent>
@@ -276,7 +270,7 @@ export default function Register() {
                   <Mail className="h-12 w-12 text-primary" />
                 </div>
                 <h3 className="text-3xl font-black tracking-tighter">ТАСДИҚИ ПОЧТА</h3>
-                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба почтаи <b className="text-secondary">{email}</b> коди 4-рақамаи тасдиқро фиристодем. (Код: 1234)</p>
+                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба почтаи <b className="text-secondary">{email}</b> коди 4-рақамаи тасдиқро фиристодем.</p>
                 <Input className="h-20 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10">

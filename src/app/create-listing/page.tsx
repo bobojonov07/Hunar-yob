@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -12,12 +13,10 @@ import { ALL_CATEGORIES, UserProfile } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, X, Upload, Crown, ChevronLeft, Sparkles, Loader2 } from "lucide-react";
+import { Camera, X, Upload, ChevronLeft } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
-import { analyzeWork } from "@/ai/flows/analyze-work-flow";
 
 export default function CreateListing() {
   const { user, loading: authLoading } = useUser();
@@ -32,7 +31,6 @@ export default function CreateListing() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,25 +53,6 @@ export default function CreateListing() {
       };
       reader.readAsDataURL(file);
     });
-  };
-
-  const handleAiAnalyze = async () => {
-    if (imageUrls.length === 0) {
-      toast({ title: "Хатогӣ", description: "Аввал ақаллан як суратро бор кунед", variant: "destructive" });
-      return;
-    }
-    setIsAiAnalyzing(true);
-    try {
-      const result = await analyzeWork({ photoDataUri: imageUrls[0] });
-      setTitle(result.suggestedTitle);
-      setDescription(result.suggestedDescription);
-      setCategory(result.suggestedCategory);
-      toast({ title: "AI Таҳлил анҷом ёфт", description: "Маълумотҳо ба таври худкор пур шуданд" });
-    } catch (error) {
-      toast({ title: "AI Хатогӣ", description: "Таҳлили сурат имконнопазир шуд", variant: "destructive" });
-    } finally {
-      setIsAiAnalyzing(false);
-    }
   };
 
   const removeImage = (index: number) => {
@@ -131,18 +110,8 @@ export default function CreateListing() {
         </Button>
 
         <Card className="border-border shadow-sm rounded-[2rem]">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle className="text-3xl font-headline text-secondary">Эълони нав</CardTitle>
-            {imageUrls.length > 0 && (
-              <Button 
-                onClick={handleAiAnalyze} 
-                disabled={isAiAnalyzing}
-                className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full font-black text-xs gap-2 border-none"
-              >
-                {isAiAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                AI ТАВСИФ НАВИСАД
-              </Button>
-            )}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -182,7 +151,6 @@ export default function CreateListing() {
               <div className="space-y-2">
                 <Label>Тавсифи хидматрасонӣ</Label>
                 <Textarea placeholder="Дар бораи маҳорат ва таҷрибаи худ..." className="min-h-[150px] rounded-xl" value={description} onChange={(e) => setDescription(e.target.value)} />
-                <p className="text-xs text-right text-muted-foreground">{description.length} аломат</p>
               </div>
 
               <div className="pt-4 flex gap-4">

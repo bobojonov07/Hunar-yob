@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Search, 
   MapPin, 
-  Plus, 
   Briefcase, 
   ChevronRight, 
   Zap, 
@@ -22,10 +21,7 @@ import {
   MessageCircle, 
   Send as TelegramIcon,
   ExternalLink,
-  ArrowRight,
-  Info,
-  Sparkles,
-  Loader2
+  ArrowRight
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,9 +29,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useUser } from "@/firebase";
-import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
-import { findArtisan } from "@/ai/flows/find-artisan-flow";
 
 const CATEGORIES = [
   { name: "Барномасоз", icon: "💻" },
@@ -53,8 +48,6 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResponse, setAiResponse] = useState<any>(null);
 
   const { user } = useUser();
   const db = useFirestore();
@@ -109,22 +102,6 @@ export default function Home() {
     }
   };
 
-  const handleAiSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setAiLoading(true);
-    try {
-      const response = await findArtisan({ query: searchQuery });
-      setAiResponse(response);
-      if (response.suggestedCategory) {
-        setSelectedCategory(response.suggestedCategory);
-      }
-    } catch (error) {
-      toast({ title: "AI Хатогӣ", description: "Ёвар муваққатан кор намекунад", variant: "destructive" });
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/30">
       <Navbar />
@@ -158,19 +135,11 @@ export default function Home() {
                 <div className="md:col-span-8 relative">
                   <Search className="absolute left-6 h-6 w-6 text-muted-foreground top-1/2 -translate-y-1/2" />
                   <Input 
-                    className="h-16 pl-16 pr-24 bg-white text-secondary rounded-[2.5rem] text-xl border-none focus-visible:ring-primary shadow-2xl font-bold placeholder:font-medium"
-                    placeholder="Масалан: Сохтани шкаф..."
+                    className="h-16 pl-16 pr-6 bg-white text-secondary rounded-[2.5rem] text-xl border-none focus-visible:ring-primary shadow-2xl font-bold placeholder:font-medium"
+                    placeholder="Ҷустуҷӯи устоҳо..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <Button 
-                    onClick={handleAiSearch}
-                    disabled={aiLoading}
-                    className="absolute right-2 top-2 h-12 px-6 rounded-full bg-primary hover:bg-primary/90 text-white font-black text-xs gap-2"
-                  >
-                    {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    AI ҲАЛ КУНАД
-                  </Button>
                 </div>
                 <div className="md:col-span-4">
                   <Select onValueChange={(val) => setSelectedRegion(val === "all" ? null : val)}>
@@ -187,20 +156,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-
-            {aiResponse && (
-              <div className="mt-8 p-8 bg-white/10 backdrop-blur-3xl rounded-[2.5rem] border border-white/20 text-left animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="flex items-center gap-3 mb-4 text-primary">
-                  <Sparkles className="h-6 w-6" />
-                  <span className="font-black uppercase tracking-widest text-xs">HUNAR-BOT ТАВСИЯ МЕДИҲАД:</span>
-                </div>
-                <p className="text-xl font-bold mb-4">{aiResponse.recommendation}</p>
-                <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
-                  <p className="text-xs font-medium italic opacity-80">{aiResponse.advice}</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setAiResponse(null)} className="mt-4 text-white/50 hover:text-white font-bold h-8">ТОЗА КАРДАН</Button>
-              </div>
-            )}
           </div>
         </div>
       </section>
@@ -233,7 +188,7 @@ export default function Home() {
               <p className="text-muted-foreground font-bold mt-2 uppercase tracking-widest text-xs">Маҳорати лозимаро интихоб кунед</p>
             </div>
             {(selectedCategory || selectedRegion) && (
-              <Button variant="ghost" size="lg" onClick={() => {setSelectedCategory(null); setSelectedRegion(null); setAiResponse(null)}} className="text-primary font-black hover:bg-primary/5 rounded-2xl">
+              <Button variant="ghost" size="lg" onClick={() => {setSelectedCategory(null); setSelectedRegion(null)}} className="text-primary font-black hover:bg-primary/5 rounded-2xl">
                 <X className="h-6 w-6 mr-2" /> ТОЗА КАРДАН
               </Button>
             )}
@@ -432,7 +387,7 @@ export default function Home() {
                 <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30">
                   <Briefcase className="h-8 w-8 text-white" />
                 </div>
-                <span className="text-5xl font-black font-headline tracking-tighter text-secondary">ҲУНАР ЁБ</span>
+                <span className="text-5xl font-black font-headline tracking-tighter text-secondary">ҲУНАР Ё Б</span>
               </div>
               <p className="text-xl text-muted-foreground font-medium max-w-lg leading-relaxed mb-8">
                 Мо боварӣ дорем, ки ҳар як маҳорат бояд дида шавад ва ҳар як мушкилӣ бояд устои худро ёбад. Ин платформа барои рушди ҳунармандӣ дар Тоҷикистон сохта шудааст.
@@ -458,7 +413,7 @@ export default function Home() {
             </div>
           </div>
           <div className="pt-12 border-t text-[10px] text-muted-foreground font-black tracking-[0.6em] uppercase text-center opacity-50">
-            &copy; 2024 ҲУНАР ЁБ. ТАҲИЯ ШУДААСТ ТАВАССУТИ TAJ.WEB
+            &copy; 2024 ҲУНАР Ё Б. ТАҲИЯ ШУДААСТ ТАВАССУТИ TAJ.WEB
           </div>
         </div>
       </footer>
