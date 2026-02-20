@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -14,12 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Upload, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2, Lock } from "lucide-react";
+import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2, Lock, Wallet } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, serverTimestamp, collection, query, where, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, deleteDoc } from "firebase/firestore";
 import { signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { useAuth } from "@/firebase";
 
@@ -42,7 +41,6 @@ export default function Profile() {
   const [editName, setEditName] = useState("");
   const [editRegion, setEditRegion] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isIdDialogOpen, setIsIdDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   
   const [oldPassword, setOldPassword] = useState("");
@@ -50,8 +48,6 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loadingPass, setLoadingPass] = useState(false);
 
-  const [idPhotoPreview, setIdPhotoPreview] = useState<string | null>(null);
-  const idFileInputRef = useRef<HTMLInputElement>(null);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -97,6 +93,7 @@ export default function Profile() {
     if (!userProfileRef || !profile) return;
     if (profile.balance < PREMIUM_PRICE) {
       toast({ title: "Маблағ нокифоя аст", description: "Лутфан ҳамёнро пур кунед", variant: "destructive" });
+      router.push("/wallet");
       return;
     }
     const updateData = { 
@@ -133,32 +130,6 @@ export default function Profile() {
     } finally {
       setLoadingPass(false);
     }
-  };
-
-  const handleIdPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setIdPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmitId = async () => {
-    if (!idPhotoPreview || !userProfileRef) return;
-    const updateData = { identificationStatus: 'Pending' };
-    updateDoc(userProfileRef, updateData)
-      .then(() => {
-        setIsIdDialogOpen(false);
-        toast({ title: "Дархост фиристода шуд" });
-      })
-      .catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: userProfileRef.path,
-          operation: 'update',
-          requestResourceData: updateData
-        }));
-      });
   };
 
   const handleDeleteListing = async (listingId: string) => {
@@ -235,6 +206,17 @@ export default function Profile() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-4 px-8">
+                <Link href="/wallet" className="block p-6 bg-secondary text-white rounded-[2rem] shadow-xl hover:scale-[1.02] transition-all">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Тавозуни Ҳамён</span>
+                    <Wallet className="h-5 w-5 opacity-60" />
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black">{profile.balance || 0}</span>
+                    <span className="text-sm font-bold opacity-60">TJS</span>
+                  </div>
+                </Link>
+
                 <div className={`p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 ${
                   profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
                   profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
@@ -266,11 +248,6 @@ export default function Profile() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-1 text-secondary opacity-60"><span>Пуррагии профил</span><span>{completion}%</span></div>
                   <Progress value={completion} className="h-3" />
-                </div>
-
-                <div className="space-y-5 pt-6 border-t border-muted">
-                  <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl"><Phone className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Телефон</p><p className="text-sm font-black text-secondary">+992 {profile.phone || "---"}</p></div></div>
-                  <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl"><MapPin className="h-5 w-5 text-primary" /></div><div><p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Минтақа</p><p className="text-sm font-black text-secondary">{profile.region || "---"}</p></div></div>
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3 p-8 pt-0">

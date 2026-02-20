@@ -87,7 +87,6 @@ export interface Review {
 
 export const VIP_PRICE = 20;
 export const PREMIUM_PRICE = 100;
-export const ARTISAN_REGISTRATION_FEE = 10;
 
 export const ALL_REGIONS = [
   "Душанбе", "Бохтар", "Кӯлоб", "Хуҷанд", "Истаравшан", "Конибодом", "Панҷакент", 
@@ -101,8 +100,7 @@ export const ALL_CATEGORIES = [
 ];
 
 export function calculateFee(price: number): number {
-  if (price < 100) return 10;
+  if (price < 100) return 5;
   if (price < 1000) return 20;
-  if (price < 10000) return 100;
-  return 1000;
+  return Math.floor(price * 0.05); // 5% commission
 }
