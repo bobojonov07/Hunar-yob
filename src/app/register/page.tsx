@@ -15,8 +15,8 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Hammer, User as UserIcon, Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, ScrollText, Mail } from "lucide-react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from "firebase/auth";
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,7 +41,7 @@ export default function Register() {
   const auth = useAuth();
   const db = useFirestore();
 
-  const handleNextStep = (e: React.FormEvent) => {
+  const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
       toast({ title: "Огоҳӣ", description: "Лутфан аввал бо қоидаҳо розӣ шавед", variant: "destructive" });
@@ -55,9 +55,31 @@ export default function Register() {
       toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
       return;
     }
+    if (phone.length < 9) {
+      toast({ title: "Хатогӣ", description: "Рақами телефон нодуруст аст", variant: "destructive" });
+      return;
+    }
 
-    setStep(2);
-    toast({ title: "Код фиристода шуд", description: `Коди тасдиқ (1234) ба почтаи ${email} фиристода шуд` });
+    setLoading(true);
+    try {
+      // Check if phone number already exists
+      const cleanPhone = phone.replace(/\D/g, "");
+      const phoneQuery = query(collection(db, "users"), where("phone", "==", cleanPhone));
+      const phoneSnap = await getDocs(phoneQuery);
+      
+      if (!phoneSnap.empty) {
+        toast({ title: "Хатогӣ", description: "Ин рақами телефон аллакай истифода шудааст", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
+      setStep(2);
+      toast({ title: "Код фиристода шуд", description: `Коди тасдиқ (1234) ба почтаи ${email} фиристода шуд` });
+    } catch (err) {
+      toast({ title: "Хатогӣ", description: "Мушкилии техникӣ рӯй дод", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpConfirm = async (e: React.FormEvent) => {
@@ -85,7 +107,7 @@ export default function Register() {
         region,
         balance: 0,
         identificationStatus: 'None',
-        isArtisanFeePaid: true, // Пардохт ҳоло ройгон аст
+        isArtisanFeePaid: true, // Сабти ном ҳоло ройгон аст
         isPremium: false,
         isBlocked: false,
         warningCount: 0,
@@ -105,7 +127,11 @@ export default function Register() {
       toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
       router.push("/");
     } catch (error: any) {
-      toast({ title: "Хатогии сабти ном", description: "Ин почта аллакай истифода шудааст ё хатогие рӯй дод.", variant: "destructive" });
+      if (error.code === 'auth/email-already-in-use') {
+        toast({ title: "Хатогӣ", description: "Ин почта аллакай истифода шудааст.", variant: "destructive" });
+      } else {
+        toast({ title: "Хатогии сабти ном", description: "Хатогие рӯй дод. Лутфан дубора кӯшиш кунед.", variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }
@@ -233,10 +259,10 @@ export default function Register() {
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
                 <Button 
                   type="submit" 
-                  disabled={!agreed}
-                  className={`w-full h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all ${agreed ? 'bg-primary hover:scale-[1.02]' : 'bg-muted opacity-50 cursor-not-allowed'}`}
+                  disabled={!agreed || loading}
+                  className={`w-full h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all ${agreed && !loading ? 'bg-primary hover:scale-[1.02]' : 'bg-muted opacity-50 cursor-not-allowed'}`}
                 >
-                  ДАВОМ ДОДАН
+                  {loading ? "ДАР ҲОЛИ САНҶИШ..." : "ДАВОМ ДОДАН"}
                 </Button>
                 <p className="text-sm text-center text-muted-foreground font-bold">Аллакай аъзо ҳастед? <Link href="/login" className="text-primary font-black">Ворид шавед</Link></p>
               </CardFooter>
