@@ -1,16 +1,6 @@
 
 'use client';
 
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  serverTimestamp,
-  Firestore,
-  increment
-} from 'firebase/firestore';
-
 export type UserRole = 'Usto' | 'Client';
 export type IdentificationStatus = 'None' | 'Pending' | 'Verified' | 'Rejected';
 
@@ -28,6 +18,7 @@ export interface UserProfile {
   isArtisanFeePaid?: boolean;
   warningCount?: number;
   isBlocked?: boolean;
+  favorites?: string[];
   createdAt: any;
 }
 

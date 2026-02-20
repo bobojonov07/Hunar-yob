@@ -1,14 +1,13 @@
 
 "use client"
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, getListings, toggleFavorite, getCurrentUser, User, getReviews, saveReview, Review, makeListingVip, incrementViews, updateLastSeen, reportUser } from "@/lib/storage";
+import { Listing, UserProfile, Review, VIP_PRICE } from "@/lib/storage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   Carousel, 
   CarouselContent, 
@@ -22,102 +21,94 @@ import {
   MessageSquare, 
   ChevronLeft, 
   Calendar, 
-  User as UserIcon, 
   Heart, 
   Share2, 
   Star, 
   Crown, 
   Eye,
   CheckCircle2,
-  Flag
+  Flag,
+  ShieldCheck
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { doc, updateDoc, arrayUnion, arrayRemove, increment, collection, query, orderBy } from "firebase/firestore";
 
 export default function ListingDetail() {
   const { id } = useParams();
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const { user } = useUser();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    updateLastSeen();
-    const allListings = getListings();
-    const found = allListings.find(l => l.id === id);
-    if (found) {
-      setListing(found);
-      setReviews(getReviews(found.id));
-      incrementViews(found.id);
-    }
-    
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-    if (currentUser && currentUser.favorites) {
-      setIsFavorite(currentUser.favorites.includes(id as string));
-    }
-  }, [id]);
+  const listingRef = useMemo(() => id ? doc(db, "listings", id as string) : null, [db, id]);
+  const { data: listing } = useDoc<Listing>(listingRef as any);
 
-  const isOwner = user?.id === listing?.userId;
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
-  const handleFavoriteToggle = () => {
-    if (!user) {
-      toast({ title: "Вуруд лозим аст", description: "Барои илова ба писандидаҳо вориди акаунт шавед", variant: "destructive" });
+  const reviewsQuery = useMemo(() => {
+    if (!db || !id) return null;
+    return query(collection(db, "listings", id as string, "reviews"), orderBy("createdAt", "desc"));
+  }, [db, id]);
+  const { data: reviews = [] } = useCollection<Review>(reviewsQuery as any);
+
+  const isFavorite = useMemo(() => {
+    return profile?.favorites?.includes(id as string) || false;
+  }, [profile, id]);
+
+  const isOwner = user?.uid === listing?.userId;
+
+  const handleFavoriteToggle = async () => {
+    if (!user || !userProfileRef) {
+      toast({ title: "Вуруд лозим аст", variant: "destructive" });
       router.push("/login");
       return;
     }
     
-    const success = toggleFavorite(listing!.id);
-    if (success) {
-      setIsFavorite(!isFavorite);
+    try {
+      await updateDoc(userProfileRef, {
+        favorites: isFavorite ? arrayRemove(id) : arrayUnion(id)
+      });
       toast({
         title: isFavorite ? "Хориҷ карда шуд" : "Илова шуд",
-        description: isFavorite ? "Эълон аз рӯйхати писандидаҳо хориҷ шуд" : "Эълон ба рӯйхати писандидаҳо илова шуд",
       });
+    } catch (err: any) {
+      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
     }
   };
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast({
-      title: "Пайванд нусхабардорӣ шуд",
-      description: "Шумо метавонед онро бо дигарон мубодила кунед",
-    });
-  };
-
-  const handleReport = () => {
-    if (!listing) return;
-    const res = reportUser(listing.userId);
-    if (res.success) toast({ title: res.message });
+    toast({ title: "Пайванд нусхабардорӣ шуд" });
   };
 
   const handleCall = () => {
-    if (isOwner) {
-      toast({ title: "Хатогӣ", description: "Шумо ба худатон занг зада наметавонед", variant: "destructive" });
-      return;
-    }
+    if (isOwner) return;
     if (listing?.userPhone) {
       window.location.href = `tel:+992${listing.userPhone}`;
-    } else {
-      toast({ title: "Рақам дастрас нест", variant: "destructive" });
     }
   };
 
-  const handleVipUpgrade = () => {
-    if (!listing) return;
-    const res = makeListingVip(listing.id);
-    if (res.success) {
-      setListing({ ...listing, isVip: true });
-      toast({ title: "Муваффақият", description: res.message });
-    } else {
-      toast({ title: "Хатогӣ", description: res.message, variant: "destructive" });
+  const handleVipUpgrade = async () => {
+    if (!listing || !userProfileRef || !profile || !listingRef) return;
+    if (profile.balance < VIP_PRICE) {
+      toast({ title: "Маблағ нокифоя аст", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await updateDoc(userProfileRef, { balance: increment(-VIP_PRICE) });
+      await updateDoc(listingRef, { isVip: true });
+      toast({ title: "Эълон VIP шуд!" });
+    } catch (err: any) {
+      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
     }
   };
 
-  if (!listing) return null;
+  if (!listing) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -133,10 +124,6 @@ export default function ListingDetail() {
               <Share2 className="mr-2 h-4 w-4" />
               МУБОДИЛА
             </Button>
-            <Button variant="outline" onClick={handleReport} className="flex-1 md:flex-none rounded-2xl h-12 text-red-400 border-red-100 hover:bg-red-50">
-              <Flag className="mr-2 h-4 w-4" />
-              ШИКОЯТ
-            </Button>
             {!isOwner && (
               <Button 
                 variant="outline" 
@@ -150,7 +137,7 @@ export default function ListingDetail() {
             {isOwner && !listing.isVip && (
               <Button onClick={handleVipUpgrade} className="bg-yellow-500 hover:bg-yellow-600 text-white font-black rounded-2xl h-12 shadow-xl">
                 <Crown className="mr-2 h-5 w-5 fill-white" />
-                VIP КАРДАН (20 TJS)
+                VIP КАРДАН ({VIP_PRICE} TJS)
               </Button>
             )}
           </div>
@@ -164,12 +151,7 @@ export default function ListingDetail() {
                   {listing.images.map((img, index) => (
                     <CarouselItem key={index}>
                       <div className="relative aspect-video">
-                        <Image 
-                          src={img} 
-                          alt={`${listing.title} - ${index + 1}`} 
-                          fill 
-                          className="object-cover"
-                        />
+                        <Image src={img} alt={`${listing.title}`} fill className="object-cover" />
                       </div>
                     </CarouselItem>
                   ))}
@@ -201,10 +183,6 @@ export default function ListingDetail() {
               </div>
               <div className="flex flex-wrap gap-4">
                 <Badge className="bg-primary text-white px-6 py-2 text-sm font-black rounded-2xl shadow-lg">{listing.category}</Badge>
-                <div className="flex items-center text-muted-foreground text-xs font-bold bg-muted/30 px-4 py-2 rounded-2xl">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {new Date(listing.createdAt).toLocaleDateString('tg-TJ')}
-                </div>
               </div>
               <div className="prose prose-orange max-w-none">
                 <h3 className="text-2xl font-black mb-4 text-secondary tracking-tight">ТАВСИФИ ХИДМАТРАСОНӢ:</h3>
@@ -216,11 +194,9 @@ export default function ListingDetail() {
 
             <Separator className="my-16 opacity-50" />
 
-            {/* Reviews Section */}
             <div className="space-y-10">
               <div className="flex items-center justify-between">
                 <h3 className="text-3xl font-headline font-black text-secondary tracking-tighter">БАҲО ВА ШАРҲҲО</h3>
-                <Badge variant="outline" className="border-primary text-primary font-black px-4 py-1">ТАНҲО ПАС АЗ КОР</Badge>
               </div>
               
               <div className="space-y-8">
@@ -242,9 +218,6 @@ export default function ListingDetail() {
                               </div>
                             </div>
                           </div>
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                            {new Date(rev.createdAt).toLocaleDateString('tg-TJ')}
-                          </span>
                         </div>
                         <p className="text-muted-foreground text-lg leading-relaxed font-medium italic">&ldquo;{rev.comment}&rdquo;</p>
                         <div className="mt-6 flex items-center gap-2 text-[10px] font-black text-green-600 uppercase tracking-widest">
@@ -280,40 +253,23 @@ export default function ListingDetail() {
                   </div>
                 </div>
 
-                <div className="space-y-8">
-                  <div>
-                    <p className="text-xs font-black mb-3 flex items-center text-secondary uppercase tracking-[0.2em]">
-                      <MapPin className="h-5 w-5 mr-3 text-primary" />
-                      МАКОНИ ФАЪОЛИЯТ
-                    </p>
-                    <p className="text-muted-foreground pl-8 text-sm font-bold">Душанбе, Тоҷикистон</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    {!isOwner ? (
-                      <>
-                        <Button 
-                          onClick={handleCall}
-                          className="w-full bg-secondary hover:bg-secondary/90 text-white h-20 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.03] active:scale-95"
-                        >
-                          <Phone className="mr-4 h-7 w-7" />
-                          ЗАНГ ЗАДАН
-                        </Button>
-                        <Button 
-                          onClick={() => router.push(`/chat/${listing.id}`)}
-                          variant="outline" 
-                          className="w-full border-primary border-2 text-primary hover:bg-primary/5 h-20 text-xl font-black rounded-[2rem] transition-all hover:scale-[1.03] active:scale-95"
-                        >
-                          <MessageSquare className="mr-4 h-7 w-7" />
-                          ЧАТ БО УСТО
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="text-center p-8 bg-muted/30 rounded-[2rem] text-sm text-muted-foreground font-black uppercase tracking-widest italic border-2 border-dashed">
-                        Ин эълони шумост
-                      </div>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {!isOwner ? (
+                    <>
+                      <Button onClick={handleCall} className="w-full bg-secondary h-20 text-xl font-black rounded-[2rem] shadow-2xl">
+                        <Phone className="mr-4 h-7 w-7" />
+                        ЗАНГ ЗАДАН
+                      </Button>
+                      <Button onClick={() => router.push(`/chat/${listing.id}`)} variant="outline" className="w-full border-primary border-2 text-primary h-20 text-xl font-black rounded-[2rem]">
+                        <MessageSquare className="mr-4 h-7 w-7" />
+                        ЧАТ БО УСТО
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="text-center p-8 bg-muted/30 rounded-[2rem] text-sm text-muted-foreground font-black uppercase italic border-2 border-dashed">
+                      Ин эълони шумост
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
