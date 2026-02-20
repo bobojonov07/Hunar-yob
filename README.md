@@ -3,15 +3,22 @@
 
 Ин барнома бо истифода аз **NextJS** ва **Firebase** сохта шудааст. Ҳамаи маълумотҳо дар базаи маълумоти воқеии Google (Firestore) сабт мешаванд.
 
-## Қадами 1: Ҳалли мушкили "Quota Exceeded" (Квота пур шуд)
+## Қадами ниҳоӣ: Танзимот дар Firebase Console
 
-Агар дар аккаунти асосии шумо квота пур бошад:
-1. Ба [Firebase Console](https://console.firebase.google.com/) бо дигар аккаунти Google ворид шавед.
-2. Лоиҳаи навро бо номи `hunar-yob` созед.
-3. Дар танзимот (Project Settings) ба бахши **General** равед ва дар қисми **Your apps** як "Web app" (тасвири `</>`) илова кунед.
-4. Объекти `firebaseConfig`-ро нусхабардорӣ кунед ва ба файл дар `src/firebase/config.ts` гузоред.
+Пас аз он ки шумо лоиҳаро сохтед ва `firebaseConfig`-ро илова кардед, ин ду амалро ҳатман иҷро кунед:
 
-## Қадами 2: Гузоштани код ба GitHub
+1. **Authentication (Сабти ном)**:
+   - Ба [Firebase Console](https://console.firebase.google.com/) равед.
+   - Ба бахши **Build > Authentication** гузаред.
+   - Тугмаи **Get Started**-ро пахш кунед.
+   - Дар қисми **Sign-in method**, варианти **Email/Password**-ро интихоб ва **Enable** кунед.
+
+2. **Firestore Database (Базаи маълумот)**:
+   - Ба бахши **Build > Firestore Database** гузаред.
+   - Агар қаблан накарда бошед, **Create database**-ро пахш кунед.
+   - Ҷойгиршавиро (Location) интихоб кунед ва дар ҳолати **Test mode** оғоз кунед (ё баъд қоидаҳои амниятиро дар варақаи **Rules** танзим кунед).
+
+## Қадами 2: Гузоштани код ба GitHub ва Нашр
 
 1. Ба [github.com](https://github.com) ворид шавед ва репозиторийи нав бо номи `hunar-yob` созед.
 2. Дар терминали лоиҳа ин фармонҳоро иҷро кунед:
@@ -24,11 +31,7 @@
    git push -u origin main
    ```
 
-## Қадами 3: Нашр дар Firebase App Hosting
-
-1. Дар Firebase Console ба бахши **App Hosting** гузаред.
-2. Репозиторийи GitHub-и худро пайваст кунед.
-3. Firebase ба таври автоматӣ сомонаро дар интернет нашр мекунад.
+3. Дар Firebase Console ба бахши **App Hosting** гузаред ва репозиторийро пайваст кунед.
 
 ---
 Таҳия шудааст тавассути **TAJ.WEB** барои кумак ба ҳамватанон.
