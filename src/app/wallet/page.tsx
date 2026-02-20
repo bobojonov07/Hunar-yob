@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, CreditCard, History, Plus, ArrowLeft, ShieldCheck, Lock, ArrowDownRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wallet, CreditCard, History, Plus, ArrowLeft, ShieldCheck, Lock, ArrowDownRight, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -73,13 +74,23 @@ export default function WalletPage() {
     const numAmount = parseFloat(amount);
     
     try {
-      // 1. Update Profile Balance
+      /**
+       * ДИҚҚАТ: БАРОИ ПАРДОХТИ ВОҚЕӢ (REAL PAYMENT)
+       * Дар инҷо бояд API-и бонк (масалан Stripe ё Alif Pay) даъват карда шавад.
+       * Мисол: await callPaymentGateway(cardNumber, numAmount);
+       * Ҳоло ин танҳо як симулятсия барои санҷиши намуди барнома аст.
+       */
+      
+      // Симулятсияи интизории ҷавоби бонк
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 1. Навсозии тавозун дар Firestore
       const updateData = {
         balance: increment(mode === 'deposit' ? numAmount : -numAmount)
       };
       await updateDoc(userProfileRef, updateData);
 
-      // 2. Create Transaction Record
+      // 2. Сабти таърихи амалиёт
       await addDoc(collection(db, "transactions"), {
         userId: user.uid,
         amount: numAmount,
@@ -118,8 +129,16 @@ export default function WalletPage() {
           БОЗГАШТ
         </Button>
 
+        {/* Огоҳинома дар бораи ҳолати санҷишӣ */}
+        <Alert className="mb-10 bg-blue-50 border-blue-200 rounded-[2rem] p-6">
+          <Info className="h-6 w-6 text-blue-500" />
+          <AlertTitle className="font-black text-blue-700 uppercase tracking-tighter ml-2">ҲОЛАТИ САНҶИШӢ (DEMO MODE)</AlertTitle>
+          <AlertDescription className="text-blue-600 font-medium ml-2">
+            Ин бахш дар ҳоли ҳозир барои намоиши интерфейс сохта шудааст. Маблағ воқеан аз корт гирифта намешавад. Барои пардохти ҳақиқӣ бояд бо бонк шартнома баста ва API-ро пайваст кунед.
+          </AlertDescription>
+        </Alert>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* LEFT COLUMN: BALANCE & INFO */}
           <div className="lg:col-span-7 space-y-8">
             <Card className="border-none shadow-3xl bg-gradient-to-br from-secondary via-secondary to-primary/90 text-white overflow-hidden relative rounded-[3rem] p-10">
               <div className="absolute -right-20 -bottom-20 opacity-10 rotate-12"><Wallet className="h-80 w-80" /></div>
@@ -156,20 +175,8 @@ export default function WalletPage() {
                 </div>
               </div>
             </div>
-
-            <div className="space-y-6">
-              <h3 className="text-2xl font-black text-secondary flex items-center gap-4 tracking-tighter">
-                <div className="h-10 w-10 bg-muted rounded-xl flex items-center justify-center"><History className="h-5 w-5" /></div>
-                ОХИРИН АМАЛИЁТҲО
-              </h3>
-              <div className="bg-white rounded-[3rem] border-4 border-dashed p-20 text-center shadow-inner group">
-                <History className="h-16 w-16 mx-auto text-muted mb-4 opacity-30 group-hover:scale-110 transition-transform" />
-                <p className="text-muted-foreground font-black uppercase tracking-widest text-xs opacity-50">Таърихи амалиёт холӣ аст</p>
-              </div>
-            </div>
           </div>
 
-          {/* RIGHT COLUMN: ACTIONS */}
           <div className="lg:col-span-5">
             <Card className="border-none shadow-3xl rounded-[3.5rem] overflow-hidden bg-white ring-1 ring-secondary/5 sticky top-24">
               <Tabs defaultValue="deposit" className="w-full">
@@ -267,7 +274,6 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* SECURITY DIALOG */}
       <Dialog open={isSecureDialogOpen} onOpenChange={setIsSecureDialogOpen}>
         <DialogContent className="rounded-[3rem] p-12 border-none shadow-3xl max-w-md">
           <DialogHeader>
@@ -303,7 +309,6 @@ export default function WalletPage() {
         </DialogContent>
       </Dialog>
 
-      {/* SUCCESS DIALOG */}
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
         <DialogContent className="rounded-[4rem] p-16 border-none shadow-3xl max-w-md text-center">
           <div className="mx-auto h-24 w-24 bg-green-500 rounded-[2rem] flex items-center justify-center shadow-3xl shadow-green-500/40 mb-10 animate-bounce">
@@ -311,7 +316,7 @@ export default function WalletPage() {
           </div>
           <h3 className="text-4xl font-black text-secondary tracking-tighter uppercase mb-4">МУВАФФАҚИЯТ!</h3>
           <p className="text-muted-foreground font-bold leading-relaxed mb-10">
-            Амалиёт бо муваффақият анҷом ёфт. Маблағ ба тавозуни шумо илова карда шуд.
+            Амалиёт бо муваффақият анҷом ёфт. Ин як амалиёти санҷишӣ (Demo) буд.
           </p>
           <Button onClick={() => setIsSuccessDialogOpen(false)} className="w-full bg-secondary h-16 rounded-2xl font-black uppercase tracking-widest">
             ФАҲМО
