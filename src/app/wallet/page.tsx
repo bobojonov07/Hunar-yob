@@ -1,11 +1,10 @@
-
 "use client"
 
 import { useEffect, useState, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
 import { UserProfile } from "@/lib/storage";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 
 export default function WalletPage() {
@@ -56,35 +55,33 @@ export default function WalletPage() {
   const handleActionSecure = async () => {
     if (!userProfileRef || !profile) return;
     
-    // Дар MVP мо танҳо симулятсия мекунем, ки рамз дуруст аст ё не
-    // Дар реалӣ бояд аз Firebase Auth истифода шавад
     if (!passwordConfirm) {
       toast({ title: "Хатогии рамз", description: "Рамзро ворид кунед", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    try {
-      const numAmount = parseFloat(amount);
-      if (mode === 'deposit') {
-        await updateDoc(userProfileRef, {
-          balance: increment(numAmount)
+    const numAmount = parseFloat(amount);
+    const updateData = {
+      balance: increment(mode === 'deposit' ? numAmount : -numAmount)
+    };
+
+    updateDoc(userProfileRef, updateData)
+      .then(() => {
+        toast({ title: mode === 'deposit' ? "Тавозун пур шуд" : "Маблағ бозхонд шуд" });
+        setAmount("");
+        setPasswordConfirm("");
+        setIsSecureDialogOpen(false);
+      })
+      .catch(async (err: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: userProfileRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
         });
-        toast({ title: "Тавозун пур шуд" });
-      } else {
-        await updateDoc(userProfileRef, {
-          balance: increment(-numAmount)
-        });
-        toast({ title: "Маблағ бозхонд шуд" });
-      }
-      setAmount("");
-      setPasswordConfirm("");
-      setIsSecureDialogOpen(false);
-    } catch (err: any) {
-      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => setLoading(false));
   };
 
   if (!user) {

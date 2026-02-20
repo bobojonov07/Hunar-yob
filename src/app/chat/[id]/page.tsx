@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -12,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Link from "next/link";
-import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
+import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, where } from "firebase/firestore";
 import { Listing, Message, Deal, calculateFee, UserProfile } from "@/lib/storage";
 
@@ -65,7 +64,14 @@ export default function ChatPage() {
       dealId: dealId || null
     };
 
-    setDoc(msgRef, data).catch(err => toast({ title: "Хатогӣ", description: err.message, variant: "destructive" }));
+    setDoc(msgRef, data).catch(async (err) => {
+      const permissionError = new FirestorePermissionError({
+        path: msgRef.path,
+        operation: 'create',
+        requestResourceData: data,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
     if (type === 'text') setNewMessage("");
   };
 
@@ -80,7 +86,7 @@ export default function ChatPage() {
 
     const fee = calculateFee(price);
     const dealRef = doc(collection(db, "deals"));
-    const deal: Deal = {
+    const dealData: Deal = {
       id: dealRef.id,
       listingId: listing.id,
       clientId: profile.role === 'Client' ? user.uid : 'unknown',
@@ -95,12 +101,21 @@ export default function ChatPage() {
       updatedAt: serverTimestamp()
     } as any;
 
-    setDoc(dealRef, deal).then(() => {
-      handleSendMessage(undefined, 'deal', dealRef.id);
-      setIsDealDialogOpen(false);
-      setDealTitle(""); setDealPrice(""); setDealDuration("");
-      toast({ title: "Дархост фиристода шуд" });
-    }).catch(err => toast({ title: "Хатогӣ", description: err.message, variant: "destructive" }));
+    setDoc(dealRef, dealData)
+      .then(() => {
+        handleSendMessage(undefined, 'deal', dealRef.id);
+        setIsDealDialogOpen(false);
+        setDealTitle(""); setDealPrice(""); setDealDuration("");
+        toast({ title: "Дархост фиристода шуд" });
+      })
+      .catch(async (err: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: dealRef.path,
+          operation: 'create',
+          requestResourceData: dealData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   if (!listing || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;

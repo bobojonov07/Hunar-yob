@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo, useState } from "react";
@@ -33,7 +32,7 @@ import {
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, increment, collection, query, orderBy } from "firebase/firestore";
 
 export default function ListingDetail() {
@@ -68,16 +67,24 @@ export default function ListingDetail() {
       return;
     }
     
-    try {
-      await updateDoc(userProfileRef, {
-        favorites: isFavorite ? arrayRemove(id) : arrayUnion(id)
+    const updateData = {
+      favorites: isFavorite ? arrayRemove(id) : arrayUnion(id)
+    };
+
+    updateDoc(userProfileRef, updateData)
+      .then(() => {
+        toast({
+          title: isFavorite ? "Хориҷ карда шуд" : "Илова шуд",
+        });
+      })
+      .catch(async (err: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: userProfileRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({
-        title: isFavorite ? "Хориҷ карда шуд" : "Илова шуд",
-      });
-    } catch (err: any) {
-      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
-    }
   };
 
   const handleShare = () => {
@@ -99,13 +106,26 @@ export default function ListingDetail() {
       return;
     }
 
-    try {
-      await updateDoc(userProfileRef, { balance: increment(-VIP_PRICE) });
-      await updateDoc(listingRef, { isVip: true });
-      toast({ title: "Эълон VIP шуд!" });
-    } catch (err: any) {
-      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
-    }
+    const profileUpdate = { balance: increment(-VIP_PRICE) };
+    const listingUpdate = { isVip: true };
+
+    updateDoc(userProfileRef, profileUpdate).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userProfileRef.path,
+        operation: 'update',
+        requestResourceData: profileUpdate
+      }));
+    });
+
+    updateDoc(listingRef, listingUpdate)
+      .then(() => toast({ title: "Эълон VIP шуд!" }))
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: listingRef.path,
+          operation: 'update',
+          requestResourceData: listingUpdate
+        }));
+      });
   };
 
   if (!listing) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;

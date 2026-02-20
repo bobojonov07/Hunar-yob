@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -18,7 +17,7 @@ import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, Shi
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, updateDoc, serverTimestamp, collection, query, where, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
@@ -71,8 +70,16 @@ export default function Profile() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        await updateDoc(userProfileRef, { profileImage: base64String });
-        toast({ title: "Сурати профил навсозӣ шуд" });
+        const updateData = { profileImage: base64String };
+        updateDoc(userProfileRef, updateData)
+          .then(() => toast({ title: "Сурати профил навсозӣ шуд" }))
+          .catch(async (err) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: userProfileRef.path,
+              operation: 'update',
+              requestResourceData: updateData
+            }));
+          });
       };
       reader.readAsDataURL(file);
     }
@@ -84,11 +91,19 @@ export default function Profile() {
       toast({ title: "Маблағ нокифоя аст", description: "Лутфан ҳамёнро пур кунед", variant: "destructive" });
       return;
     }
-    await updateDoc(userProfileRef, { 
+    const updateData = { 
       isPremium: true, 
       balance: profile.balance - PREMIUM_PRICE 
-    });
-    toast({ title: "Premium фаъол шуд!" });
+    };
+    updateDoc(userProfileRef, updateData)
+      .then(() => toast({ title: "Premium фаъол шуд!" }))
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userProfileRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        }));
+      });
   };
 
   const handleIdPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,23 +117,50 @@ export default function Profile() {
 
   const handleSubmitId = async () => {
     if (!idPhotoPreview || !userProfileRef) return;
-    await updateDoc(userProfileRef, { identificationStatus: 'Pending' });
-    setIsIdDialogOpen(false);
-    toast({ title: "Дархост фиристода шуд" });
+    const updateData = { identificationStatus: 'Pending' };
+    updateDoc(userProfileRef, updateData)
+      .then(() => {
+        setIsIdDialogOpen(false);
+        toast({ title: "Дархост фиристода шуд" });
+      })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userProfileRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        }));
+      });
   };
 
   const handleDeleteListing = async (listingId: string) => {
     if (confirm("Нест кунем?")) {
-      await deleteDoc(doc(db, "listings", listingId));
-      toast({ title: "Нест карда шуд" });
+      const listingRef = doc(db, "listings", listingId);
+      deleteDoc(listingRef)
+        .then(() => toast({ title: "Нест карда шуд" }))
+        .catch(async (err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: listingRef.path,
+            operation: 'delete'
+          }));
+        });
     }
   };
 
   const handleUpdateProfile = async () => {
     if (userProfileRef) {
-      await updateDoc(userProfileRef, { name: editName, region: editRegion });
-      setIsEditDialogOpen(false);
-      toast({ title: "Навсозӣ шуд" });
+      const updateData = { name: editName, region: editRegion };
+      updateDoc(userProfileRef, updateData)
+        .then(() => {
+          setIsEditDialogOpen(false);
+          toast({ title: "Навсозӣ шуд" });
+        })
+        .catch(async (err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userProfileRef.path,
+            operation: 'update',
+            requestResourceData: updateData
+          }));
+        });
     }
   };
 

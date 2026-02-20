@@ -16,9 +16,7 @@ import Link from "next/link";
 import { Hammer, User as UserIcon, Lock, Eye, EyeOff, Info, CheckCircle2, CreditCard, ShieldCheck } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useAuth, useFirestore } from "@/firebase";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -81,7 +79,7 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const profile: UserProfile = {
+      const profileData: UserProfile = {
         id: user.uid,
         name,
         email,
@@ -98,7 +96,14 @@ export default function Register() {
       };
 
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, profile);
+      setDoc(userRef, profileData).catch(async (err) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'create',
+          requestResourceData: profileData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
       
       toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
       router.push("/");

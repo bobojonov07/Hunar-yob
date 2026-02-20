@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -16,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Camera, X, Upload, Crown, ChevronLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
 
 export default function CreateListing() {
@@ -75,24 +74,32 @@ export default function CreateListing() {
     const listingRef = doc(collection(db, "listings"));
     const defaultPlaceholder = PlaceHolderImages[1]?.imageUrl || "https://picsum.photos/seed/carpentry/600/400";
     
-    try {
-      await setDoc(listingRef, {
-        id: listingRef.id,
-        userId: user.uid,
-        userName: profile.name,
-        title,
-        category,
-        description,
-        images: imageUrls.length > 0 ? imageUrls : [defaultPlaceholder],
-        createdAt: serverTimestamp(),
-        isVip: profile.isPremium || false,
-        views: 0
+    const listingData = {
+      id: listingRef.id,
+      userId: user.uid,
+      userName: profile.name,
+      title,
+      category,
+      description,
+      images: imageUrls.length > 0 ? imageUrls : [defaultPlaceholder],
+      createdAt: serverTimestamp(),
+      isVip: profile.isPremium || false,
+      views: 0
+    };
+
+    setDoc(listingRef, listingData)
+      .then(() => {
+        toast({ title: "Эълон гузошта шуд" });
+        router.push("/");
+      })
+      .catch(async (err: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: listingRef.path,
+          operation: 'create',
+          requestResourceData: listingData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({ title: "Эълон гузошта шуд" });
-      router.push("/");
-    } catch (err: any) {
-      toast({ title: "Хатогӣ", description: err.message, variant: "destructive" });
-    }
   };
 
   if (authLoading || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
