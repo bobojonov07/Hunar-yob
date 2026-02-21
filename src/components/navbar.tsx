@@ -3,7 +3,7 @@
 import { useUser, useAuth, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home } from "lucide-react";
+import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -38,7 +38,7 @@ export function Navbar() {
     { label: "Паёмҳо", icon: MessageSquare, href: "/messages", authRequired: true },
     { label: "Писандидаҳо", icon: Heart, href: "/favorites", authRequired: true },
     { label: "Профил", icon: User, href: "/profile", authRequired: true },
-    { label: "Оиди барнома", icon: Info, href: "/about" },
+    { label: "Оиди мо", icon: Info, href: "/about" },
   ];
 
   return (
@@ -51,38 +51,43 @@ export function Navbar() {
                 <Menu className="h-6 w-6 text-secondary" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="rounded-r-[2rem] p-0 overflow-hidden border-none shadow-3xl bg-white w-80">
-              <SheetHeader className="p-10 bg-secondary text-white">
+            <SheetContent side="left" className="flex flex-col rounded-r-[2rem] p-0 overflow-hidden border-none shadow-3xl bg-white w-80">
+              <SheetHeader className="p-8 bg-secondary text-white shrink-0">
                 <SheetTitle className="text-3xl font-black font-headline tracking-tighter text-white flex items-center gap-3">
                   <Hammer className="h-8 w-8 text-primary fill-primary/20" />
                   ҲУНАР ЁБ
                 </SheetTitle>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Менюи барнома</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Амнияти 100% кафолат</p>
+                </div>
               </SheetHeader>
-              <div className="p-6 space-y-2">
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-1">
                 {menuItems.map((item) => {
                   if (item.authRequired && !user) return null;
                   return (
                     <Link key={item.href} href={item.href}>
-                      <div className="flex items-center gap-5 p-5 rounded-2xl hover:bg-muted transition-all group">
-                        <item.icon className="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />
-                        <span className="font-black text-secondary tracking-tight">{item.label}</span>
+                      <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted transition-all group">
+                        <item.icon className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                        <span className="font-black text-secondary text-sm tracking-tight">{item.label}</span>
                       </div>
                     </Link>
                   );
                 })}
                 {user && (
-                  <button onClick={handleLogout} className="w-full flex items-center gap-5 p-5 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
-                    <LogOut className="h-6 w-6" />
-                    <span className="font-black tracking-tight">Баромад</span>
+                  <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
+                    <LogOut className="h-5 w-5" />
+                    <span className="font-black text-sm tracking-tight">Баромад</span>
                   </button>
                 )}
               </div>
-              <div className="absolute bottom-10 left-10 right-10">
-                 <div className="p-6 bg-primary/5 rounded-3xl border-2 border-dashed border-primary/20 text-center">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">Version 1.0.0</p>
-                    <p className="text-[9px] font-medium text-muted-foreground mt-1">Таҳияшуда аз ҷониби TAJ.WEB</p>
-                 </div>
+
+              <div className="p-8 mt-auto border-t bg-muted/10 shrink-0">
+                <div className="p-5 bg-white rounded-3xl border-2 border-dashed border-primary/20 text-center shadow-sm">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Version 1.0.0</p>
+                  <p className="text-[9px] font-bold text-muted-foreground">ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB</p>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -92,17 +97,18 @@ export function Navbar() {
           </Link>
         </div>
 
-        <div className="flex items-center space-x-3 md:space-x-4">
+        <div className="flex items-center space-x-3">
           {user ? (
             <>
-              <Link href="/favorites" className="hidden md:flex text-secondary hover:text-primary transition-colors items-center mr-2">
-                <Heart className="h-5 w-5 mr-1" />
-                <span className="text-sm font-black uppercase tracking-widest text-[10px]">Писандидаҳо</span>
-              </Link>
+              <Button variant="ghost" size="icon" asChild className="hidden sm:flex text-secondary hover:text-primary rounded-full">
+                <Link href="/favorites">
+                  <Heart className="h-5 w-5" />
+                </Link>
+              </Button>
               <Link href="/profile" className="hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg">
                   <AvatarImage src={profile?.profileImage || user.photoURL || ""} className="object-cover" />
-                  <AvatarFallback className="bg-primary text-white font-black text-xs uppercase">
+                  <AvatarFallback className="bg-primary text-white font-black text-xs">
                     {profile?.name?.charAt(0) || user.displayName?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
@@ -110,10 +116,10 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild className="text-secondary font-black uppercase tracking-widest text-[10px]">
+              <Button variant="ghost" size="sm" asChild className="hidden xs:flex text-secondary font-black uppercase tracking-widest text-[10px]">
                 <Link href="/login">Воридшавӣ</Link>
               </Button>
-              <Button size="sm" asChild className="bg-primary text-white hover:bg-primary/90 font-black rounded-xl px-6 h-10 uppercase tracking-widest text-[10px] shadow-lg">
+              <Button size="sm" asChild className="bg-primary text-white hover:bg-primary/90 font-black rounded-xl px-5 h-10 uppercase tracking-widest text-[10px] shadow-lg">
                 <Link href="/register">Сабти ном</Link>
               </Button>
             </>
