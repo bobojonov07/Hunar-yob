@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -168,7 +169,7 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen bg-background">
       <Navbar />
       
-      {/* HEADER: Full width, no rounded corners, clean border */}
+      {/* HEADER */}
       <div className="flex items-center justify-between p-4 bg-white border-b shadow-sm sticky top-[64px] z-10">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
@@ -224,7 +225,7 @@ export default function ChatPage() {
         </Dialog>
       </div>
 
-      {/* MESSAGES: Full width scroll area */}
+      {/* MESSAGES */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
@@ -254,7 +255,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* INPUT: Full width bottom bar */}
+      {/* INPUT */}
       <div className="p-4 bg-white border-t sticky bottom-0">
         <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-2 max-w-5xl mx-auto">
           <Input 

@@ -10,14 +10,15 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { UserRole, ALL_REGIONS, UserProfile } from "@/lib/storage";
+import { UserRole, ALL_REGIONS } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Lock, Mail, ChevronLeft } from "lucide-react";
+import { Hammer, User as UserIcon, Mail, ChevronLeft } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
+import { cn } from "@/lib/utils";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -98,7 +99,7 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const profileData: any = {
+      const profileData = {
         id: user.uid,
         name,
         email,
@@ -238,5 +239,3 @@ export default function Register() {
     </div>
   );
 }
-
-const cn = (...inputs: any[]) => inputs.filter(Boolean).join(" ");

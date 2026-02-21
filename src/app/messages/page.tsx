@@ -27,7 +27,6 @@ export default function MessagesList() {
 
   const chatsQuery = useMemo(() => {
     if (!db || !user) return null;
-    // We use a query that finds chats where current user is involved
     return query(
       collection(db, "chats"),
       or(where("clientId", "==", user.uid), where("artisanId", "==", user.uid)),

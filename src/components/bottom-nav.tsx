@@ -14,9 +14,6 @@ export function BottomNav() {
   const db = useFirestore();
   const pathname = usePathname();
 
-  // Query for unread messages where the user is NOT the sender
-  // Note: For this to work efficiently in a real app, you'd need a more specific schema,
-  // but for this MVP we look for all unread messages.
   const unreadMessagesQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
