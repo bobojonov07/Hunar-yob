@@ -89,7 +89,7 @@ export default function Login() {
             <div className="mx-auto h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
               <ShieldCheck className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter">ВОРИДШАВӢ</CardTitle>
+            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter">ВОРИДШУДАН</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 pt-10 px-10">
             <div className="grid grid-cols-2 gap-4">

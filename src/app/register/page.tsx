@@ -14,7 +14,7 @@ import { UserRole, ALL_REGIONS } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Mail, ChevronLeft, Phone, ShieldCheck, Calendar } from "lucide-react";
+import { Hammer, User as UserIcon, Mail, ChevronLeft, Phone, ShieldCheck, Calendar, CheckCircle2 } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
@@ -54,15 +54,14 @@ export default function Register() {
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Пурра санҷидани тамоми майдонҳо
     if (!name.trim()) return toast({ title: "Хатогӣ", description: "Лутфан ному насабро ворид кунед", variant: "destructive" });
     if (!phone.trim() || phone.length < 9) return toast({ title: "Хатогӣ", description: "Рақами телефонро дуруст ворид кунед (9 рақам)", variant: "destructive" });
     if (!email.trim() || !email.includes("@")) return toast({ title: "Хатогӣ", description: "Почтаи электронӣ нодуруст аст", variant: "destructive" });
     if (!region) return toast({ title: "Хатогӣ", description: "Лутфан минтақаро интихоб кунед", variant: "destructive" });
-    
-    if (!birthDate) {
-      return toast({ title: "Хатогӣ", description: "Санаи таваллудро ворид кунед", variant: "destructive" });
-    }
+    if (!birthDate) return toast({ title: "Хатогӣ", description: "Санаи таваллудро ворид кунед", variant: "destructive" });
 
+    // Санҷиши синну сол (аз 16-сола боло)
     if (calculateAge(birthDate) < 16) {
       return toast({ 
         title: "Маҳдудияти синну сол", 
@@ -87,11 +86,12 @@ export default function Register() {
         return;
       }
 
+      // Тавлиди коди OTP барои Demo
       const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
       setGeneratedOtp(newOtp);
       
       toast({ 
-        title: "Коди тасдиқи DEMO", 
+        title: "КОДИ ТАСДИҚ (DEMO)", 
         description: `Коди шумо барои сабти ном: ${newOtp}`,
         duration: 20000
       });
@@ -152,6 +152,9 @@ export default function Register() {
       <div className="flex-1 flex items-center justify-center p-4 pt-10">
         <Card className="w-full max-w-xl border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
           <CardHeader className="text-center bg-muted/10 pb-10 pt-16">
+            <div className="mx-auto h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
+              <ShieldCheck className="h-10 w-10 text-primary" />
+            </div>
             <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter uppercase">САБТИ НОМ</CardTitle>
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mt-2">Қадами {step} аз 2</p>
           </CardHeader>
@@ -169,6 +172,7 @@ export default function Register() {
                       <RadioGroupItem value="Client" id="client" className="sr-only" />
                       <UserIcon className={cn("h-8 w-8 mb-2", role === 'Client' ? "text-primary" : "text-muted-foreground")} />
                       <span className="font-black text-[10px] uppercase tracking-widest">МИЗОҶ</span>
+                      {role === 'Client' && <CheckCircle2 className="h-4 w-4 text-primary mt-2" />}
                     </Label>
                     <Label htmlFor="artisan" className={cn(
                       "flex flex-col items-center justify-center p-6 rounded-3xl border-2 cursor-pointer transition-all h-32 text-center",
@@ -177,13 +181,14 @@ export default function Register() {
                       <RadioGroupItem value="Usto" id="artisan" className="sr-only" />
                       <Hammer className={cn("h-8 w-8 mb-2", role === 'Usto' ? "text-primary" : "text-muted-foreground")} />
                       <span className="font-black text-[10px] uppercase tracking-widest">УСТО</span>
+                      {role === 'Usto' && <CheckCircle2 className="h-4 w-4 text-primary mt-2" />}
                     </Label>
                   </RadioGroup>
                 </div>
 
                 <div className="space-y-2">
                   <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаби пурра</Label>
-                  <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Масалан: Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -238,7 +243,7 @@ export default function Register() {
                     className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
                   />
                   <Label htmlFor="agreed" className="text-[10px] text-muted-foreground font-bold leading-relaxed block cursor-pointer">
-                    Ман бо <Link href="/about" className="text-primary underline">Шартҳои истифода</Link> ва <Link href="/about" className="text-primary underline">Сиёсати махфияти</Link> барнома розӣ ҳастам ва тасдиқ мекунам, ки аз 16-сола боло мебошам.
+                    Ман бо <Link href="/about" className="text-primary underline">Шартҳои истифода</Link>, <Link href="/about" className="text-primary underline">Сиёсати махфият</Link> розӣ ҳастам ва тасдиқ мекунам, ки аз 16-сола боло мебошам.
                   </Label>
                 </div>
               </CardContent>
@@ -263,7 +268,7 @@ export default function Register() {
                 <div className="mx-auto w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
                   <ShieldCheck className="h-12 w-12 text-primary" />
                 </div>
-                <h3 className="text-3xl font-black tracking-tighter uppercase">ТАСДИҚИ ШАХСИЯТ</h3>
+                <h3 className="text-3xl font-black tracking-tighter uppercase text-secondary">ТАСДИҚИ ШАХСИЯТ</h3>
                 <p className="text-sm text-muted-foreground font-bold leading-relaxed px-4">
                   Мо ба рақами шумо коди тасдиқро фиристодем. Лутфан онро ворид намоед.
                 </p>
@@ -277,7 +282,7 @@ export default function Register() {
                   />
                   <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
                     <p className="text-[10px] font-black text-yellow-700 uppercase tracking-widest">
-                      ЭЗОҲ: Коди санҷишӣ дар болои экран (Notification) намоён аст.
+                      ДИҚҚАТ: Коди санҷишӣ дар болои экран (Notification) намоён аст.
                     </p>
                   </div>
                 </div>

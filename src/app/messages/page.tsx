@@ -23,9 +23,9 @@ export default function MessagesList() {
   const db = useFirestore();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loadingConv, setLoadingConv] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Separate queries to avoid potential composite index issues with 'OR' on different fields
+  // Ду ҷустуҷӯи алоҳида барои кафолати намоиши чатҳо пас аз Refresh
   const clientChatsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -48,9 +48,10 @@ export default function MessagesList() {
   const { data: artisanChats = [], loading: artisanLoading } = useCollection<Chat>(artisanChatsQuery as any);
 
   useEffect(() => {
-    async function fetchDetails() {
+    async function fetchConversationDetails() {
       if (!user || clientLoading || artisanLoading) return;
 
+      // Муттаҳид кардани чатҳои мизоҷ ва усто
       const allChats = [...clientChats, ...artisanChats].sort((a, b) => {
         const timeA = a.updatedAt?.toMillis() || 0;
         const timeB = b.updatedAt?.toMillis() || 0;
@@ -59,37 +60,36 @@ export default function MessagesList() {
 
       if (allChats.length === 0) {
         setConversations([]);
-        setLoadingConv(false);
         return;
       }
 
-      setLoadingConv(true);
+      setLoadingDetails(true);
       try {
-        const convList: Conversation[] = [];
+        const results: Conversation[] = [];
         for (const chat of allChats) {
           const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
           if (!otherId) continue;
           
           const otherSnap = await getDoc(doc(db, "users", otherId));
-          convList.push({
+          results.push({
             ...chat,
             otherParty: otherSnap.exists() ? { ...(otherSnap.data() as UserProfile), id: otherSnap.id } : null
           });
         }
-        setConversations(convList);
+        setConversations(results);
       } catch (err) {
         console.error("Error fetching chat details:", err);
       } finally {
-        setLoadingConv(false);
+        setLoadingDetails(false);
       }
     }
 
-    fetchDetails();
+    fetchConversationDetails();
   }, [clientChats, artisanChats, user, db, clientLoading, artisanLoading]);
 
   if (!user) return <div className="min-h-screen flex items-center justify-center">Вуруд лозим аст...</div>;
 
-  const isLoading = clientLoading || artisanLoading || loadingConv;
+  const isLoading = clientLoading || artisanLoading || loadingDetails;
 
   return (
     <div className="min-h-screen bg-background pb-20">

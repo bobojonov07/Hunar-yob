@@ -78,6 +78,7 @@ export function Navbar() {
                 })}
               </div>
 
+              {/* Version info at the absolute bottom */}
               <div className="mt-auto p-8 border-t bg-muted/5">
                 {user && (
                   <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 mb-4 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
@@ -87,7 +88,7 @@ export function Navbar() {
                 )}
                 <div className="p-5 bg-white rounded-3xl border-2 border-dashed border-primary/20 text-center shadow-sm">
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Version 1.0.0</p>
-                  <p className="text-[9px] font-bold text-muted-foreground">ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB</p>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase">ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB</p>
                 </div>
               </div>
             </SheetContent>
