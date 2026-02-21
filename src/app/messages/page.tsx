@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, CheckCheck, ChevronLeft, Check } from "lucide-react";
+import { MessageSquare, CheckCheck, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ export default function MessagesList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
 
+  // Ҷустуҷӯи ҳамаи чатҳое, ки корбар дар онҳо иштирок дорад
   const chatsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -51,6 +52,7 @@ export default function MessagesList() {
       try {
         const convList: Conversation[] = [];
         for (const chat of allChats) {
+          // Муайян кардани "тарафи дигар"
           const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
           if (!otherId) continue;
           
@@ -71,10 +73,10 @@ export default function MessagesList() {
     fetchDetails();
   }, [allChats, user, db, loading]);
 
-  if (!user) return null;
+  if (!user) return <div className="min-h-screen flex items-center justify-center">Вуруд лозим аст...</div>;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <Navbar />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-10 flex flex-col gap-6">
@@ -87,8 +89,8 @@ export default function MessagesList() {
 
         {(loading || loadingConv) ? (
           <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-            <p className="font-black uppercase tracking-widest text-[10px]">Дар ҳоли боргузорӣ...</p>
+            <Loader2 className="animate-spin h-12 w-12 text-primary" />
+            <p className="font-black uppercase tracking-widest text-[10px]">Дар ҳоли ҷустуҷӯи паёмҳо...</p>
           </div>
         ) : conversations.length > 0 ? (
           <div className="space-y-4">
@@ -100,6 +102,9 @@ export default function MessagesList() {
           <div className="text-center py-32 bg-white rounded-[3rem] border-4 border-dashed border-muted/50 shadow-inner group">
             <MessageSquare className="h-20 w-20 mx-auto text-muted mb-6 opacity-30 group-hover:scale-110 transition-transform duration-500" />
             <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40 text-center px-4">ҲОЛО ЯГОН МУКОТИБА НАДОРЕД</p>
+            <Button asChild variant="link" className="mt-4 font-black text-primary">
+              <Link href="/listings">Ҷустуҷӯи устоҳо</Link>
+            </Button>
           </div>
         )}
       </div>
@@ -126,12 +131,12 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
 
   return (
     <Link href={chatLink}>
-      <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border-none shadow-md rounded-[2rem] bg-white group">
+      <Card className="hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden border-none shadow-md rounded-[2rem] bg-white group">
         <CardContent className="p-5 flex items-center gap-5">
-          <Avatar className="h-16 w-16 border-2 border-primary/10 shadow-sm group-hover:scale-105 transition-transform">
+          <Avatar className="h-16 w-16 border-2 border-primary/10 shadow-sm group-hover:scale-105 transition-transform duration-500">
             <AvatarImage src={conv.otherParty?.profileImage} className="object-cover" />
             <AvatarFallback className="bg-primary/10 text-primary font-black text-xl">
-              {conv.otherParty?.name?.charAt(0) || "?"}
+              {conv.otherParty?.name?.charAt(0) || "U"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -156,7 +161,7 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
             </div>
           </div>
           {(conv.unreadCount?.[currentUser.uid] || 0) > 0 && (
-            <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-[10px] text-white font-black shrink-0">
+            <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-[10px] text-white font-black shrink-0 animate-pulse">
               {conv.unreadCount[currentUser.uid]}
             </div>
           )}

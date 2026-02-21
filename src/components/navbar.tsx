@@ -37,6 +37,7 @@ export function Navbar() {
     { label: "Асосӣ", icon: Home, href: "/" },
     { label: "Эълонҳо", icon: Search, href: "/listings" },
     { label: "Паёмҳо", icon: MessageSquare, href: "/messages", authRequired: true },
+    { label: "Писандидаҳо", icon: Heart, href: "/favorites", authRequired: true },
     { label: "Профил", icon: User, href: "/profile", authRequired: true },
     { label: "Оиди мо", icon: Info, href: "/about" },
   ];
@@ -100,7 +101,7 @@ export function Navbar() {
         <div className="flex items-center space-x-3">
           {user ? (
             <>
-              <Button variant="ghost" size="icon" asChild className="text-secondary hover:text-primary rounded-full">
+              <Button variant="ghost" size="icon" asChild className="text-secondary hover:text-primary rounded-full hidden sm:flex">
                 <Link href="/favorites">
                   <Heart className="h-5 w-5" />
                 </Link>
