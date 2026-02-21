@@ -14,7 +14,7 @@ import { UserRole, ALL_REGIONS } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Mail, ChevronLeft, Phone } from "lucide-react";
+import { Hammer, User as UserIcon, Mail, ChevronLeft, Phone, ShieldCheck, Calendar } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
@@ -40,18 +40,40 @@ export default function Register() {
   const auth = useAuth();
   const db = useFirestore();
 
+  const calculateAge = (dateString: string) => {
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Пурра тафтиш кардани майдонҳо
     if (!name.trim()) return toast({ title: "Хатогӣ", description: "Лутфан ному насабро ворид кунед", variant: "destructive" });
     if (!phone.trim() || phone.length < 9) return toast({ title: "Хатогӣ", description: "Рақами телефонро дуруст ворид кунед (9 рақам)", variant: "destructive" });
     if (!email.trim() || !email.includes("@")) return toast({ title: "Хатогӣ", description: "Почтаи электронӣ нодуруст аст", variant: "destructive" });
     if (!region) return toast({ title: "Хатогӣ", description: "Лутфан минтақаро интихоб кунед", variant: "destructive" });
-    if (!birthDate) return toast({ title: "Хатогӣ", description: "Санаи таваллудро ворид кунед", variant: "destructive" });
+    
+    if (!birthDate) {
+      return toast({ title: "Хатогӣ", description: "Санаи таваллудро ворид кунед", variant: "destructive" });
+    }
+
+    if (calculateAge(birthDate) < 16) {
+      return toast({ 
+        title: "Маҳдудияти синну сол", 
+        description: "Сабти ном танҳо барои шахсони аз 16-сола боло иҷозат аст", 
+        variant: "destructive" 
+      });
+    }
+
     if (password.length < 6) return toast({ title: "Хатогӣ", description: "Рамз бояд камаш 6 аломат бошад", variant: "destructive" });
     if (password !== confirmPassword) return toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
-    if (!agreed) return toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода ва сиёсати махфият розӣ шавед", variant: "destructive" });
+    if (!agreed) return toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода розӣ шавед", variant: "destructive" });
 
     setLoading(true);
     try {
@@ -69,9 +91,9 @@ export default function Register() {
       setGeneratedOtp(newOtp);
       
       toast({ 
-        title: "Коди тасдиқ фиристода шуд", 
-        description: `Коди шумо: ${newOtp} (Барои санҷиши Demo)`,
-        duration: 15000
+        title: "Коди тасдиқи DEMO", 
+        description: `Коди шумо барои сабти ном: ${newOtp}`,
+        duration: 20000
       });
       
       setStep(2);
@@ -129,53 +151,60 @@ export default function Register() {
       <Navbar />
       <div className="flex-1 flex items-center justify-center p-4 pt-10">
         <Card className="w-full max-w-xl border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
-          <CardHeader className="text-center bg-muted/10 pb-12 pt-16">
-            <CardTitle className="text-5xl font-black font-headline text-secondary tracking-tighter uppercase">САБТИ НОМ</CardTitle>
+          <CardHeader className="text-center bg-muted/10 pb-10 pt-16">
+            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter uppercase">САБТИ НОМ</CardTitle>
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mt-2">Қадами {step} аз 2</p>
           </CardHeader>
           
           {step === 1 && (
             <form onSubmit={handleNextStep}>
-              <CardContent className="space-y-6 pt-12 px-10">
-                <div className="space-y-2 text-center mb-8">
-                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ман кистам?</Label>
-                  <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="flex justify-center gap-6 mt-4">
-                    <Label htmlFor="client" className={cn("flex flex-col items-center p-6 rounded-[2rem] border-2 cursor-pointer transition-all w-32", role === 'Client' ? "border-primary bg-primary/5" : "border-muted opacity-40 shadow-inner")}>
+              <CardContent className="space-y-6 pt-10 px-10">
+                <div className="space-y-4">
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60 text-center block mb-2">Навъи фаъолият</Label>
+                  <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="grid grid-cols-2 gap-4">
+                    <Label htmlFor="client" className={cn(
+                      "flex flex-col items-center justify-center p-6 rounded-3xl border-2 cursor-pointer transition-all h-32 text-center",
+                      role === 'Client' ? "border-primary bg-primary/5 shadow-lg" : "border-muted opacity-60 hover:opacity-100"
+                    )}>
                       <RadioGroupItem value="Client" id="client" className="sr-only" />
-                      <UserIcon className="h-8 w-8 mb-2" />
-                      <span className="font-black text-[10px] uppercase">Мизоҷ</span>
+                      <UserIcon className={cn("h-8 w-8 mb-2", role === 'Client' ? "text-primary" : "text-muted-foreground")} />
+                      <span className="font-black text-[10px] uppercase tracking-widest">МИЗОҶ</span>
                     </Label>
-                    <Label htmlFor="artisan" className={cn("flex flex-col items-center p-6 rounded-[2rem] border-2 cursor-pointer transition-all w-32", role === 'Usto' ? "border-primary bg-primary/5" : "border-muted opacity-40 shadow-inner")}>
+                    <Label htmlFor="artisan" className={cn(
+                      "flex flex-col items-center justify-center p-6 rounded-3xl border-2 cursor-pointer transition-all h-32 text-center",
+                      role === 'Usto' ? "border-primary bg-primary/5 shadow-lg" : "border-muted opacity-60 hover:opacity-100"
+                    )}>
                       <RadioGroupItem value="Usto" id="artisan" className="sr-only" />
-                      <Hammer className="h-8 w-8 mb-2" />
-                      <span className="font-black text-[10px] uppercase">Усто</span>
+                      <Hammer className={cn("h-8 w-8 mb-2", role === 'Usto' ? "text-primary" : "text-muted-foreground")} />
+                      <span className="font-black text-[10px] uppercase tracking-widest">УСТО</span>
                     </Label>
                   </RadioGroup>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаб</Label>
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаби пурра</Label>
                   <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Телефон</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рақами телефон</Label>
                     <div className="relative">
                       <div className="absolute left-4 top-4 text-sm font-black text-muted-foreground">+992</div>
                       <Input className="pl-16 h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="900000000" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={9} />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почтаи электронӣ</Label>
                     <Input type="email" placeholder="example@mail.tj" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Минтақа</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Минтақаи истиқомат</Label>
                     <Select value={region} onValueChange={setRegion}>
-                      <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-left"><SelectValue placeholder="Интихоб кунед" /></SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold text-left"><SelectValue placeholder="Интихоби минтақа" /></SelectTrigger>
                       <SelectContent className="rounded-2xl">
                         {ALL_REGIONS.map(r => <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>)}
                       </SelectContent>
@@ -183,13 +212,16 @@ export default function Register() {
                   </div>
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Санаи таваллуд</Label>
-                    <Input type="date" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                    <div className="relative">
+                      <Calendar className="absolute right-4 top-4 h-5 w-5 text-muted-foreground pointer-events-none" />
+                      <Input type="date" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold pr-12" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамз</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамзи нав</Label>
                     <Input type="password" d="password" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <div className="space-y-2">
@@ -198,7 +230,7 @@ export default function Register() {
                   </div>
                 </div>
 
-                <div className="flex items-start space-x-4 p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10">
+                <div className="flex items-start space-x-4 p-5 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10">
                   <Checkbox 
                     id="agreed" 
                     checked={agreed} 
@@ -206,7 +238,7 @@ export default function Register() {
                     className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
                   />
                   <Label htmlFor="agreed" className="text-[10px] text-muted-foreground font-bold leading-relaxed block cursor-pointer">
-                    Ман бо шартҳои истифода ва сиёсати махфияти барнома розӣ ҳастам ва тасдиқ мекунам, ки маълумотҳоям воқеӣ мебошанд.
+                    Ман бо <Link href="/about" className="text-primary underline">Шартҳои истифода</Link> ва <Link href="/about" className="text-primary underline">Сиёсати махфияти</Link> барнома розӣ ҳастам ва тасдиқ мекунам, ки аз 16-сола боло мебошам.
                   </Label>
                 </div>
               </CardContent>
@@ -214,11 +246,13 @@ export default function Register() {
                 <Button 
                   type="submit" 
                   disabled={loading} 
-                  className="w-full h-16 text-xl font-black rounded-[2rem] shadow-2xl bg-primary hover:scale-[1.02] transition-transform"
+                  className="w-full h-16 text-xl font-black rounded-[2rem] shadow-2xl bg-primary hover:scale-[1.02] transition-transform uppercase tracking-widest"
                 >
-                  {loading ? "ДАР ҲОЛИ БАРРАСӢ..." : "ДАВОМ ДОДАН"}
+                  {loading ? "БАРРАСӢ..." : "ДАВОМ ДОДАН"}
                 </Button>
-                <p className="text-sm text-center text-muted-foreground font-bold">Аллакай акаунт доред? <Link href="/login" className="text-primary font-black hover:underline">Ворид шавед</Link></p>
+                <p className="text-sm text-center text-muted-foreground font-bold italic">
+                  Аллакай акаунт доред? <Link href="/login" className="text-primary font-black hover:underline not-italic">Ворид шавед</Link>
+                </p>
               </CardFooter>
             </form>
           )}
@@ -227,17 +261,34 @@ export default function Register() {
             <form onSubmit={handleOtpConfirm}>
               <CardContent className="space-y-8 pt-16 text-center px-10">
                 <div className="mx-auto w-24 h-24 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-6 shadow-inner">
-                  <Mail className="h-12 w-12 text-primary" />
+                  <ShieldCheck className="h-12 w-12 text-primary" />
                 </div>
-                <h3 className="text-3xl font-black tracking-tighter uppercase">ТАСДИҚИ ПОЧТА</h3>
-                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба почтаи шумо коди тасдиқро фиристодем. Лутфан онро ворид кунед.</p>
-                <Input className="h-20 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted focus:ring-primary" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
+                <h3 className="text-3xl font-black tracking-tighter uppercase">ТАСДИҚИ ШАХСИЯТ</h3>
+                <p className="text-sm text-muted-foreground font-bold leading-relaxed px-4">
+                  Мо ба рақами шумо коди тасдиқро фиристодем. Лутфан онро ворид намоед.
+                </p>
+                <div className="space-y-4">
+                  <Input 
+                    className="h-24 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted focus:ring-primary shadow-inner" 
+                    placeholder="0000" 
+                    maxLength={4} 
+                    value={otp} 
+                    onChange={(e) => setOtp(e.target.value)} 
+                  />
+                  <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
+                    <p className="text-[10px] font-black text-yellow-700 uppercase tracking-widest">
+                      ЭЗОҲ: Коди санҷишӣ дар болои экран (Notification) намоён аст.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10">
-                <Button type="submit" disabled={loading} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl hover:scale-[1.02] transition-transform">
-                  {loading ? "ДАР ҲОЛИ САБТ..." : "ТАСДИҚ ВА САБТ"}
+                <Button type="submit" disabled={loading} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl hover:scale-[1.02] transition-transform uppercase tracking-widest">
+                  {loading ? "САБТ..." : "ТАСДИҚ ВА САБТИ НОМ"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold text-muted-foreground">Бозгашт ва таҳрири маълумот</Button>
+                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold text-muted-foreground uppercase tracking-widest text-[10px]">
+                  Бозгашт ва таҳрири маълумот
+                </Button>
               </CardFooter>
             </form>
           )}

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react";
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail, ShieldCheck, ChevronLeft, Phone } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, ChevronLeft, Phone, Info } from "lucide-react";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useAuth, useFirestore } from "@/firebase";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -28,7 +29,7 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
-      toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода розӣ шавед", variant: "destructive" });
+      toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода ва сиёсати амният розӣ шавед", variant: "destructive" });
       return;
     }
 
@@ -43,7 +44,7 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     if (!agreed) {
-      toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода розӣ шавед", variant: "destructive" });
+      toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода ва сиёсати амният розӣ шавед", variant: "destructive" });
       return;
     }
     const provider = new GoogleAuthProvider();
@@ -92,7 +93,7 @@ export default function Login() {
           </CardHeader>
           <CardContent className="space-y-6 pt-10 px-10">
             <div className="grid grid-cols-2 gap-4">
-              <Button onClick={handleGoogleLogin} variant="outline" className="rounded-2xl h-14 font-bold border-2">
+              <Button onClick={handleGoogleLogin} variant="outline" className="rounded-2xl h-14 font-bold border-2 shadow-sm transition-all hover:bg-muted/50">
                 <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -101,26 +102,26 @@ export default function Login() {
                 </svg>
                 GOOGLE
               </Button>
-              <Button variant="outline" className="rounded-2xl h-14 font-bold border-2">
+              <Button variant="outline" className="rounded-2xl h-14 font-bold border-2 shadow-sm">
                 <Phone className="mr-2 h-5 w-5" /> ТЕЛЕФОН
               </Button>
             </div>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted-foreground font-black">ё бо почта</span></div>
+              <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-white px-4 text-muted-foreground font-black tracking-widest">ё бо почта</span></div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
-                <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта</Label>
+                <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почтаи электронӣ</Label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
                   <Input type="email" placeholder="example@mail.tj" className="pl-12 h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамз</Label>
+                <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамзи махфӣ</Label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
                   <Input type={showPassword ? "text" : "password"} placeholder="******" className="pl-12 pr-12 h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -129,15 +130,26 @@ export default function Login() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-start space-x-4 p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                <Checkbox id="agreed" checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} className="mt-1 h-6 w-6 rounded-lg" />
-                <Label htmlFor="agreed" className="text-[10px] text-muted-foreground font-bold leading-relaxed">Ман бо шартҳои истифода ва сиёсати амният розӣ ҳастам.</Label>
+              
+              <div className="flex items-start space-x-4 p-5 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10">
+                <Checkbox 
+                  id="agreed-login" 
+                  checked={agreed} 
+                  onCheckedChange={(v) => setAgreed(!!v)} 
+                  className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
+                />
+                <Label htmlFor="agreed-login" className="text-[10px] text-muted-foreground font-bold leading-relaxed block cursor-pointer">
+                  Ман бо <Link href="/about" className="text-primary underline">Шартҳои истифода</Link> ва <Link href="/about" className="text-primary underline">Сиёсати амнияти</Link> барнома розӣ ҳастам.
+                </Label>
               </div>
-              <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]">ВОРИД ШУДАН</Button>
+
+              <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02] uppercase tracking-widest">ВОРИД ШУДАН</Button>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-6 pb-16 px-10">
-            <p className="text-sm text-center text-muted-foreground font-bold">Ҳанӯз сабти ном нашудаед? <Link href="/register" className="text-primary font-black hover:underline">Сабти ном</Link></p>
+            <p className="text-sm text-center text-muted-foreground font-bold">
+              Ҳанӯз сабти ном нашудаед? <Link href="/register" className="text-primary font-black hover:underline">Сабти ном</Link>
+            </p>
           </CardFooter>
         </Card>
       </div>
