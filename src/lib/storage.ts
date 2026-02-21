@@ -13,6 +13,7 @@ export interface UserProfile {
   profileImage?: string;
   balance: number;
   identificationStatus: IdentificationStatus;
+  passportNumber?: string; // Барои пешгирии такрор
   isPremium?: boolean;
   isArtisanFeePaid?: boolean;
   warningCount?: number;

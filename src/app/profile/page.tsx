@@ -11,16 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, Trash2, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Handshake, Star, CheckCircle2, Lock, Wallet, FileCheck } from "lucide-react";
+import { Settings, LogOut, Plus, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, collection, query, where, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { doc, updateDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
+import { verifyPassport } from "@/ai/flows/verify-passport-flow";
 
 export default function Profile() {
   const { user, loading: authLoading } = useUser();
@@ -39,23 +39,17 @@ export default function Profile() {
   const { data: userListings = [] } = useCollection<Listing>(listingsQuery as any);
 
   const [editName, setEditName] = useState("");
-  const [editRegion, setEditRegion] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
-  
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loadingPass, setLoadingPass] = useState(false);
   const [kycLoading, setKycLoading] = useState(false);
+  const [passportImage, setPassportImage] = useState<string | null>(null);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
+  const passportInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
       setEditName(profile.name);
-      setEditRegion(profile.region || "");
     }
   }, [profile]);
 
@@ -83,30 +77,61 @@ export default function Profile() {
     }
   };
 
-  const handleKycSubmit = async () => {
-    if (!userProfileRef) return;
-    setKycLoading(true);
-    // Simulation of KYC processing
-    setTimeout(async () => {
-      await updateDoc(userProfileRef, { identificationStatus: 'Pending' });
-      toast({ title: "Дархост фиристода шуд", description: "Маълумоти шумо дар давоми 24 соат баррасӣ мешавад." });
-      setIsKycDialogOpen(false);
-      setKycLoading(false);
-    }, 2000);
+  const handlePassportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPassportImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const handleBuyPremium = async () => {
-    if (!userProfileRef || !profile) return;
-    if (profile.balance < PREMIUM_PRICE) {
-      toast({ title: "Маблағ нокифоя аст", description: "Лутфан ҳамёнро пур кунед", variant: "destructive" });
-      router.push("/wallet");
-      return;
+  const handleKycSubmit = async () => {
+    if (!userProfileRef || !passportImage || !user) return;
+    setKycLoading(true);
+
+    try {
+      // 1. AI Verification
+      const result = await verifyPassport({ photoDataUri: passportImage });
+
+      if (!result.isPassport) {
+        toast({ title: "Хатогӣ", description: result.errorReason || "Ин сурат шиноснома нест.", variant: "destructive" });
+        setKycLoading(false);
+        return;
+      }
+
+      if (!result.isOver18) {
+        toast({ title: "Рад шуд", description: "Синну соли шумо бояд аз 18 боло бошад.", variant: "destructive" });
+        setKycLoading(false);
+        return;
+      }
+
+      // 2. Uniqueness Check
+      if (result.passportNumber) {
+        const dupQuery = query(collection(db, "users"), where("passportNumber", "==", result.passportNumber));
+        const dupSnap = await getDocs(dupQuery);
+        if (!dupSnap.empty && dupSnap.docs[0].id !== user.uid) {
+          toast({ title: "Хатогӣ", description: "Ин шиноснома аллакай дар система истифода шудааст.", variant: "destructive" });
+          setKycLoading(false);
+          return;
+        }
+      }
+
+      // 3. Success
+      await updateDoc(userProfileRef, { 
+        identificationStatus: 'Verified',
+        passportNumber: result.passportNumber || ""
+      });
+      
+      toast({ title: "Тасдиқ шуд!", description: "Шахсияти шумо бо муваффақият тасдиқ гардид." });
+      setIsKycDialogOpen(false);
+    } catch (err) {
+      toast({ title: "Хатогӣ", description: "Ҳангоми санҷиш мушкилӣ рӯй дод.", variant: "destructive" });
+    } finally {
+      setKycLoading(false);
     }
-    await updateDoc(userProfileRef, { 
-      isPremium: true, 
-      balance: profile.balance - PREMIUM_PRICE 
-    });
-    toast({ title: "Premium фаъол шуд!" });
   };
 
   const handleLogout = async () => {
@@ -164,7 +189,7 @@ export default function Profile() {
 
                 <Dialog open={isKycDialogOpen} onOpenChange={setIsKycDialogOpen}>
                   <DialogTrigger asChild>
-                    <button className={`w-full p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 text-left transition-all hover:scale-[1.01] ${
+                    <button disabled={profile.identificationStatus === 'Verified'} className={`w-full p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 text-left transition-all hover:scale-[1.01] ${
                       profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
                       profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
                       'bg-red-50 border-red-200 text-red-700'
@@ -175,25 +200,41 @@ export default function Profile() {
                       </div>
                       <div className="flex-1">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em]">{profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 'Тасдиқи шахсият'}</p>
-                        <p className="text-[9px] font-medium opacity-60">Барои гирифтани нишони касбӣ пахш кунед</p>
+                        <p className="text-[9px] font-medium opacity-60">{profile.identificationStatus === 'Verified' ? 'Шумо тасдиқ шудаед' : 'Барои гирифтани нишони касбӣ пахш кунед'}</p>
                       </div>
                     </button>
                   </DialogTrigger>
                   <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
-                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ТАСДИҚИ ШАХСИЯТ (KYC)</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">AI ТАСДИҚИ ШАХСИЯТ</DialogTitle></DialogHeader>
                     <div className="space-y-6 pt-6 text-center">
                       <div className="h-32 w-32 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto">
                         <FileCheck className="h-16 w-16 text-primary" />
                       </div>
                       <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                        Барои он ки мизоҷон ба шумо бештар бовар кунанд, лутфан акси шиносномаи худро боргузорӣ кунед. Мо маълумоти шуморо ҳифз мекунем.
+                        Системаи AI сурати шиносномаи шуморо месанҷад. Бояд сурат равшан бошад ва синну сол аз 18 боло бошад.
                       </p>
-                      <div className="border-2 border-dashed rounded-2xl p-8 hover:bg-muted/50 cursor-pointer transition-colors">
-                        <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Боргузории акси шиноснома</span>
+                      
+                      <div 
+                        onClick={() => passportInputRef.current?.click()}
+                        className="border-2 border-dashed rounded-2xl p-8 hover:bg-muted/50 cursor-pointer transition-colors relative overflow-hidden aspect-video flex items-center justify-center"
+                      >
+                        {passportImage ? (
+                          <Image src={passportImage} alt="Passport" fill className="object-cover" />
+                        ) : (
+                          <div className="text-center">
+                            <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Боргузории акси шиноснома</span>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" ref={passportInputRef} onChange={handlePassportFileChange} />
                       </div>
-                      <Button onClick={handleKycSubmit} disabled={kycLoading} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">
-                        {kycLoading ? "ДАР ҲОЛИ ФИРИСТОДАН..." : "ТАСДИҚ КАРДАН"}
+
+                      <Button 
+                        onClick={handleKycSubmit} 
+                        disabled={kycLoading || !passportImage} 
+                        className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest"
+                      >
+                        {kycLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> ДАР ҲОЛИ САНҶИШ...</> : "ТАСДИҚ КАРДАН"}
                       </Button>
                     </div>
                   </DialogContent>
@@ -205,19 +246,6 @@ export default function Profile() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3 p-8 pt-0">
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                  <DialogTrigger asChild><Button variant="outline" className="w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest border-2"><Settings className="mr-3 h-5 w-5" /> Танзимот</Button></DialogTrigger>
-                  <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
-                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">ТАҲРИРИ ПРОФИЛ</DialogTitle></DialogHeader>
-                    <div className="space-y-6 pt-6">
-                      <div className="space-y-2">
-                        <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Ному насаб</Label>
-                        <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
-                      </div>
-                      <Button onClick={() => setIsEditDialogOpen(false)} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">САБТ</Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
                 <Button variant="ghost" className="w-full h-14 rounded-2xl text-red-500 font-black text-[10px] uppercase tracking-widest hover:bg-red-50" onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> Баромад</Button>
               </CardFooter>
             </Card>
