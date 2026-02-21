@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useUser, useAuth, useFirestore, useDoc } from "@/firebase";
@@ -36,7 +37,6 @@ export function Navbar() {
     { label: "Асосӣ", icon: Home, href: "/" },
     { label: "Эълонҳо", icon: Search, href: "/listings" },
     { label: "Паёмҳо", icon: MessageSquare, href: "/messages", authRequired: true },
-    { label: "Писандидаҳо", icon: Heart, href: "/favorites", authRequired: true },
     { label: "Профил", icon: User, href: "/profile", authRequired: true },
     { label: "Оиди мо", icon: Info, href: "/about" },
   ];
@@ -75,15 +75,15 @@ export function Navbar() {
                     </Link>
                   );
                 })}
+              </div>
+
+              <div className="mt-auto p-8 border-t bg-muted/5">
                 {user && (
-                  <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
+                  <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 mb-4 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
                     <LogOut className="h-5 w-5" />
                     <span className="font-black text-sm tracking-tight">Баромад</span>
                   </button>
                 )}
-              </div>
-
-              <div className="p-8 mt-auto border-t bg-muted/10 shrink-0">
                 <div className="p-5 bg-white rounded-3xl border-2 border-dashed border-primary/20 text-center shadow-sm">
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Version 1.0.0</p>
                   <p className="text-[9px] font-bold text-muted-foreground">ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB</p>
@@ -100,7 +100,7 @@ export function Navbar() {
         <div className="flex items-center space-x-3">
           {user ? (
             <>
-              <Button variant="ghost" size="icon" asChild className="hidden sm:flex text-secondary hover:text-primary rounded-full">
+              <Button variant="ghost" size="icon" asChild className="text-secondary hover:text-primary rounded-full">
                 <Link href="/favorites">
                   <Heart className="h-5 w-5" />
                 </Link>
