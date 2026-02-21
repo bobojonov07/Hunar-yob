@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,12 +14,10 @@ import { UserRole, ALL_REGIONS, UserProfile } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Hammer, User as UserIcon, Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, ScrollText, Mail } from "lucide-react";
+import { Hammer, User as UserIcon, Lock, Mail, ChevronLeft } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth, useFirestore } from "@/firebase";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -33,7 +31,6 @@ export default function Register() {
   const [otp, setOtp] = useState("");
   const [role, setRole] = useState<UserRole>("Client");
   const [agreed, setAgreed] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState("");
 
@@ -48,7 +45,7 @@ export default function Register() {
       toast({ title: "Огоҳӣ", description: "Лутфан аввал бо қоидаҳо розӣ шавед", variant: "destructive" });
       return;
     }
-    if (!name || !email || !password || !birthDate || !region || !phone) {
+    if (!name || !email || !password || !region || !phone || !birthDate) {
       toast({ title: "Хатогӣ", description: "Ҳамаи майдонҳоро пур кунед", variant: "destructive" });
       return;
     }
@@ -72,11 +69,10 @@ export default function Register() {
       const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
       setGeneratedOtp(newOtp);
       
-      console.log(`Verification Code for ${email}: ${newOtp}`);
-      
       toast({ 
-        title: "Код фиристода шуд", 
-        description: `Коди тасдиқ ба почтаи ${email} фиристода шуд. (Код: ${newOtp})` 
+        title: "Коди тасдиқ", 
+        description: `Коди шумо: ${newOtp} (Барои санҷиш)`,
+        duration: 10000
       });
       
       setStep(2);
@@ -93,7 +89,6 @@ export default function Register() {
       toast({ title: "Хатогӣ", description: "Коди тасдиқ нодуруст аст", variant: "destructive" });
       return;
     }
-
     finalizeRegistration();
   };
 
@@ -103,29 +98,28 @@ export default function Register() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const profileData: UserProfile = {
+      const profileData: any = {
         id: user.uid,
         name,
         email,
         role,
         phone: phone.replace(/\D/g, ""),
         region,
+        birthDate,
         balance: 0,
         identificationStatus: 'None',
-        isArtisanFeePaid: true,
         isPremium: false,
         isBlocked: false,
         warningCount: 0,
         createdAt: serverTimestamp()
       };
 
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, profileData);
+      await setDoc(doc(db, 'users', user.uid), profileData);
       
-      toast({ title: "Муваффақият", description: "Хуш омадед ба Ҳунар Ёб!" });
+      toast({ title: "Хуш омадед", description: "Сабти ном муваффақона анҷом ёфт!" });
       router.push("/");
     } catch (error: any) {
-      toast({ title: "Хатогӣ", description: "Сабти ном нашуд. Лутфан дубора кӯшиш кунед.", variant: "destructive" });
+      toast({ title: "Хатогӣ", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -137,17 +131,34 @@ export default function Register() {
       <div className="flex-1 flex items-center justify-center p-4 pt-10">
         <Card className="w-full max-w-xl border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
           <CardHeader className="text-center bg-muted/10 pb-12 pt-16">
-            <CardTitle className="text-5xl font-black font-headline text-secondary tracking-tighter">САБТИ НОМ</CardTitle>
+            <CardTitle className="text-5xl font-black font-headline text-secondary tracking-tighter uppercase">САБТИ НОМ</CardTitle>
           </CardHeader>
           
           {step === 1 && (
             <form onSubmit={handleNextStep}>
-              <CardContent className="space-y-8 pt-12 px-10">
+              <CardContent className="space-y-6 pt-12 px-10">
+                <div className="space-y-2 text-center mb-8">
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ман кистам?</Label>
+                  <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="flex justify-center gap-6 mt-4">
+                    <Label htmlFor="client" className={cn("flex flex-col items-center p-6 rounded-[2rem] border-2 cursor-pointer transition-all w-32", role === 'Client' ? "border-primary bg-primary/5" : "border-muted opacity-40")}>
+                      <RadioGroupItem value="Client" id="client" className="sr-only" />
+                      <UserIcon className="h-8 w-8 mb-2" />
+                      <span className="font-black text-[10px] uppercase">Мизоҷ</span>
+                    </Label>
+                    <Label htmlFor="artisan" className={cn("flex flex-col items-center p-6 rounded-[2rem] border-2 cursor-pointer transition-all w-32", role === 'Usto' ? "border-primary bg-primary/5" : "border-muted opacity-40")}>
+                      <RadioGroupItem value="Usto" id="artisan" className="sr-only" />
+                      <Hammer className="h-8 w-8 mb-2" />
+                      <span className="font-black text-[10px] uppercase">Усто</span>
+                    </Label>
+                  </RadioGroup>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаб</Label>
-                  <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Масалан: Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Телефон</Label>
                     <div className="relative">
@@ -156,20 +167,38 @@ export default function Register() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта (Email)</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почта</Label>
                     <Input type="email" placeholder="example@mail.tj" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Минтақа</Label>
+                    <Select value={region} onValueChange={setRegion}>
+                      <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold"><SelectValue placeholder="Интихоб кунед" /></SelectTrigger>
+                      <SelectContent className="rounded-2xl">
+                        {ALL_REGIONS.map(r => <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Санаи таваллуд</Label>
+                    <Input type="date" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамз</Label>
                     <Input type="password" d="password" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Тасдиқи рамз</Label>
+                    <Label className="font-black text-xs uppercase tracking-widest opacity-60">Тасдиқ</Label>
                     <Input type="password" id="confirm-password" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                   </div>
                 </div>
+
                 <div className="flex items-start space-x-4 p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20">
                   <Checkbox id="agreed" checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} className="mt-1 h-6 w-6 rounded-lg" />
                   <Label htmlFor="agreed" className="text-[10px] text-muted-foreground font-bold leading-relaxed block">
@@ -179,8 +208,9 @@ export default function Register() {
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
                 <Button type="submit" disabled={!agreed || loading} className="w-full h-16 text-xl font-black rounded-[2rem] shadow-2xl bg-primary">
-                  ДАВОМ ДОДАН
+                  {loading ? "ДАР ҲОЛИ БАРРАСӢ..." : "ДАВОМ ДОДАН"}
                 </Button>
+                <p className="text-sm text-center text-muted-foreground font-bold">Аллакай акаунт доред? <Link href="/login" className="text-primary font-black">Ворид шавед</Link></p>
               </CardFooter>
             </form>
           )}
@@ -192,14 +222,14 @@ export default function Register() {
                   <Mail className="h-12 w-12 text-primary" />
                 </div>
                 <h3 className="text-3xl font-black tracking-tighter">ТАСДИҚИ ПОЧТА</h3>
-                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба почтаи <b className="text-secondary">{email}</b> коди 4-рақамаи тасдиқро фиристодем.</p>
+                <p className="text-sm text-muted-foreground font-bold leading-relaxed">Мо ба почтаи шумо коди тасдиқро фиристодем.</p>
                 <Input className="h-20 text-center text-5xl font-black tracking-[1em] rounded-[2.5rem] bg-muted/20 border-muted" placeholder="0000" maxLength={4} value={otp} onChange={(e) => setOtp(e.target.value)} />
               </CardContent>
               <CardFooter className="flex flex-col space-y-4 pb-16 px-10">
                 <Button type="submit" disabled={loading} className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl">
                   {loading ? "ДАР ҲОЛИ САБТ..." : "ТАСДИҚ ВА САБТ"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold">Бозгашт</Button>
+                <Button type="button" variant="ghost" onClick={() => setStep(1)} className="w-full font-bold">Бозгашт ва таҳрир</Button>
               </CardFooter>
             </form>
           )}
@@ -208,3 +238,5 @@ export default function Register() {
     </div>
   );
 }
+
+const cn = (...inputs: any[]) => inputs.filter(Boolean).join(" ");

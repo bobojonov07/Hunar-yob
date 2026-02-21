@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useEffect, useState } from "react";
@@ -5,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, Clock, CheckCheck, ChevronLeft, Check } from "lucide-react";
+import { MessageSquare, CheckCheck, ChevronLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -24,9 +25,9 @@ export default function MessagesList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
 
-  // Use the OR operator to find chats where current user is either client or artisan
   const chatsQuery = useMemo(() => {
     if (!db || !user) return null;
+    // We use a query that finds chats where current user is involved
     return query(
       collection(db, "chats"),
       or(where("clientId", "==", user.uid), where("artisanId", "==", user.uid)),
@@ -38,9 +39,12 @@ export default function MessagesList() {
 
   useEffect(() => {
     async function fetchDetails() {
-      if (!user || allChats.length === 0) {
-        setLoadingConv(false);
-        if (allChats.length === 0) setConversations([]);
+      if (!user) return;
+      if (allChats.length === 0) {
+        if (!loading) {
+          setConversations([]);
+          setLoadingConv(false);
+        }
         return;
       }
 
@@ -48,12 +52,13 @@ export default function MessagesList() {
       try {
         const convList: Conversation[] = [];
         for (const chat of allChats) {
-          // Identify the other person in the chat
           const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
+          if (!otherId) continue;
+          
           const otherSnap = await getDoc(doc(db, "users", otherId));
           convList.push({
             ...chat,
-            otherParty: otherSnap.exists() ? (otherSnap.data() as UserProfile) : null
+            otherParty: otherSnap.exists() ? { ...(otherSnap.data() as UserProfile), id: otherSnap.id } : null
           });
         }
         setConversations(convList);
@@ -65,7 +70,7 @@ export default function MessagesList() {
     }
 
     fetchDetails();
-  }, [allChats, user, db]);
+  }, [allChats, user, db, loading]);
 
   if (!user) return null;
 
@@ -78,11 +83,14 @@ export default function MessagesList() {
             <ChevronLeft className="mr-2 h-5 w-5" />
             БОЗГАШТ
           </Button>
-          <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter">Паёмҳо</h1>
+          <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter uppercase">Паёмҳо</h1>
         </div>
 
         {(loading || loadingConv) ? (
-          <div className="text-center py-20 opacity-50">Дар ҳоли боргузорӣ...</div>
+          <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+            <p className="font-black uppercase tracking-widest text-[10px]">Дар ҳоли боргузорӣ...</p>
+          </div>
         ) : conversations.length > 0 ? (
           <div className="space-y-4">
             {conversations.map((conv) => (
@@ -105,7 +113,11 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
     if (!conv.updatedAt) return "";
     try {
       const date = conv.updatedAt.toDate();
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const now = new Date();
+      if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
     } catch (e) {
       return "";
     }
@@ -128,24 +140,24 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
               <h3 className="font-black text-secondary text-lg truncate group-hover:text-primary transition-colors">
                 {conv.otherParty?.name || "Корбар"}
               </h3>
-              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest shrink-0">
                 {formattedTime}
               </span>
             </div>
             <div className="flex items-center gap-2">
               {conv.lastSenderId === currentUser.uid && (
-                <CheckCheck className="h-4 w-4 text-blue-500" />
+                <CheckCheck className="h-4 w-4 text-blue-500 shrink-0" />
               )}
               <p className={cn(
                 "text-sm truncate font-medium text-muted-foreground",
-                conv.unreadCount?.[currentUser.uid] > 0 && "font-black text-secondary"
+                (conv.unreadCount?.[currentUser.uid] || 0) > 0 && "font-black text-secondary"
               )}>
                 {conv.lastMessage}
               </p>
             </div>
           </div>
-          {conv.unreadCount?.[currentUser.uid] > 0 && (
-            <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-[10px] text-white font-black">
+          {(conv.unreadCount?.[currentUser.uid] || 0) > 0 && (
+            <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center text-[10px] text-white font-black shrink-0">
               {conv.unreadCount[currentUser.uid]}
             </div>
           )}
