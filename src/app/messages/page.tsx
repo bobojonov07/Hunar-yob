@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, orderBy, doc, getDoc, or } from "firebase/firestore";
+import { collection, query, where, orderBy, doc, getDoc } from "firebase/firestore";
 import { Chat, UserProfile } from "@/lib/storage";
 
 interface Conversation extends Chat {
@@ -25,26 +25,41 @@ export default function MessagesList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
 
-  // Ҷустуҷӯи ҳамаи чатҳое, ки корбар дар онҳо иштирок дорад
-  const chatsQuery = useMemo(() => {
+  // Separate queries to avoid potential composite index issues with 'OR' on different fields
+  const clientChatsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
       collection(db, "chats"),
-      or(where("clientId", "==", user.uid), where("artisanId", "==", user.uid)),
+      where("clientId", "==", user.uid),
       orderBy("updatedAt", "desc")
     );
   }, [db, user]);
 
-  const { data: allChats = [], loading } = useCollection<Chat>(chatsQuery as any);
+  const artisanChatsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(
+      collection(db, "chats"),
+      where("artisanId", "==", user.uid),
+      orderBy("updatedAt", "desc")
+    );
+  }, [db, user]);
+
+  const { data: clientChats = [], loading: clientLoading } = useCollection<Chat>(clientChatsQuery as any);
+  const { data: artisanChats = [], loading: artisanLoading } = useCollection<Chat>(artisanChatsQuery as any);
 
   useEffect(() => {
     async function fetchDetails() {
-      if (!user) return;
+      if (!user || clientLoading || artisanLoading) return;
+
+      const allChats = [...clientChats, ...artisanChats].sort((a, b) => {
+        const timeA = a.updatedAt?.toMillis() || 0;
+        const timeB = b.updatedAt?.toMillis() || 0;
+        return timeB - timeA;
+      });
+
       if (allChats.length === 0) {
-        if (!loading) {
-          setConversations([]);
-          setLoadingConv(false);
-        }
+        setConversations([]);
+        setLoadingConv(false);
         return;
       }
 
@@ -52,7 +67,6 @@ export default function MessagesList() {
       try {
         const convList: Conversation[] = [];
         for (const chat of allChats) {
-          // Муайян кардани "тарафи дигар"
           const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
           if (!otherId) continue;
           
@@ -71,9 +85,11 @@ export default function MessagesList() {
     }
 
     fetchDetails();
-  }, [allChats, user, db, loading]);
+  }, [clientChats, artisanChats, user, db, clientLoading, artisanLoading]);
 
   if (!user) return <div className="min-h-screen flex items-center justify-center">Вуруд лозим аст...</div>;
+
+  const isLoading = clientLoading || artisanLoading || loadingConv;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -87,7 +103,7 @@ export default function MessagesList() {
           <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter uppercase">Паёмҳо</h1>
         </div>
 
-        {(loading || loadingConv) ? (
+        {isLoading ? (
           <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin h-12 w-12 text-primary" />
             <p className="font-black uppercase tracking-widest text-[10px]">Дар ҳоли ҷустуҷӯи паёмҳо...</p>

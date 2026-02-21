@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc } from "firebase/firestore";
+import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Listing, Message, Deal, calculateFee, UserProfile } from "@/lib/storage";
 
 export default function ChatPage() {
@@ -62,6 +62,7 @@ export default function ChatPage() {
   }, [db, chatId]);
   const { data: messages = [] } = useCollection<Message>(messagesQuery as any);
 
+  // Mark as read logic
   useEffect(() => {
     if (!chatId || !user || messages.length === 0) return;
     const unread = messages.filter(m => !m.isRead && m.senderId !== user.uid);
@@ -84,6 +85,7 @@ export default function ChatPage() {
 
     const chatRef = doc(db, "chats", chatId);
     const msgRef = doc(collection(db, "chats", chatId, "messages"));
+    const otherId = user.uid === listing.userId ? targetClientId : listing.userId;
     
     const messageData = {
       id: msgRef.id,
@@ -105,6 +107,7 @@ export default function ChatPage() {
       lastMessage: messageData.text,
       lastSenderId: user.uid,
       updatedAt: serverTimestamp(),
+      [`unreadCount.${otherId}`]: increment(1)
     };
 
     setDoc(chatRef, chatUpdate, { merge: true }).catch(() => {});
