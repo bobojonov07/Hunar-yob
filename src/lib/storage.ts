@@ -1,3 +1,4 @@
+
 'use client';
 
 export type UserRole = 'Usto' | 'Client';
@@ -13,13 +14,14 @@ export interface UserProfile {
   profileImage?: string;
   balance: number;
   identificationStatus: IdentificationStatus;
-  passportNumber?: string; // Барои пешгирии такрор
+  passportNumber?: string;
   isPremium?: boolean;
   isArtisanFeePaid?: boolean;
   warningCount?: number;
   isBlocked?: boolean;
   favorites?: string[];
   fcmTokens?: string[];
+  lastActive?: any;
   createdAt: any;
 }
 
@@ -113,5 +115,5 @@ export const ALL_CATEGORIES = [
 export function calculateFee(price: number): number {
   if (price < 100) return 5;
   if (price < 1000) return 20;
-  return Math.floor(price * 0.05); // 5% commission
+  return Math.floor(price * 0.05);
 }

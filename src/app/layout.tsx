@@ -1,14 +1,15 @@
+
+"use client"
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { BottomNav } from "@/components/bottom-nav";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { NotificationHandler } from "@/components/notification-handler";
-
-export const metadata: Metadata = {
-  title: 'Ҳунар Ёб - Пайдо кардани устоҳои моҳир',
-  description: 'Платформаи муосир барои пайдо кардани устоҳо ва пешниҳоди хидматҳои ҳунармандӣ дар Тоҷикистон',
-};
+import { useEffect } from 'react';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function RootLayout({
   children,
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className="font-body antialiased bg-background text-foreground min-h-screen pb-16 md:pb-0">
         <FirebaseClientProvider>
           <NotificationHandler />
+          <Heartbeat />
           {children}
           <BottomNav />
           <Toaster />
@@ -32,4 +34,26 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+// Simple component to update user's lastActive status
+function Heartbeat() {
+  const { user } = useUser();
+  const db = useFirestore();
+
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const updateStatus = () => {
+      updateDoc(doc(db, "users", user.uid), {
+        lastActive: serverTimestamp()
+      }).catch(() => {});
+    };
+
+    updateStatus();
+    const interval = setInterval(updateStatus, 4 * 60 * 1000); // Every 4 mins
+    return () => clearInterval(interval);
+  }, [user, db]);
+
+  return null;
 }

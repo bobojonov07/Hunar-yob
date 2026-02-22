@@ -62,16 +62,21 @@ export default function ChatPage() {
   }, [db, chatId]);
   const { data: messages = [] } = useCollection<Message>(messagesQuery as any);
 
-  // Mark as read logic
+  // Mark as read and clear unread count for current user
   useEffect(() => {
-    if (!chatId || !user || messages.length === 0) return;
+    if (!chatId || !user || !db || messages.length === 0) return;
+    
+    // 1. Mark individual messages as read if sent by others
     const unread = messages.filter(m => !m.isRead && m.senderId !== user.uid);
-    if (unread.length > 0) {
-      unread.forEach(m => {
-        updateDoc(doc(db, "chats", chatId, "messages", m.id), { isRead: true });
-      });
-      updateDoc(doc(db, "chats", chatId), { [`unreadCount.${user.uid}`]: 0 });
-    }
+    unread.forEach(m => {
+      updateDoc(doc(db, "chats", chatId, "messages", m.id), { isRead: true });
+    });
+
+    // 2. Reset unread count for the current user in the chat doc
+    const chatRef = doc(db, "chats", chatId);
+    updateDoc(chatRef, {
+      [`unreadCount.${user.uid}`]: 0
+    }).catch(() => {});
   }, [chatId, user, messages, db]);
 
   useEffect(() => {
@@ -164,6 +169,14 @@ export default function ChatPage() {
       });
   };
 
+  const isOtherPartyOnline = useMemo(() => {
+    if (!otherParty?.lastActive) return false;
+    const lastActive = otherParty.lastActive.toDate();
+    const now = new Date();
+    // Consider online if active in the last 5 minutes
+    return (now.getTime() - lastActive.getTime()) < 5 * 60 * 1000;
+  }, [otherParty]);
+
   if (!listing || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
 
   const currentFee = dealPrice ? calculateFee(parseFloat(dealPrice)) : 0;
@@ -188,8 +201,8 @@ export default function ChatPage() {
               {otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-4 w-4 text-primary" />}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              <p className="text-[10px] text-muted-foreground font-bold">Дар хат</p>
+              <span className={`h-2 w-2 rounded-full ${isOtherPartyOnline ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+              <p className="text-[10px] text-muted-foreground font-bold">{isOtherPartyOnline ? 'Дар хат' : 'Офлайн'}</p>
             </div>
           </div>
         </div>
@@ -249,7 +262,7 @@ export default function ChatPage() {
                 }`}>
                   <span>{msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   {msg.senderId === user.uid && (
-                    msg.isRead ? <CheckCheck className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />
+                    msg.isRead ? <CheckCheck className="h-2.5 w-2.5 text-blue-200" /> : <Check className="h-2.5 w-2.5" />
                   )}
                 </div>
               </div>

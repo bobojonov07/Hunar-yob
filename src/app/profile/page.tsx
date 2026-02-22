@@ -1,23 +1,22 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { UserProfile, ALL_REGIONS, PREMIUM_PRICE, Listing } from "@/lib/storage";
+import { UserProfile, ALL_REGIONS, Listing } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, MapPin, Phone, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2 } from "lucide-react";
+import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { verifyPassport } from "@/ai/flows/verify-passport-flow";
@@ -32,26 +31,26 @@ export default function Profile() {
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
-  const listingsQuery = useMemo(() => {
-    if (!user) return null;
-    return query(collection(db, "listings"), where("userId", "==", user.uid));
-  }, [db, user]);
-  const { data: userListings = [] } = useCollection<Listing>(listingsQuery as any);
+  // Fetch either user's listings or favorites based on role
+  const dataQuery = useMemo(() => {
+    if (!db || !profile || !user) return null;
+    if (profile.role === 'Usto') {
+      return query(collection(db, "listings"), where("userId", "==", user.uid));
+    } else {
+      const favs = profile.favorites || [];
+      if (favs.length === 0) return null;
+      return query(collection(db, "listings"), where("id", "in", favs.slice(0, 10)));
+    }
+  }, [db, profile, user]);
 
-  const [editName, setEditName] = useState("");
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { data: displayListings = [], loading: dataLoading } = useCollection<Listing>(dataQuery as any);
+
   const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
   const [kycLoading, setKycLoading] = useState(false);
   const [passportImage, setPassportImage] = useState<string | null>(null);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const passportInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (profile) {
-      setEditName(profile.name);
-    }
-  }, [profile]);
 
   const completion = useMemo(() => {
     if (!profile) return 0;
@@ -93,22 +92,17 @@ export default function Profile() {
     setKycLoading(true);
 
     try {
-      // 1. AI Verification
       const result = await verifyPassport({ photoDataUri: passportImage });
-
       if (!result.isPassport) {
         toast({ title: "Хатогӣ", description: result.errorReason || "Ин сурат шиноснома нест.", variant: "destructive" });
         setKycLoading(false);
         return;
       }
-
       if (!result.isOver18) {
         toast({ title: "Рад шуд", description: "Синну соли шумо бояд аз 18 боло бошад.", variant: "destructive" });
         setKycLoading(false);
         return;
       }
-
-      // 2. Uniqueness Check
       if (result.passportNumber) {
         const dupQuery = query(collection(db, "users"), where("passportNumber", "==", result.passportNumber));
         const dupSnap = await getDocs(dupQuery);
@@ -119,12 +113,10 @@ export default function Profile() {
         }
       }
 
-      // 3. Success
       await updateDoc(userProfileRef, { 
         identificationStatus: 'Verified',
         passportNumber: result.passportNumber || ""
       });
-      
       toast({ title: "Тасдиқ шуд!", description: "Шахсияти шумо бо муваффақият тасдиқ гардид." });
       setIsKycDialogOpen(false);
     } catch (err) {
@@ -254,8 +246,10 @@ export default function Profile() {
           <div className="lg:col-span-2 space-y-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <h2 className="text-4xl font-black text-secondary flex items-center gap-4 tracking-tighter">
-                <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Zap className="h-7 w-7 text-primary" /></div> 
-                {profile.role === 'Usto' ? 'ЭЪЛОНҲОИ МАН' : 'ПИСАНДИДАҲО'}
+                <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                  {profile.role === 'Usto' ? <Zap className="h-7 w-7 text-primary" /> : <Heart className="h-7 w-7 text-red-500" />}
+                </div> 
+                {profile.role === 'Usto' ? 'ЭЪЛОНҲОИ МАН' : 'ПИСАНДИДАҲОИ МАН'}
               </h2>
               {profile.role === 'Usto' && (
                 <Button asChild className="bg-primary h-14 rounded-2xl font-black px-8 shadow-xl uppercase tracking-widest transition-all hover:scale-[1.03]">
@@ -264,9 +258,11 @@ export default function Profile() {
               )}
             </div>
 
-            {userListings.length > 0 ? (
+            {dataLoading ? (
+              <div className="text-center py-20 opacity-50">Боргузорӣ...</div>
+            ) : displayListings.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                {userListings.map(listing => (
+                {displayListings.map(listing => (
                   <Card key={listing.id} className="overflow-hidden border-none shadow-xl rounded-[3rem] bg-white group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700">
                     <div className="relative h-64 w-full overflow-hidden">
                       <Image src={listing.images[0]} alt={listing.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />
@@ -284,8 +280,15 @@ export default function Profile() {
               </div>
             ) : (
               <div className="text-center py-40 bg-white rounded-[3rem] border-4 border-dashed border-muted/50 shadow-inner group">
-                <Zap className="h-20 w-20 mx-auto text-muted mb-6 opacity-30 group-hover:scale-110 transition-transform duration-500" />
-                <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40 text-center px-4">ЭЪЛОНҲО ЁФТ НАШУДАНД</p>
+                {profile.role === 'Usto' ? <Zap className="h-20 w-20 mx-auto text-muted mb-6 opacity-30" /> : <Heart className="h-20 w-20 mx-auto text-muted mb-6 opacity-30" />}
+                <p className="text-muted-foreground font-black text-xl uppercase tracking-[0.2em] opacity-40 text-center px-4">
+                  {profile.role === 'Usto' ? 'ЭЪЛОНҲО ЁФТ НАШУДАНД' : 'ҲАНӮЗ ЯГОН ПИСАНДИДА НАДОРЕД'}
+                </p>
+                {profile.role === 'Client' && (
+                  <Button asChild variant="link" className="mt-6 text-primary font-black uppercase tracking-widest text-xs">
+                    <Link href="/listings">ҶУСТУҶӮИ УСТОҲО</Link>
+                  </Button>
+                )}
               </div>
             )}
           </div>
