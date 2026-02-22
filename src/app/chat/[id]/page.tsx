@@ -14,8 +14,22 @@ import Link from "next/link";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Listing, Message, Deal, calculateFee, UserProfile } from "@/lib/storage";
-import { formatDistanceToNow } from "date-fns";
-import { tg } from "date-fns/locale";
+
+// Функсияи махсус барои нишон додани вақт бо забони тоҷикӣ (ба ҷои date-fns/locale/tg)
+function formatDistanceToNowTajik(date: Date) {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return "Ҳозир";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} дақиқа пеш`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} соат пеш`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays} рӯз пеш`;
+  if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} моҳ пеш`;
+  return date.toLocaleDateString();
+}
 
 export default function ChatPage() {
   const { id: listingId } = useParams();
@@ -166,14 +180,14 @@ export default function ChatPage() {
 
   const lastActiveText = useMemo(() => {
     if (!otherParty?.lastActive) return "Офлайн";
-    const lastActive = otherParty.lastActive.toDate();
-    const now = new Date();
-    const diff = (now.getTime() - lastActive.getTime()) / 1000 / 60; // дар дақиқа
-    
-    if (diff < 5) return "Дар хат";
-    
     try {
-      return formatDistanceToNow(lastActive, { addSuffix: true, locale: tg });
+      const lastActive = otherParty.lastActive.toDate();
+      const now = new Date();
+      const diffInMinutes = (now.getTime() - lastActive.getTime()) / 1000 / 60;
+      
+      if (diffInMinutes < 5) return "Дар хат";
+      
+      return formatDistanceToNowTajik(lastActive);
     } catch (e) {
       return "Чанд вақт пеш";
     }
@@ -197,7 +211,7 @@ export default function ChatPage() {
           </Button>
           <Avatar className="h-10 w-10 border shadow-sm">
             <AvatarImage src={otherParty?.profileImage} className="object-cover" />
-            <AvatarFallback className="bg-primary text-white font-black">{otherParty?.name.charAt(0) || "?"}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-white font-black">{otherParty?.name?.charAt(0) || "?"}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
