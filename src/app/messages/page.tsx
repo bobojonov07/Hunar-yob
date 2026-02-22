@@ -50,13 +50,17 @@ export default function MessagesList() {
     async function fetchConversationDetails() {
       if (!user || clientLoading || artisanLoading) return;
 
-      const allChats = [...clientChats, ...artisanChats].sort((a, b) => {
+      // Combine and sort unique chats
+      const allChatsMap = new Map<string, Chat>();
+      [...clientChats, ...artisanChats].forEach(chat => allChatsMap.set(chat.id, chat));
+      
+      const sortedChats = Array.from(allChatsMap.values()).sort((a, b) => {
         const timeA = a.updatedAt?.toMillis() || 0;
         const timeB = b.updatedAt?.toMillis() || 0;
         return timeB - timeA;
       });
 
-      if (allChats.length === 0) {
+      if (sortedChats.length === 0) {
         setConversations([]);
         return;
       }
@@ -64,7 +68,7 @@ export default function MessagesList() {
       setLoadingDetails(true);
       try {
         const results: Conversation[] = [];
-        for (const chat of allChats) {
+        for (const chat of sortedChats) {
           const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
           if (!otherId) continue;
           

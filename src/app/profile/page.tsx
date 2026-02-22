@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -10,12 +11,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2 } from "lucide-react";
+import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
-import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { doc, updateDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { verifyPassport } from "@/ai/flows/verify-passport-flow";
@@ -31,7 +32,6 @@ export default function Profile() {
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
-  // Fetch either user's listings or favorites based on role
   const dataQuery = useMemo(() => {
     if (!db || !profile || !user) return null;
     if (profile.role === 'Usto') {
@@ -107,15 +107,6 @@ export default function Profile() {
         setKycLoading(false);
         return;
       }
-      if (result.passportNumber) {
-        const dupQuery = query(collection(db, "users"), where("passportNumber", "==", result.passportNumber));
-        const dupSnap = await getDocs(dupQuery);
-        if (!dupSnap.empty && dupSnap.docs[0].id !== user.uid) {
-          toast({ title: "Хатогӣ", description: "Ин шиноснома аллакай дар система истифода шудааст.", variant: "destructive" });
-          setKycLoading(false);
-          return;
-        }
-      }
 
       await updateDoc(userProfileRef, { 
         identificationStatus: 'Verified',
@@ -130,9 +121,29 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteListing = async (listingId: string) => {
+    if (!confirm("Оё шумо мутмаин ҳастед, ки мехоҳед ин эълонро нест кунед?")) return;
+    
+    deleteDoc(doc(db, "listings", listingId))
+      .then(() => toast({ title: "Эълон нест карда шуд" }))
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `listings/${listingId}`,
+          operation: 'delete'
+        }));
+      });
+  };
+
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/");
+  };
+
+  const handleWalletClick = () => {
+    toast({
+      title: "Ҳамён",
+      description: "Ин бахш дар оянда фаъол мешавад",
+    });
   };
 
   if (authLoading || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
@@ -176,7 +187,7 @@ export default function Profile() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-4 px-8">
-                <Link href="/wallet" className="block p-6 bg-secondary text-white rounded-[2rem] shadow-xl hover:scale-[1.02] transition-all">
+                <button onClick={handleWalletClick} className="w-full block p-6 bg-secondary text-white rounded-[2rem] shadow-xl hover:scale-[1.02] transition-all text-left">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Тавозуни Ҳамён</span>
                     <Wallet className="h-5 w-5 opacity-60" />
@@ -185,7 +196,7 @@ export default function Profile() {
                     <span className="text-3xl font-black">{profile.balance || 0}</span>
                     <span className="text-sm font-bold opacity-60">TJS</span>
                   </div>
-                </Link>
+                </button>
 
                 <Dialog open={isKycDialogOpen} onOpenChange={setIsKycDialogOpen}>
                   <DialogTrigger asChild>
@@ -277,11 +288,22 @@ export default function Profile() {
                       <Badge className="absolute top-6 left-6 bg-primary/95 text-white border-none px-6 py-2.5 font-black rounded-2xl backdrop-blur-xl shadow-xl">{listing.category}</Badge>
                       {listing.isVip && <Badge className="absolute top-6 right-6 bg-yellow-500 text-white border-none px-6 py-2.5 font-black rounded-2xl shadow-xl animate-pulse">VIP</Badge>}
                     </div>
-                    <CardHeader className="p-10 pb-4"><CardTitle className="text-2xl font-black text-secondary line-clamp-1 tracking-tight group-hover:text-primary transition-colors">{listing.title}</CardTitle></CardHeader>
-                    <CardFooter className="p-10 pt-0">
-                      <Button variant="outline" asChild className="w-full rounded-2xl border-muted text-secondary h-12 px-6 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-secondary hover:text-white border-2">
+                    <CardHeader className="p-10 pb-4">
+                      <CardTitle className="text-2xl font-black text-secondary line-clamp-1 tracking-tight group-hover:text-primary transition-colors">{listing.title}</CardTitle>
+                    </CardHeader>
+                    <CardFooter className="p-10 pt-0 flex gap-2">
+                      <Button variant="outline" asChild className="flex-1 rounded-2xl border-muted text-secondary h-12 px-6 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-secondary hover:text-white border-2">
                         <Link href={`/listing/${listing.id}`}>БИНЕД</Link>
                       </Button>
+                      {profile.role === 'Usto' && (
+                        <Button 
+                          onClick={() => handleDeleteListing(listing.id)}
+                          variant="ghost" 
+                          className="w-12 h-12 rounded-2xl text-red-500 hover:bg-red-50 hover:text-red-600 p-0"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      )}
                     </CardFooter>
                   </Card>
                 ))}
