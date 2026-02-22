@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -13,10 +12,11 @@ import { ALL_CATEGORIES, UserProfile } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, X, Upload, ChevronLeft } from "lucide-react";
+import { Camera, X, Upload, ChevronLeft, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
+import { compressImage } from "@/lib/utils";
 
 export default function CreateListing() {
   const { user, loading: authLoading } = useUser();
@@ -31,6 +31,7 @@ export default function CreateListing() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -39,20 +40,31 @@ export default function CreateListing() {
     }
   }, [user, authLoading, router]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     if (imageUrls.length + files.length > 5) {
       toast({ title: "Маҳдудият", description: "Танҳо то 5 сурат", variant: "destructive" });
       return;
     }
-    Array.from(files).forEach(file => {
+
+    setIsCompressing(true);
+    const newImages: string[] = [];
+    
+    for (const file of Array.from(files)) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrls(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+      const compressed = await new Promise<string>((resolve) => {
+        reader.onloadend = async () => {
+          const res = await compressImage(reader.result as string, 800, 0.7);
+          resolve(res);
+        };
+        reader.readAsDataURL(file);
+      });
+      newImages.push(compressed);
+    }
+
+    setImageUrls(prev => [...prev, ...newImages]);
+    setIsCompressing(false);
   };
 
   const removeImage = (index: number) => {
@@ -118,9 +130,9 @@ export default function CreateListing() {
               <div className="space-y-4">
                 <Label>Суратҳо (то 5 адад)</Label>
                 <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                <Button type="button" variant="outline" className="w-full h-24 border-dashed border-2 flex flex-col gap-2 rounded-2xl" onClick={() => fileInputRef.current?.click()}>
-                  <Upload className="h-6 w-6 text-muted-foreground" />
-                  <span>Иловаи суратҳо аз галерея</span>
+                <Button type="button" disabled={isCompressing} variant="outline" className="w-full h-24 border-dashed border-2 flex flex-col gap-2 rounded-2xl" onClick={() => fileInputRef.current?.click()}>
+                  {isCompressing ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Upload className="h-6 w-6 text-muted-foreground" />}
+                  <span>{isCompressing ? 'Фишурдани суратҳо...' : 'Иловаи суратҳо аз галерея'}</span>
                 </Button>
                 
                 <div className="grid grid-cols-5 gap-2 mt-4">

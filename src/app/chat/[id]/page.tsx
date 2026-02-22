@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -7,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare } from "lucide-react";
+import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +14,8 @@ import Link from "next/link";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Listing, Message, Deal, calculateFee, UserProfile } from "@/lib/storage";
+import { formatDistanceToNow } from "date-fns";
+import { tg } from "date-fns/locale";
 
 export default function ChatPage() {
   const { id: listingId } = useParams();
@@ -66,13 +67,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!chatId || !user || !db || messages.length === 0) return;
     
-    // 1. Mark individual messages as read if sent by others
-    const unread = messages.filter(m => !m.isRead && m.senderId !== user.uid);
-    unread.forEach(m => {
-      updateDoc(doc(db, "chats", chatId, "messages", m.id), { isRead: true });
-    });
-
-    // 2. Reset unread count for the current user in the chat doc
+    // Reset unread count for the current user in the chat doc
     const chatRef = doc(db, "chats", chatId);
     updateDoc(chatRef, {
       [`unreadCount.${user.uid}`]: 0
@@ -169,13 +164,22 @@ export default function ChatPage() {
       });
   };
 
-  const isOtherPartyOnline = useMemo(() => {
-    if (!otherParty?.lastActive) return false;
+  const lastActiveText = useMemo(() => {
+    if (!otherParty?.lastActive) return "Офлайн";
     const lastActive = otherParty.lastActive.toDate();
     const now = new Date();
-    // Consider online if active in the last 5 minutes
-    return (now.getTime() - lastActive.getTime()) < 5 * 60 * 1000;
+    const diff = (now.getTime() - lastActive.getTime()) / 1000 / 60; // дар дақиқа
+    
+    if (diff < 5) return "Дар хат";
+    
+    try {
+      return formatDistanceToNow(lastActive, { addSuffix: true, locale: tg });
+    } catch (e) {
+      return "Чанд вақт пеш";
+    }
   }, [otherParty]);
+
+  const isOnline = lastActiveText === "Дар хат";
 
   if (!listing || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
 
@@ -201,8 +205,8 @@ export default function ChatPage() {
               {otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-4 w-4 text-primary" />}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${isOtherPartyOnline ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
-              <p className="text-[10px] text-muted-foreground font-bold">{isOtherPartyOnline ? 'Дар хат' : 'Офлайн'}</p>
+              <span className={`h-2 w-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+              <p className="text-[10px] text-muted-foreground font-bold">{lastActiveText}</p>
             </div>
           </div>
         </div>

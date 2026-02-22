@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -20,6 +19,7 @@ import { doc, updateDoc, collection, query, where, getDocs } from "firebase/fire
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { verifyPassport } from "@/ai/flows/verify-passport-flow";
+import { compressImage } from "@/lib/utils";
 
 export default function Profile() {
   const { user, loading: authLoading } = useUser();
@@ -48,6 +48,7 @@ export default function Profile() {
   const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
   const [kycLoading, setKycLoading] = useState(false);
   const [passportImage, setPassportImage] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const passportInputRef = useRef<HTMLInputElement>(null);
@@ -66,11 +67,13 @@ export default function Profile() {
   const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && user && userProfileRef) {
+      setIsUploadingPhoto(true);
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        updateDoc(userProfileRef, { profileImage: base64String })
-          .then(() => toast({ title: "Сурати профил навсозӣ шуд" }));
+        const compressed = await compressImage(reader.result as string, 400, 0.7);
+        updateDoc(userProfileRef, { profileImage: compressed })
+          .then(() => toast({ title: "Сурати профил навсозӣ шуд" }))
+          .finally(() => setIsUploadingPhoto(false));
       };
       reader.readAsDataURL(file);
     }
@@ -80,8 +83,9 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPassportImage(reader.result as string);
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result as string, 800, 0.8);
+        setPassportImage(compressed);
       };
       reader.readAsDataURL(file);
     }
@@ -151,8 +155,12 @@ export default function Profile() {
                     <AvatarImage src={profile.profileImage} className="object-cover" />
                     <AvatarFallback className="text-4xl bg-primary text-white font-black">{profile.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <button onClick={() => profileFileInputRef.current?.click()} className="absolute bottom-0 right-1/2 translate-x-12 bg-secondary text-white p-3 rounded-2xl shadow-xl hover:scale-110 transition-transform active:scale-95">
-                    <Camera className="h-5 w-5" />
+                  <button 
+                    onClick={() => profileFileInputRef.current?.click()} 
+                    disabled={isUploadingPhoto}
+                    className="absolute bottom-0 right-1/2 translate-x-12 bg-secondary text-white p-3 rounded-2xl shadow-xl hover:scale-110 transition-transform active:scale-95 disabled:opacity-50"
+                  >
+                    {isUploadingPhoto ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
                   </button>
                   <input type="file" className="hidden" ref={profileFileInputRef} onChange={handleProfileImageChange} accept="image/*" />
                 </div>
