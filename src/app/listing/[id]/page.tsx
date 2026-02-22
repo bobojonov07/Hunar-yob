@@ -34,7 +34,7 @@ import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, arrayUnion, arrayRemove, increment, collection, query, orderBy } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove, increment, collection, query, orderBy, getDoc } from "firebase/firestore";
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -48,6 +48,16 @@ export default function ListingDetail() {
 
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
+
+  const [artisanProfile, setArtisanProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (listing?.userId) {
+      getDoc(doc(db, "users", listing.userId)).then(snap => {
+        if (snap.exists()) setArtisanProfile(snap.data() as UserProfile);
+      });
+    }
+  }, [db, listing?.userId]);
 
   const reviewsQuery = useMemo(() => {
     if (!db || !id) return null;
@@ -277,10 +287,12 @@ export default function ListingDetail() {
                   </div>
                   <div>
                     <h3 className="font-black text-2xl text-secondary tracking-tighter leading-none mb-2">{listing.userName}</h3>
-                    <p className="text-[10px] font-black flex items-center bg-green-50 text-green-600 px-3 py-1 rounded-full w-fit uppercase tracking-widest">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      УСТОИ ТАСДИҚШУДА
-                    </p>
+                    {artisanProfile?.identificationStatus === 'Verified' && (
+                      <p className="text-[10px] font-black flex items-center bg-green-50 text-green-600 px-3 py-1 rounded-full w-fit uppercase tracking-widest">
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        УСТОИ ТАСДИҚШУДА
+                      </p>
+                    )}
                   </div>
                 </div>
 

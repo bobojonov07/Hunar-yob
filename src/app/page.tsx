@@ -22,7 +22,8 @@ import {
   Send as TelegramIcon,
   ExternalLink,
   ArrowRight,
-  LogIn
+  LogIn,
+  CheckCircle2
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,7 +31,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useUser, useFirestore } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
+import { UserProfile, Listing } from "@/lib/storage";
 
 const CATEGORIES = [
   { name: "Барномасоз", icon: "💻" },
@@ -59,7 +61,7 @@ export default function Home() {
     return query(collection(db, "listings"), orderBy("createdAt", "desc"), limit(20));
   }, [db]);
 
-  const { data: allListings = [] } = useCollection(listingsQuery);
+  const { data: allListings = [] } = useCollection<Listing>(listingsQuery as any);
 
   const filteredListings = useMemo(() => {
     let result = allListings;
@@ -85,10 +87,6 @@ export default function Home() {
   }, [allListings, user, selectedCategory, searchQuery]);
 
   const vipListings = filteredListings.filter(l => l.isVip);
-  const regularListings = user ? filteredListings.filter(l => !l.isVip) : [];
-
-  const heroPlaceholder = PlaceHolderImages[0] || { imageUrl: "https://picsum.photos/seed/artisan1/1200/600", imageHint: "artisan craft" };
-  const cardPlaceholder = PlaceHolderImages[1] || { imageUrl: "https://picsum.photos/seed/carpentry/600/400", imageHint: "carpentry tools" };
 
   const handleMoreInfoClick = (listingId: string) => {
     if (!user) {
@@ -110,12 +108,12 @@ export default function Home() {
       <section className="relative w-full py-32 lg:py-56 bg-secondary text-white overflow-hidden">
         <div className="absolute inset-0 opacity-25 scale-110 blur-[3px] motion-safe:animate-[pulse_10s_infinite]">
           <Image 
-            src={heroPlaceholder.imageUrl} 
+            src={PlaceHolderImages[0].imageUrl} 
             alt="Hero Background" 
             fill 
             className="object-cover"
             priority
-            data-ai-hint={heroPlaceholder.imageHint}
+            data-ai-hint={PlaceHolderImages[0].imageHint}
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-secondary via-secondary/80 to-transparent" />
@@ -220,7 +218,7 @@ export default function Home() {
                 <Card key={listing.id} className="overflow-hidden group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] transition-all duration-700 border-yellow-400/30 bg-white rounded-[3.5rem] ring-8 ring-yellow-400/5">
                   <div className="relative h-80 w-full overflow-hidden">
                     <Image
-                      src={listing.images[0] || cardPlaceholder.imageUrl}
+                      src={listing.images[0] || PlaceHolderImages[1].imageUrl}
                       alt={listing.title}
                       fill
                       className="object-cover group-hover:scale-110 transition-transform duration-1000"
@@ -236,9 +234,11 @@ export default function Home() {
                       <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white text-xl font-black shadow-xl">
                         {listing.userName.charAt(0)}
                       </div>
-                      <div>
-                        <span className="text-lg font-black text-secondary block leading-none">{listing.userName}</span>
-                        <span className="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.2em] mt-2 block">Профили Тасдиқшуда</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-black text-secondary block leading-none truncate">{listing.userName}</span>
+                        </div>
+                        <span className="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.2em] mt-2 block">Профили VIP</span>
                       </div>
                     </div>
                   </CardContent>

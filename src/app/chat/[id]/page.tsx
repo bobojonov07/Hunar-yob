@@ -185,7 +185,7 @@ export default function ChatPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h3 className="font-black text-secondary truncate text-sm">{otherParty?.name || listing.userName}</h3>
-              {listing.isVip && <CheckCircle2 className="h-4 w-4 text-primary" />}
+              {otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-4 w-4 text-primary" />}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-green-500" />

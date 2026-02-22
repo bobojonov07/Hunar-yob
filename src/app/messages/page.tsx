@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, CheckCheck, ChevronLeft, Loader2 } from "lucide-react";
+import { MessageSquare, CheckCheck, ChevronLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,6 @@ export default function MessagesList() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Ду ҷустуҷӯи алоҳида барои кафолати намоиши чатҳо пас аз Refresh
   const clientChatsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -51,7 +50,6 @@ export default function MessagesList() {
     async function fetchConversationDetails() {
       if (!user || clientLoading || artisanLoading) return;
 
-      // Муттаҳид кардани чатҳои мизоҷ ва усто
       const allChats = [...clientChats, ...artisanChats].sort((a, b) => {
         const timeA = a.updatedAt?.toMillis() || 0;
         const timeB = b.updatedAt?.toMillis() || 0;
@@ -157,9 +155,12 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-baseline mb-1">
-              <h3 className="font-black text-secondary text-lg truncate group-hover:text-primary transition-colors">
-                {conv.otherParty?.name || "Корбар"}
-              </h3>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3 className="font-black text-secondary text-lg truncate group-hover:text-primary transition-colors">
+                  {conv.otherParty?.name || "Корбар"}
+                </h3>
+                {conv.otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+              </div>
               <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest shrink-0">
                 {formattedTime}
               </span>
