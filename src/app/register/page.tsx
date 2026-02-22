@@ -54,14 +54,12 @@ export default function Register() {
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Пурра санҷидани тамоми майдонҳо
     if (!name.trim()) return toast({ title: "Хатогӣ", description: "Лутфан ному насабро ворид кунед", variant: "destructive" });
     if (!phone.trim() || phone.length < 9) return toast({ title: "Хатогӣ", description: "Рақами телефонро дуруст ворид кунед (9 рақам)", variant: "destructive" });
     if (!email.trim() || !email.includes("@")) return toast({ title: "Хатогӣ", description: "Почтаи электронӣ нодуруст аст", variant: "destructive" });
     if (!region) return toast({ title: "Хатогӣ", description: "Лутфан минтақаро интихоб кунед", variant: "destructive" });
     if (!birthDate) return toast({ title: "Хатогӣ", description: "Санаи таваллудро ворид кунед", variant: "destructive" });
 
-    // Санҷиши синну сол (аз 16-сола боло)
     if (calculateAge(birthDate) < 16) {
       return toast({ 
         title: "Маҳдудияти синну сол", 
@@ -72,7 +70,7 @@ export default function Register() {
 
     if (password.length < 6) return toast({ title: "Хатогӣ", description: "Рамз бояд камаш 6 аломат бошад", variant: "destructive" });
     if (password !== confirmPassword) return toast({ title: "Хатогӣ", description: "Рамзҳо мувофиқат намекунанд", variant: "destructive" });
-    if (!agreed) return toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода розӣ шавед", variant: "destructive" });
+    if (!agreed) return toast({ title: "Огоҳӣ", description: "Лутфан бо шартҳои истифода ва сиёсати амният розӣ шавед", variant: "destructive" });
 
     setLoading(true);
     try {
@@ -86,14 +84,13 @@ export default function Register() {
         return;
       }
 
-      // Тавлиди коди OTP барои Demo
       const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
       setGeneratedOtp(newOtp);
       
       toast({ 
         title: "КОДИ ТАСДИҚ (DEMO)", 
-        description: `Коди шумо барои сабти ном: ${newOtp}`,
-        duration: 20000
+        description: `Коди шумо: ${newOtp}`,
+        duration: 30000
       });
       
       setStep(2);
@@ -247,7 +244,7 @@ export default function Register() {
                   </Label>
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6">
+              <CardFooter className="flex flex-col space-y-4 pb-16 px-10 mt-6 text-center">
                 <Button 
                   type="submit" 
                   disabled={loading} 
@@ -257,6 +254,9 @@ export default function Register() {
                 </Button>
                 <p className="text-sm text-center text-muted-foreground font-bold italic">
                   Аллакай акаунт доред? <Link href="/login" className="text-primary font-black hover:underline not-italic">Ворид шавед</Link>
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-10 font-black uppercase tracking-[0.4em]">
+                  &copy; 2026 ҲУНАР Ё Б
                 </p>
               </CardFooter>
             </form>
@@ -281,8 +281,8 @@ export default function Register() {
                     onChange={(e) => setOtp(e.target.value)} 
                   />
                   <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
-                    <p className="text-[10px] font-black text-yellow-700 uppercase tracking-widest">
-                      ДИҚҚАТ: Коди санҷишӣ дар болои экран (Notification) намоён аст.
+                    <p className="text-[10px] font-black text-yellow-700 uppercase tracking-widest animate-pulse">
+                      ДИҚҚАТ: Коди тасдиқ дар болои экран (Notification) намоён аст.
                     </p>
                   </div>
                 </div>

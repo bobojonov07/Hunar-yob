@@ -76,6 +76,23 @@ export function Navbar() {
                     </Link>
                   );
                 })}
+
+                {!user && (
+                  <>
+                    <Link href="/login">
+                      <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
+                        <LogIn className="h-5 w-5 text-primary" />
+                        <span className="font-black text-secondary text-sm tracking-tight uppercase">Воридшавӣ</span>
+                      </div>
+                    </Link>
+                    <Link href="/register">
+                      <div className="flex items-center gap-4 p-4 rounded-2xl bg-primary/10 transition-all group">
+                        <UserPlus className="h-5 w-5 text-primary" />
+                        <span className="font-black text-primary text-sm tracking-tight uppercase">Сабти ном</span>
+                      </div>
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Version info at the absolute bottom */}
@@ -83,11 +100,11 @@ export function Navbar() {
                 {user && (
                   <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 mb-4 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
                     <LogOut className="h-5 w-5" />
-                    <span className="font-black text-sm tracking-tight">Баромад</span>
+                    <span className="font-black text-sm tracking-tight uppercase">Баромад</span>
                   </button>
                 )}
                 <div className="p-5 bg-white rounded-3xl border-2 border-dashed border-primary/20 text-center shadow-sm">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Version 1.0.0</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Version 1.0.0 (2026)</p>
                   <p className="text-[9px] font-bold text-muted-foreground uppercase">ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB</p>
                 </div>
               </div>
@@ -118,10 +135,10 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild className="hidden xs:flex text-secondary font-black uppercase tracking-widest text-[10px]">
+              <Button variant="ghost" size="sm" asChild className="flex text-secondary font-black uppercase tracking-widest text-[10px] hover:text-primary">
                 <Link href="/login">Воридшавӣ</Link>
               </Button>
-              <Button size="sm" asChild className="bg-primary text-white hover:bg-primary/90 font-black rounded-xl px-5 h-10 uppercase tracking-widest text-[10px] shadow-lg">
+              <Button size="sm" asChild className="bg-primary text-white hover:bg-primary/90 font-black rounded-xl px-5 h-10 uppercase tracking-widest text-[10px] shadow-lg hidden xs:flex">
                 <Link href="/register">Сабти ном</Link>
               </Button>
             </>

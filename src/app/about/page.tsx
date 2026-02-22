@@ -78,7 +78,7 @@ export default function AboutPage() {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.5em] pt-10">
-            &copy; 2024 ҲУНАР ЁБ. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
+            &copy; 2026 ҲУНАР Ё Б. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
           </p>
         </section>
       </main>

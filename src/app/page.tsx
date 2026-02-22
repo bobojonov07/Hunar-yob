@@ -21,7 +21,8 @@ import {
   MessageCircle, 
   Send as TelegramIcon,
   ExternalLink,
-  ArrowRight
+  ArrowRight,
+  LogIn
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -155,6 +156,17 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {!user && (
+              <div className="mt-12 flex flex-col sm:flex-row justify-center gap-6">
+                <Button asChild size="lg" className="h-16 px-12 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-lg shadow-2xl uppercase tracking-widest transition-all hover:scale-105">
+                  <Link href="/login"><LogIn className="mr-3 h-6 w-6" /> ВОРИДШАВӢ</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-16 px-12 rounded-2xl border-2 border-white text-white hover:bg-white hover:text-secondary font-black text-lg shadow-2xl uppercase tracking-widest transition-all hover:scale-105 bg-white/10 backdrop-blur-md">
+                  <Link href="/register">САБТИ НОМ</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -255,7 +267,7 @@ export default function Home() {
       <footer className="bg-white pt-32 pb-20 border-t">
         <div className="container mx-auto px-4">
           <div className="pt-12 border-t text-[10px] text-muted-foreground font-black tracking-[0.6em] uppercase text-center opacity-50">
-            &copy; 2024 ҲУНАР Ё Б. ТАҲИЯ ШУДААСТ ТАВАССУТИ TAJ.WEB
+            &copy; 2026 ҲУНАР Ё Б. ТАҲИЯ ШУДААСТ ТАВАССУТИ TAJ.WEB
           </div>
         </div>
       </footer>
