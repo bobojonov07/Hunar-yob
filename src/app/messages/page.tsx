@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +23,8 @@ export default function MessagesList() {
   const db = useFirestore();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const profilesCache = useRef<Record<string, UserProfile>>({});
 
   const clientChatsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -50,7 +51,6 @@ export default function MessagesList() {
     async function fetchConversationDetails() {
       if (!user || clientLoading || artisanLoading) return;
 
-      // Combine and sort unique chats
       const allChatsMap = new Map<string, Chat>();
       [...clientChats, ...artisanChats].forEach(chat => allChatsMap.set(chat.id, chat));
       
@@ -62,36 +62,38 @@ export default function MessagesList() {
 
       if (sortedChats.length === 0) {
         setConversations([]);
+        setInitialLoading(false);
         return;
       }
 
-      setLoadingDetails(true);
-      try {
-        const results: Conversation[] = [];
-        for (const chat of sortedChats) {
-          const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
-          if (!otherId) continue;
-          
+      const results: Conversation[] = [];
+      for (const chat of sortedChats) {
+        const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
+        if (!otherId) continue;
+        
+        let profile = profilesCache.current[otherId];
+        if (!profile) {
           const otherSnap = await getDoc(doc(db, "users", otherId));
-          results.push({
-            ...chat,
-            otherParty: otherSnap.exists() ? { ...(otherSnap.data() as UserProfile), id: otherSnap.id } : null
-          });
+          if (otherSnap.exists()) {
+            profile = { ...(otherSnap.data() as UserProfile), id: otherSnap.id };
+            profilesCache.current[otherId] = profile;
+          }
         }
-        setConversations(results);
-      } catch (err) {
-        console.error("Error fetching chat details:", err);
-      } finally {
-        setLoadingDetails(false);
+        
+        results.push({
+          ...chat,
+          otherParty: profile || null
+        });
       }
+      
+      setConversations(results);
+      setInitialLoading(false);
     }
 
     fetchConversationDetails();
   }, [clientChats, artisanChats, user, db, clientLoading, artisanLoading]);
 
   if (!user) return <div className="min-h-screen flex items-center justify-center">Вуруд лозим аст...</div>;
-
-  const isLoading = clientLoading || artisanLoading || loadingDetails;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -105,7 +107,7 @@ export default function MessagesList() {
           <h1 className="text-4xl font-headline font-black text-secondary tracking-tighter uppercase">Паёмҳо</h1>
         </div>
 
-        {isLoading ? (
+        {initialLoading ? (
           <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin h-12 w-12 text-primary" />
             <p className="font-black uppercase tracking-widest text-[10px]">Дар ҳоли ҷустуҷӯи паёмҳо...</p>
