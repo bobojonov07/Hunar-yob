@@ -2,11 +2,10 @@
 "use client"
 
 import { Navbar } from "@/components/navbar";
-import { Hammer, ShieldCheck, Zap, Users, Globe, Briefcase, ChevronLeft, Instagram, MessageCircle, Send as TelegramIcon } from "lucide-react";
+import { Hammer, ShieldCheck, Zap, Users, Globe, ChevronLeft, Instagram, Send as TelegramIcon, FileText, Lock, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function AboutPage() {
   const router = useRouter();
@@ -30,22 +29,33 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-24">
-          <div className="p-10 bg-white rounded-[3rem] shadow-xl border-none space-y-6 transform hover:-translate-y-2 transition-all">
-            <ShieldCheck className="h-12 w-12 text-green-500" />
-            <h3 className="text-2xl font-black text-secondary uppercase tracking-tighter">АМНИЯТИ КОМИЛ</h3>
-            <p className="text-muted-foreground font-medium leading-relaxed">
-              Мо низоми "Шартномаи Амниятӣ"-ро истифода мебарем. Маблағи шумо то анҷоми пурраи кор дар низоми мо ҳифз карда мешавад.
-            </p>
+        {/* ШАРТҲОИ ИСТИФОДА */}
+        <section id="terms" className="mb-20 p-10 bg-white rounded-[3rem] shadow-xl border-none space-y-6">
+          <div className="flex items-center gap-4 mb-4">
+            <Scale className="h-10 w-10 text-primary" />
+            <h2 className="text-3xl font-black text-secondary uppercase tracking-tighter">ШАРТҲОИ ИСТИФОДА</h2>
           </div>
-          <div className="p-10 bg-white rounded-[3rem] shadow-xl border-none space-y-6 transform hover:-translate-y-2 transition-all">
-            <Zap className="h-12 w-12 text-primary" />
-            <h3 className="text-2xl font-black text-secondary uppercase tracking-tighter">СУРЪАТИ БАЛАНД</h3>
-            <p className="text-muted-foreground font-medium leading-relaxed">
-              Дигар лозим нест соатҳо дар ҷустуҷӯ бошед. Бо як пахш устои наздиктарини худро пайдо кунед ва мустақиман чат кунед.
-            </p>
+          <div className="space-y-4 text-muted-foreground font-medium leading-relaxed">
+            <p>1. <b>Умумият:</b> Платформаи "Ҳунар Ёб" танҳо барои шахсони аз 16-сола боло пешбинӣ шудааст.</p>
+            <p>2. <b>Масъулият:</b> Мо сифати кори устоҳоро назорат мекунем, аммо шартномаи ниҳоӣ байни мизоҷ ва усто баста мешавад.</p>
+            <p>3. <b>Амният:</b> Истифодаи "Шартномаи Амниятӣ" барои ҳифзи маблағҳои шумо тавсия дода мешавад.</p>
+            <p>4. <b>Манъкунӣ:</b> Интишори маълумоти бардурӯғ, ҳақорат ва кӯшиши фиреб боиси баста шудани (block) акаунт мегардад.</p>
           </div>
-        </div>
+        </section>
+
+        {/* СИЁСАТИ МАХФИЯТ */}
+        <section id="privacy" className="mb-20 p-10 bg-white rounded-[3rem] shadow-xl border-none space-y-6">
+          <div className="flex items-center gap-4 mb-4">
+            <Lock className="h-10 w-10 text-green-500" />
+            <h2 className="text-3xl font-black text-secondary uppercase tracking-tighter">СИЁСАТИ МАХФИЯТ</h2>
+          </div>
+          <div className="space-y-4 text-muted-foreground font-medium leading-relaxed">
+            <p>1. <b>Ҷамъоварии маълумот:</b> Мо ном, рақами телефон ва макони зисти шуморо барои таъмини кори платформа ҷамъоварӣ мекунем.</p>
+            <p>2. <b>Ҳифзи маълумот:</b> Маълумоти шумо ба шахсони сеюм фурӯхта намешавад ва дар серверҳои ҳифзшудаи Firebase нигоҳ дошта мешавад.</p>
+            <p>3. <b>Идентификатсия:</b> Сурати шиносномаи шумо танҳо барои тасдиқи шахсият истифода шуда, пас аз санҷиш ба таври рамзгузорӣ (encrypted) нигоҳ дошта мешавад.</p>
+            <p>4. <b>Ҳуқуқҳои шумо:</b> Шумо ҳуқуқ доред дар ҳар вақт маълумоти худро таҳрир кунед ё акаунтатонро пурра нест кунед.</p>
+          </div>
+        </section>
 
         <section className="space-y-12 bg-secondary text-white p-12 md:p-20 rounded-[4rem] shadow-3xl overflow-hidden relative mb-24">
           <div className="absolute top-0 right-0 w-1/3 h-full bg-primary/5 -skew-x-12 translate-x-1/2" />

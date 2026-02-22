@@ -56,7 +56,7 @@ export function Navbar() {
               <SheetHeader className="p-8 bg-secondary text-white shrink-0">
                 <SheetTitle className="text-3xl font-black font-headline tracking-tighter text-white flex items-center gap-3">
                   <Hammer className="h-8 w-8 text-primary fill-primary/20" />
-                  ҲУНАР ЁБ
+                  ҲУНАР Ё Б
                 </SheetTitle>
                 <div className="flex items-center gap-2 mt-2">
                   <ShieldCheck className="h-4 w-4 text-primary" />

@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail, ShieldCheck, ChevronLeft, Phone, Info } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, ChevronLeft, Phone } from "lucide-react";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useAuth, useFirestore } from "@/firebase";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -89,7 +89,7 @@ export default function Login() {
             <div className="mx-auto h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
               <ShieldCheck className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter">ВОРИДШУДАН</CardTitle>
+            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter uppercase">ВОРИДШУДАН</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 pt-10 px-10">
             <div className="grid grid-cols-2 gap-4">
@@ -139,7 +139,7 @@ export default function Login() {
                   className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
                 />
                 <Label htmlFor="agreed-login" className="text-[10px] text-muted-foreground font-bold leading-relaxed block cursor-pointer">
-                  Ман бо <Link href="/about" className="text-primary underline">Шартҳои истифода</Link> ва <Link href="/about" className="text-primary underline">Сиёсати амнияти</Link> барнома розӣ ҳастам.
+                  Ман бо <Link href="/about#terms" className="text-primary underline">Шартҳои истифода</Link> ва <Link href="/about#privacy" className="text-primary underline">Сиёсати махфият</Link> розӣ ҳастам.
                 </Label>
               </div>
 
@@ -149,6 +149,9 @@ export default function Login() {
           <CardFooter className="flex flex-col space-y-6 pb-16 px-10">
             <p className="text-sm text-center text-muted-foreground font-bold">
               Ҳанӯз сабти ном нашудаед? <Link href="/register" className="text-primary font-black hover:underline">Сабти ном</Link>
+            </p>
+            <p className="text-[9px] text-center text-muted-foreground font-black uppercase tracking-[0.2em]">
+              &copy; 2026 ҲУНАР Ё Б. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
             </p>
           </CardFooter>
         </Card>

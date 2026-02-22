@@ -152,8 +152,8 @@ export default function Register() {
             <div className="mx-auto h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 shadow-inner">
               <ShieldCheck className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter uppercase">САБТИ НОМ</CardTitle>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mt-2">Қадами {step} аз 2</p>
+            <CardTitle className="text-4xl font-black font-headline text-secondary tracking-tighter uppercase leading-none">САБТИ НОМ</CardTitle>
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mt-4">Қадами {step} аз 2</p>
           </CardHeader>
           
           {step === 1 && (
@@ -240,7 +240,7 @@ export default function Register() {
                     className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
                   />
                   <Label htmlFor="agreed" className="text-[10px] text-muted-foreground font-bold leading-relaxed block cursor-pointer">
-                    Ман бо <Link href="/about" className="text-primary underline">Шартҳои истифода</Link>, <Link href="/about" className="text-primary underline">Сиёсати махфият</Link> розӣ ҳастам ва тасдиқ мекунам, ки аз 16-сола боло мебошам.
+                    Ман бо <Link href="/about#terms" className="text-primary underline">Шартҳои истифода</Link>, <Link href="/about#privacy" className="text-primary underline">Сиёсати махфият</Link> розӣ ҳастам ва тасдиқ мекунам, ки аз 16-сола боло мебошам.
                   </Label>
                 </div>
               </CardContent>
@@ -256,7 +256,7 @@ export default function Register() {
                   Аллакай акаунт доред? <Link href="/login" className="text-primary font-black hover:underline not-italic">Ворид шавед</Link>
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-10 font-black uppercase tracking-[0.4em]">
-                  &copy; 2026 ҲУНАР Ё Б
+                  &copy; 2026 ҲУНАР Ё Б. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
                 </p>
               </CardFooter>
             </form>
