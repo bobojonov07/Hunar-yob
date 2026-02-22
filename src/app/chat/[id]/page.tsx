@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -15,7 +16,6 @@ import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePe
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Listing, Message, Deal, calculateFee, UserProfile } from "@/lib/storage";
 
-// Функсияи махсус барои нишон додани вақт бо забони тоҷикӣ (ба ҷои date-fns/locale/tg)
 function formatDistanceToNowTajik(date: Date) {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -77,16 +77,25 @@ export default function ChatPage() {
   }, [db, chatId]);
   const { data: messages = [] } = useCollection<Message>(messagesQuery as any);
 
-  // Mark as read and clear unread count for current user
+  // Маркази асосии нест кардани огоҳиномаҳо
   useEffect(() => {
-    if (!chatId || !user || !db || messages.length === 0) return;
+    if (!chatId || !user || !db) return;
     
     // Reset unread count for the current user in the chat doc
     const chatRef = doc(db, "chats", chatId);
     updateDoc(chatRef, {
       [`unreadCount.${user.uid}`]: 0
     }).catch(() => {});
-  }, [chatId, user, messages, db]);
+
+    // Маркировка кардани паёмҳо ҳамчун "хондашуда"
+    if (messages.length > 0) {
+      messages.forEach(msg => {
+        if (msg.senderId !== user.uid && !msg.isRead) {
+          updateDoc(doc(db, "chats", chatId, "messages", msg.id), { isRead: true }).catch(() => {});
+        }
+      });
+    }
+  }, [chatId, user, messages.length, db]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

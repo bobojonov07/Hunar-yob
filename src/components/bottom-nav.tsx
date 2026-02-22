@@ -7,24 +7,44 @@ import { usePathname } from "next/navigation";
 import { MessageSquare, User as UserIcon, Hammer, Home, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collectionGroup, query, where } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 
 export function BottomNav() {
   const { user } = useUser();
   const db = useFirestore();
   const pathname = usePathname();
 
-  const unreadMessagesQuery = useMemo(() => {
+  // Ҷустуҷӯи чатҳое, ки корбар дар онҳо ҳамчун мизоҷ аст
+  const clientChatsQuery = useMemo(() => {
     if (!db || !user) return null;
-    return query(
-      collectionGroup(db, "messages"),
-      where("isRead", "==", false),
-      where("senderId", "!=", user.uid)
-    );
+    return query(collection(db, "chats"), where("clientId", "==", user.uid));
   }, [db, user]);
 
-  const { data: unreadMessages = [] } = useCollection(unreadMessagesQuery);
-  const unreadCount = unreadMessages.length;
+  // Ҷустуҷӯи чатҳое, ки корбар дар онҳо ҳамчун усто аст
+  const artisanChatsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, "chats"), where("artisanId", "==", user.uid));
+  }, [db, user]);
+
+  const { data: clientChats = [] } = useCollection(clientChatsQuery as any);
+  const { data: artisanChats = [] } = useCollection(artisanChatsQuery as any);
+
+  // Ҳисоб кардани шумораи умумии паёмҳои хонданашуда аз тамоми чатҳо
+  const unreadCount = useMemo(() => {
+    if (!user) return 0;
+    const allChats = [...clientChats, ...artisanChats];
+    // Нест кардани чатҳои такрорӣ (агар бошанд)
+    const uniqueChatIds = new Set();
+    const uniqueChats = allChats.filter(chat => {
+      if (uniqueChatIds.has(chat.id)) return false;
+      uniqueChatIds.add(chat.id);
+      return true;
+    });
+
+    return uniqueChats.reduce((sum, chat: any) => {
+      return sum + (chat.unreadCount?.[user.uid] || 0);
+    }, 0);
+  }, [clientChats, artisanChats, user]);
 
   if (!user) return null;
 
