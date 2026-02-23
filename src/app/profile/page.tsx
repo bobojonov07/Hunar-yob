@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -9,8 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2, Trash2, Calendar, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2, Trash2, Calendar, AlertCircle, Edit3 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +48,22 @@ export default function Profile() {
   const { data: displayListings = [], loading: dataLoading } = useCollection<Listing>(dataQuery as any);
 
   const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Форма таҳрир
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRegion, setEditRegion] = useState("");
+
+  useEffect(() => {
+    if (profile) {
+      setEditName(profile.name || "");
+      setEditPhone(profile.phone || "");
+      setEditRegion(profile.region || "");
+    }
+  }, [profile]);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +91,28 @@ export default function Profile() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!userProfileRef) return;
+    setIsSaving(true);
+    updateDoc(userProfileRef, {
+      name: editName,
+      phone: editPhone,
+      region: editRegion
+    })
+    .then(() => {
+      toast({ title: "Профил навсозӣ шуд" });
+      setIsSettingsOpen(false);
+    })
+    .catch((err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userProfileRef.path,
+        operation: 'update',
+        requestResourceData: { name: editName, phone: editPhone, region: editRegion }
+      }));
+    })
+    .finally(() => setIsSaving(false));
   };
 
   const handleDeleteListing = async (listingId: string) => {
@@ -105,10 +146,50 @@ export default function Profile() {
     <div className="min-h-screen bg-background pb-12">
       <Navbar />
       <div className="container mx-auto px-4 py-8 md:py-12">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6 hover:text-primary p-0 font-black">
-          <ChevronLeft className="mr-2 h-5 w-5" />
-          БОЗГАШТ
-        </Button>
+        <div className="flex justify-between items-center mb-8">
+          <Button variant="ghost" onClick={() => router.back()} className="hover:text-primary p-0 font-black">
+            <ChevronLeft className="mr-2 h-5 w-5" />
+            БОЗГАШТ
+          </Button>
+          
+          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="rounded-2xl border-2 font-black h-12 px-6">
+                <Settings className="mr-2 h-5 w-5" /> ТАНЗИМОТ
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-secondary tracking-tighter">ТАҲРИРИ ПРОФИЛ</DialogTitle>
+                <DialogDescription className="font-medium text-xs">Маълумоти шахсии худро навсозӣ кунед.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6 pt-6">
+                <div className="space-y-2">
+                  <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Ному насаб</Label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Рақами телефон</Label>
+                  <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Минтақа</Label>
+                  <Select value={editRegion} onValueChange={setEditRegion}>
+                    <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold">
+                      <SelectValue placeholder="Интихоби минтақа" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl">
+                      {ALL_REGIONS.map(r => <SelectItem key={r} value={r} className="font-bold">{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleUpdateProfile} disabled={isSaving} className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">
+                  {isSaving ? <Loader2 className="animate-spin h-6 w-6" /> : "САБТ КАРДАН"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">

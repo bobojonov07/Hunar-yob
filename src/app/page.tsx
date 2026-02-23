@@ -23,7 +23,8 @@ import {
   ExternalLink,
   ArrowRight,
   LogIn,
-  CheckCircle2
+  CheckCircle2,
+  BriefcaseBusiness
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -169,14 +170,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Category Section */}
-      <section className="py-28 bg-white relative">
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between mb-20 gap-6">
-            <div className="text-center md:text-left">
-              <h2 className="text-5xl font-headline font-black text-secondary tracking-tighter">КАТЕГОРИЯҲО</h2>
-              <p className="text-muted-foreground font-bold mt-2 uppercase tracking-widest text-xs">Маҳорати лозимаро интихоб кунед</p>
+      {/* REKLAMA KORYOB.RU */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <Link href="https://koryob.ru" target="_blank" className="block group">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[3rem] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl transition-all hover:shadow-blue-500/20 hover:scale-[1.01]">
+              <div className="flex items-center gap-6">
+                <div className="h-20 w-20 bg-white/10 backdrop-blur-xl rounded-[1.5rem] flex items-center justify-center border border-white/20">
+                  <BriefcaseBusiness className="h-10 w-10 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none mb-2">КОРГАР ДАРКОР?</h2>
+                  <p className="text-blue-100 font-medium opacity-80 text-sm md:text-base">Барои нашри эълонҳои корӣ ба KORYOB.RU гузаред</p>
+                </div>
+              </div>
+              <Button className="bg-white text-blue-700 hover:bg-white/90 h-16 px-10 rounded-2xl font-black uppercase tracking-widest shadow-xl shrink-0 transition-transform group-hover:translate-x-2">
+                ГУЗАШТАН <ExternalLink className="ml-3 h-5 w-5" />
+              </Button>
             </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* Category Section */}
+      <section className="py-20 bg-background/50 relative">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-headline font-black text-secondary tracking-tighter uppercase">КАТЕГОРИЯҲО</h2>
+            <p className="text-muted-foreground font-bold mt-2 uppercase tracking-widest text-[10px]">Маҳорати лозимаро интихоб кунед</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-8">
             {CATEGORIES.map((cat) => (
@@ -184,14 +205,14 @@ export default function Home() {
                 key={cat.name} 
                 onClick={() => setSelectedCategory(cat.name === selectedCategory ? null : cat.name)}
                 className={cn(
-                  "group flex flex-col items-center p-10 rounded-[3rem] border-2 transition-all duration-500 hover:shadow-2xl",
+                  "group flex flex-col items-center p-8 rounded-[2.5rem] border-2 transition-all duration-500 hover:shadow-2xl",
                   selectedCategory === cat.name 
                     ? "bg-primary text-white border-primary shadow-2xl scale-110" 
-                    : "bg-background/30 hover:bg-white border-transparent hover:border-primary/20"
+                    : "bg-white hover:bg-white border-transparent hover:border-primary/20"
                 )}
               >
-                <span className="text-6xl mb-6 group-hover:scale-125 transition-transform duration-500 block">{cat.icon}</span>
-                <span className="text-xs font-black tracking-[0.1em] uppercase">{cat.name}</span>
+                <span className="text-5xl mb-4 group-hover:scale-125 transition-transform duration-500 block">{cat.icon}</span>
+                <span className="text-[10px] font-black tracking-widest uppercase text-center">{cat.name}</span>
               </button>
             ))}
           </div>
@@ -200,22 +221,20 @@ export default function Home() {
 
       {/* VIP Showcase */}
       {vipListings.length > 0 && (
-        <section className="py-32 bg-[#F9F9F4] border-y">
+        <section className="py-32 bg-white">
           <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row items-center justify-between mb-20 gap-6">
-              <div className="flex items-center gap-5">
-                <div className="h-16 w-16 bg-yellow-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-yellow-500/30 transform -rotate-6">
-                  <Crown className="h-9 w-9 text-white fill-white" />
-                </div>
-                <div>
-                  <h2 className="text-5xl font-headline font-black text-secondary tracking-tighter">VIP УСТОҲО</h2>
-                  <p className="text-yellow-600 font-black text-xs uppercase tracking-widest">Беҳтарин пешниҳодҳои ҷорӣ</p>
-                </div>
+            <div className="flex items-center gap-5 mb-16">
+              <div className="h-16 w-16 bg-yellow-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-yellow-500/30 transform -rotate-6">
+                <Crown className="h-9 w-9 text-white fill-white" />
+              </div>
+              <div>
+                <h2 className="text-5xl font-headline font-black text-secondary tracking-tighter">VIP УСТОҲО</h2>
+                <p className="text-yellow-600 font-black text-xs uppercase tracking-widest">Беҳтарин пешниҳодҳои Тоҷикистон</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
               {vipListings.map((listing) => (
-                <Card key={listing.id} className="overflow-hidden group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] transition-all duration-700 border-yellow-400/30 bg-white rounded-[3.5rem] ring-8 ring-yellow-400/5">
+                <Card key={listing.id} className="overflow-hidden group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] transition-all duration-700 border-none bg-white rounded-[3.5rem] ring-8 ring-yellow-400/5">
                   <div className="relative h-80 w-full overflow-hidden">
                     <Image
                       src={listing.images[0] || PlaceHolderImages[1].imageUrl}
@@ -224,7 +243,7 @@ export default function Home() {
                       className="object-cover group-hover:scale-110 transition-transform duration-1000"
                     />
                     <div className="absolute top-8 right-8 z-10">
-                      <Badge className="bg-yellow-500 text-white border-none shadow-2xl px-6 py-2.5 text-[10px] font-black rounded-full animate-bounce">
+                      <Badge className="bg-yellow-500 text-white border-none shadow-2xl px-6 py-2.5 text-[10px] font-black rounded-full">
                         VIP PREMIUM
                       </Badge>
                     </div>
@@ -235,17 +254,15 @@ export default function Home() {
                         {listing.userName.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-black text-secondary block leading-none truncate">{listing.userName}</span>
-                        </div>
-                        <span className="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.2em] mt-2 block">Профили VIP</span>
+                        <span className="text-lg font-black text-secondary block leading-none truncate">{listing.userName}</span>
+                        <span className="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.2em] mt-2 block">Профили тасдиқшуда</span>
                       </div>
                     </div>
                   </CardContent>
                   <CardFooter className="p-8 border-t border-yellow-100 flex justify-between items-center bg-yellow-50/30">
                     <div className="flex items-center text-[10px] text-muted-foreground font-black uppercase tracking-widest">
                       <MapPin className="h-4 w-4 mr-2 text-primary" />
-                      Душанбе
+                      Тоҷикистон
                     </div>
                     <Button 
                       variant="ghost" 

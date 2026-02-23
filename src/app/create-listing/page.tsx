@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -134,17 +135,6 @@ export default function CreateListing() {
           <ChevronLeft className="mr-2 h-5 w-5" />
           БОЗГАШТ
         </Button>
-
-        {/* ПАЁМ БАРОИ KORYOB.RU */}
-        <div className="mb-8 p-6 bg-primary/5 border-2 border-dashed border-primary/20 rounded-[2rem] flex items-center gap-4">
-          <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
-            <ExternalLink className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-secondary leading-tight">Агар хоҳед эълони корӣ кунед (коргар кобед), ба вебсайти шарики мо гузаред:</p>
-            <Link href="https://koryob.ru" target="_blank" className="text-primary font-black uppercase tracking-widest text-xs hover:underline mt-1 inline-block">KORYOB.RU</Link>
-          </div>
-        </div>
 
         <Card className="border-border shadow-sm rounded-[2rem] overflow-hidden">
           <CardHeader className="bg-muted/10 pb-8">

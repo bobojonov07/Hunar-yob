@@ -153,7 +153,7 @@ export default function Register() {
 
               <div className="space-y-2">
                 <Label className="font-black text-xs uppercase tracking-widest opacity-60">Ному насаби пурра</Label>
-                <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Масалан: Алиев Валӣ" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="Ному насаби худро ворид кунед" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
