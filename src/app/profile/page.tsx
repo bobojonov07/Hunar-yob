@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -10,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2, Trash2, Calendar, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +18,6 @@ import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePe
 import { doc, updateDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
-import { verifyPassport } from "@/ai/flows/verify-passport-flow";
 import { compressImage } from "@/lib/utils";
 
 export default function Profile() {
@@ -46,12 +44,9 @@ export default function Profile() {
   const { data: displayListings = [], loading: dataLoading } = useCollection<Listing>(dataQuery as any);
 
   const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
-  const [kycLoading, setKycLoading] = useState(false);
-  const [passportImage, setPassportImage] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
-  const passportInputRef = useRef<HTMLInputElement>(null);
 
   const completion = useMemo(() => {
     if (!profile) return 0;
@@ -76,48 +71,6 @@ export default function Profile() {
           .finally(() => setIsUploadingPhoto(false));
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePassportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result as string, 800, 0.8);
-        setPassportImage(compressed);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleKycSubmit = async () => {
-    if (!userProfileRef || !passportImage || !user) return;
-    setKycLoading(true);
-
-    try {
-      const result = await verifyPassport({ photoDataUri: passportImage });
-      if (!result.isPassport) {
-        toast({ title: "Хатогӣ", description: result.errorReason || "Ин сурат шиноснома нест.", variant: "destructive" });
-        setKycLoading(false);
-        return;
-      }
-      if (!result.isOver18) {
-        toast({ title: "Рад шуд", description: "Синну соли шумо бояд аз 18 боло бошад.", variant: "destructive" });
-        setKycLoading(false);
-        return;
-      }
-
-      await updateDoc(userProfileRef, { 
-        identificationStatus: 'Verified',
-        passportNumber: result.passportNumber || ""
-      });
-      toast({ title: "Тасдиқ шуд!", description: "Шахсияти шумо бо муваффақият тасдиқ гардид." });
-      setIsKycDialogOpen(false);
-    } catch (err) {
-      toast({ title: "Хатогӣ", description: "Ҳангоми санҷиш мушкилӣ рӯй дод.", variant: "destructive" });
-    } finally {
-      setKycLoading(false);
     }
   };
 
@@ -215,38 +168,21 @@ export default function Profile() {
                       </div>
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl">
-                    <DialogHeader><DialogTitle className="text-3xl font-black text-secondary tracking-tighter uppercase">AI ТАСДИҚИ ШАХСИЯТ</DialogTitle></DialogHeader>
-                    <div className="space-y-6 pt-6 text-center">
-                      <div className="h-32 w-32 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto">
-                        <FileCheck className="h-16 w-16 text-primary" />
+                  <DialogContent className="rounded-[2.5rem] p-12 border-none shadow-3xl max-w-sm text-center">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-black text-secondary tracking-tighter uppercase mb-4">ТАДБИҚИ ШАХСИЯТ</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-8 py-4">
+                      <div className="mx-auto h-24 w-24 bg-primary/10 rounded-[2rem] flex items-center justify-center animate-pulse">
+                        <AlertCircle className="h-12 w-12 text-primary" />
                       </div>
-                      <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                        Системаи AI сурати шиносномаи шуморо месанҷад. Бояд сурат равшан бошад ва синну сол аз 18 боло бошад.
-                      </p>
-                      
-                      <div 
-                        onClick={() => passportInputRef.current?.click()}
-                        className="border-2 border-dashed rounded-2xl p-8 hover:bg-muted/50 cursor-pointer transition-colors relative overflow-hidden aspect-video flex items-center justify-center"
-                      >
-                        {passportImage ? (
-                          <Image src={passportImage} alt="Passport" fill className="object-cover" />
-                        ) : (
-                          <div className="text-center">
-                            <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Боргузории акси шиноснома</span>
-                          </div>
-                        )}
-                        <input type="file" accept="image/*" className="hidden" ref={passportInputRef} onChange={handlePassportFileChange} />
+                      <div className="space-y-4">
+                        <h4 className="text-xl font-black text-secondary leading-tight">Ин дар рӯзҳои наздик мешавад</h4>
+                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                          Системаи верификатсияи AI ҳоло дар ҳоли такмилдиҳӣ мебошад. Лутфан сабр кунед, ба наздикӣ фаъол мешавад.
+                        </p>
                       </div>
-
-                      <Button 
-                        onClick={handleKycSubmit} 
-                        disabled={kycLoading || !passportImage} 
-                        className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest"
-                      >
-                        {kycLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> ДАР ҲОЛИ САНҶИШ...</> : "ТАСДИҚ КАРДАН"}
-                      </Button>
+                      <Button onClick={() => setIsKycDialogOpen(false)} className="w-full bg-secondary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">ФАҲМО</Button>
                     </div>
                   </DialogContent>
                 </Dialog>

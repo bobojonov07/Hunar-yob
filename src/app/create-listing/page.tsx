@@ -12,11 +12,12 @@ import { ALL_CATEGORIES, UserProfile } from "@/lib/storage";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, X, Upload, ChevronLeft, Loader2 } from "lucide-react";
+import { Camera, X, Upload, ChevronLeft, Loader2, ExternalLink, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection } from "firebase/firestore";
 import { compressImage } from "@/lib/utils";
+import Link from "next/link";
 
 export default function CreateListing() {
   const { user, loading: authLoading } = useUser();
@@ -74,13 +75,26 @@ export default function CreateListing() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !user) return;
-    if (!title || !category || !description) {
-      toast({ title: "Хатогӣ", description: "Ҳамаи майдонҳоро пур кунед", variant: "destructive" });
+    
+    // САНҶИШҲОИ САХТ (Validation)
+    if (imageUrls.length < 1) {
+      toast({ title: "Хатогӣ", description: "Лутфан ҳадди ақал 1 сурат бор кунед", variant: "destructive" });
+      return;
+    }
+    if (!title || !category) {
+      toast({ title: "Хатогӣ", description: "Майдонҳои унвон ва категорияро пур кунед", variant: "destructive" });
+      return;
+    }
+    if (description.length < 150) {
+      toast({ title: "Тавсиф хеле кӯтоҳ аст", description: "Тавсиф бояд ҳадди ақал 150 аломат бошад", variant: "destructive" });
+      return;
+    }
+    if (description.length > 250) {
+      toast({ title: "Тавсиф хеле дароз аст", description: "Тавсиф набояд аз 250 аломат зиёд бошад", variant: "destructive" });
       return;
     }
     
     const listingRef = doc(collection(db, "listings"));
-    const defaultPlaceholder = PlaceHolderImages[1]?.imageUrl || "https://picsum.photos/seed/carpentry/600/400";
     
     const listingData = {
       id: listingRef.id,
@@ -90,7 +104,7 @@ export default function CreateListing() {
       title,
       category,
       description,
-      images: imageUrls.length > 0 ? imageUrls : [defaultPlaceholder],
+      images: imageUrls,
       createdAt: serverTimestamp(),
       isVip: profile.isPremium || false,
       views: 0
@@ -121,53 +135,81 @@ export default function CreateListing() {
           БОЗГАШТ
         </Button>
 
-        <Card className="border-border shadow-sm rounded-[2rem]">
-          <CardHeader>
-            <CardTitle className="text-3xl font-headline text-secondary">Эълони нав</CardTitle>
+        {/* ПАЁМ БАРОИ KORYOB.RU */}
+        <div className="mb-8 p-6 bg-primary/5 border-2 border-dashed border-primary/20 rounded-[2rem] flex items-center gap-4">
+          <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
+            <ExternalLink className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-secondary leading-tight">Агар хоҳед эълони корӣ кунед (коргар кобед), ба вебсайти шарики мо гузаред:</p>
+            <Link href="https://koryob.ru" target="_blank" className="text-primary font-black uppercase tracking-widest text-xs hover:underline mt-1 inline-block">KORYOB.RU</Link>
+          </div>
+        </div>
+
+        <Card className="border-border shadow-sm rounded-[2rem] overflow-hidden">
+          <CardHeader className="bg-muted/10 pb-8">
+            <CardTitle className="text-3xl font-headline font-black text-secondary tracking-tighter">ЭЪЛОНИ НАВ</CardTitle>
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Маҳорати худро ба ҳама нишон диҳед</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
-                <Label>Суратҳо (то 5 адад)</Label>
+                <div className="flex justify-between items-end">
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Суратҳо (ҳадди ақал 1)</Label>
+                  <span className="text-[10px] font-bold text-muted-foreground">{imageUrls.length}/5</span>
+                </div>
                 <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                <Button type="button" disabled={isCompressing} variant="outline" className="w-full h-24 border-dashed border-2 flex flex-col gap-2 rounded-2xl" onClick={() => fileInputRef.current?.click()}>
-                  {isCompressing ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Upload className="h-6 w-6 text-muted-foreground" />}
-                  <span>{isCompressing ? 'Фишурдани суратҳо...' : 'Иловаи суратҳо аз галерея'}</span>
+                <Button type="button" disabled={isCompressing} variant="outline" className="w-full h-32 border-dashed border-2 flex flex-col gap-2 rounded-2xl transition-all hover:bg-primary/5 hover:border-primary/30" onClick={() => fileInputRef.current?.click()}>
+                  {isCompressing ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Upload className="h-8 w-8 text-muted-foreground" />}
+                  <span className="font-bold text-xs uppercase tracking-widest">{isCompressing ? 'Фишурдани суратҳо...' : 'Иловаи суратҳо'}</span>
                 </Button>
                 
-                <div className="grid grid-cols-5 gap-2 mt-4">
+                <div className="grid grid-cols-5 gap-3 mt-4">
                   {imageUrls.map((url, index) => (
-                    <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+                    <div key={index} className="relative aspect-square rounded-2xl overflow-hidden bg-muted shadow-md group">
                       <Image src={url} alt={`Preview ${index}`} fill className="object-cover" />
-                      <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+                      <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Номи касб ё хидмат</Label>
-                <Input placeholder="Масалан: Дуредгари моҳир" value={title} onChange={(e) => setTitle(e.target.value)} className="h-12 rounded-xl" />
+                <Label className="font-black text-xs uppercase tracking-widest opacity-60">Номи касб ё хидмат</Label>
+                <Input placeholder="Масалан: Дуредгари моҳир" value={title} onChange={(e) => setTitle(e.target.value)} className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" />
               </div>
               
               <div className="space-y-2">
-                <Label>Категория</Label>
+                <Label className="font-black text-xs uppercase tracking-widest opacity-60">Категория</Label>
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Интихоби категория" /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {ALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-muted font-bold"><SelectValue placeholder="Интихоби категория" /></SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    {ALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat} className="font-bold">{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Тавсифи хидматрасонӣ</Label>
-                <Textarea placeholder="Дар бораи маҳорат ва таҷрибаи худ..." className="min-h-[150px] rounded-xl" value={description} onChange={(e) => setDescription(e.target.value)} />
+                <div className="flex justify-between items-end">
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">Тавсифи хидматрасонӣ</Label>
+                  <span className={cn(
+                    "text-[10px] font-black tracking-widest",
+                    description.length < 150 || description.length > 250 ? "text-red-500" : "text-green-500"
+                  )}>
+                    {description.length} / 150-250
+                  </span>
+                </div>
+                <Textarea 
+                  placeholder="Дар бораи маҳорат ва таҷрибаи худ муфассал нависед (ҳадди ақал 150 аломат)..." 
+                  className="min-h-[180px] rounded-2xl bg-muted/20 border-muted font-medium p-6" 
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)} 
+                />
+                <p className="text-[9px] text-muted-foreground font-medium italic">* Тавсифи муфассал бовариро зиёд мекунад.</p>
               </div>
 
-              <div className="pt-4 flex gap-4">
-                <Button type="submit" className="flex-1 bg-primary h-14 font-black rounded-xl shadow-lg uppercase">НАШРИ ЭЪЛОН</Button>
-                <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1 h-14 rounded-xl font-black uppercase">БЕКОР КАРДАН</Button>
+              <div className="pt-6 flex gap-4">
+                <Button type="submit" className="flex-1 bg-primary h-16 font-black rounded-[2rem] shadow-2xl uppercase tracking-widest transition-transform hover:scale-[1.02]">НАШРИ ЭЪЛОН</Button>
               </div>
             </form>
           </CardContent>
@@ -175,4 +217,8 @@ export default function CreateListing() {
       </div>
     </div>
   );
+}
+
+function cn(...classes: any[]) {
+  return classes.filter(Boolean).join(' ');
 }
