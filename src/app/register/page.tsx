@@ -192,7 +192,7 @@ export default function Register() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамзи нав</Label>
-                  <Input type="password" d="password" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Input type="password" id="password" className="h-14 rounded-2xl bg-muted/20 border-muted font-bold" placeholder="******" value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label className="font-black text-xs uppercase tracking-widest opacity-60">Тасдиқи рамз</Label>
@@ -223,8 +223,8 @@ export default function Register() {
               <p className="text-sm text-center text-muted-foreground font-bold italic">
                 Аллакай акаунт доред? <Link href="/login" className="text-primary font-black hover:underline not-italic">Ворид шавед</Link>
               </p>
-              <p className="text-[10px] text-muted-foreground mt-10 font-black uppercase tracking-[0.4em]">
-                &copy; 2026 ҲУНАР Ё Б. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
+              <p className="text-[10px] text-center text-muted-foreground mt-10 font-black uppercase tracking-[0.4em]">
+                &copy; 2026 KORYOB 2 TJ. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
               </p>
             </CardFooter>
           </form>

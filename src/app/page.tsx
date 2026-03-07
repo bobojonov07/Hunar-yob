@@ -124,9 +124,9 @@ export default function Home() {
             <Badge className="mb-10 bg-primary/20 text-primary border-primary/30 backdrop-blur-2xl px-8 py-2.5 text-xs font-black tracking-[0.3em] uppercase rounded-full">
               Платформаи рақами яки устоҳо дар Тоҷикистон
             </Badge>
-            <h1 className="text-6xl md:text-9xl font-headline font-black mb-10 leading-[0.95] tracking-tighter drop-shadow-sm">
-              МАҲОРАТРО <span className="text-primary">ЁБ.</span> <br />
-              <span className="italic opacity-90">ҲАЛ КУН.</span>
+            <h1 className="text-6xl md:text-9xl font-headline font-black mb-10 leading-[0.95] tracking-tighter drop-shadow-sm uppercase">
+              KORYOB 2 <span className="text-primary">TJ.</span> <br />
+              <span className="italic opacity-90">МАҲОРАТРО ЁБ.</span>
             </h1>
             
             <div className="mt-12 bg-white/5 backdrop-blur-3xl p-3 rounded-[3rem] border border-white/10 shadow-3xl max-w-4xl mx-auto transition-all hover:scale-[1.01]">
@@ -228,7 +228,7 @@ export default function Home() {
                 <Crown className="h-9 w-9 text-white fill-white" />
               </div>
               <div>
-                <h2 className="text-5xl font-headline font-black text-secondary tracking-tighter">VIP УСТОҲО</h2>
+                <h2 className="text-5xl font-headline font-black text-secondary tracking-tighter uppercase">VIP УСТОҲО</h2>
                 <p className="text-yellow-600 font-black text-xs uppercase tracking-widest">Беҳтарин пешниҳодҳои Тоҷикистон</p>
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function Home() {
       <footer className="bg-white pt-32 pb-20 border-t">
         <div className="container mx-auto px-4">
           <div className="pt-12 border-t text-[10px] text-muted-foreground font-black tracking-[0.6em] uppercase text-center opacity-50">
-            &copy; 2026 ҲУНАР Ё Б. ТАҲИЯ ШУДААСТ ТАВАССУТИ TAJ.WEB
+            &copy; 2026 KORYOB 2 TJ. ТАҲИЯ ШУДААСТ ТАВАССУТИ TAJ.WEB
           </div>
         </div>
       </footer>

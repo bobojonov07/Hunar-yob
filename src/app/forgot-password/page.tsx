@@ -59,7 +59,7 @@ export default function ForgotPassword() {
             </div>
             <CardTitle className="text-3xl font-black font-headline text-secondary tracking-tighter uppercase leading-none">БАРҚАРОРИИ РАМЗ</CardTitle>
             <CardDescription className="font-bold text-[10px] uppercase tracking-widest mt-4">
-              {sent ? "ПАЁМ БО МУВАФФАҚИЯТ ФИРИСТОДА ШУД" : "ПОЧТАИ ХУДРО ВОРИД КУНЕД"}
+              {sent ? "ПАЁМ БО МУВАФФАКИЯТ ФИРИСТОДА ШУД" : "ПОЧТАИ ХУДРО ВОРИД КУНЕД"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-10 px-10">
@@ -101,6 +101,9 @@ export default function ForgotPassword() {
                 БОЗГАШТ БА ВОРИДШАВӢ
               </Link>
             </Button>
+            <p className="text-[10px] text-center text-muted-foreground font-black uppercase tracking-[0.5em] pt-4">
+              &copy; 2026 KORYOB 2 TJ. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
+            </p>
           </CardFooter>
         </Card>
       </div>
