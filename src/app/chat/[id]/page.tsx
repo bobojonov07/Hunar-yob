@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare, AlertCircle } from "lucide-react";
+import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare, AlertCircle, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -35,7 +35,7 @@ function formatDistanceToNowTajik(date: Date) {
 export default function ChatPage() {
   const { id: listingId } = useParams();
   const searchParams = useSearchParams();
-  const { user } = useUser();
+  const { user, loading: authLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -50,10 +50,10 @@ export default function ChatPage() {
   const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
 
   const listingRef = useMemo(() => listingId ? doc(db, "listings", listingId as string) : null, [db, listingId]);
-  const { data: listing } = useDoc<Listing>(listingRef as any);
+  const { data: listing, loading: listingLoading } = useDoc<Listing>(listingRef as any);
 
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
-  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
+  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(userProfileRef as any);
 
   const chatId = useMemo(() => {
     if (!listing || !user) return null;
@@ -76,7 +76,7 @@ export default function ChatPage() {
     if (!db || !chatId) return null;
     return query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
   }, [db, chatId]);
-  const { data: messages = [] } = useCollection<Message>(messagesQuery as any);
+  const { data: messages = [], loading: messagesLoading } = useCollection<Message>(messagesQuery as any);
 
   // Calculate total characters used in this chat
   const CHAR_LIMIT = 1000;
@@ -85,11 +85,11 @@ export default function ChatPage() {
   }, [messages]);
 
   const isLimitReached = totalChars >= CHAR_LIMIT;
-  const charProgress = (totalChars / CHAR_LIMIT) * 100;
+  const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
 
-  // Reset notifications on load and on new messages
+  // Reset notifications
   useEffect(() => {
-    if (!chatId || !user || !db) return;
+    if (!chatId || !user || !db || messagesLoading) return;
     
     const chatRef = doc(db, "chats", chatId);
     updateDoc(chatRef, {
@@ -103,7 +103,7 @@ export default function ChatPage() {
         }
       });
     }
-  }, [chatId, user, messages.length, db]);
+  }, [chatId, user, messages, db, messagesLoading]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -210,9 +210,7 @@ export default function ChatPage() {
       const lastActive = otherParty.lastActive.toDate();
       const now = new Date();
       const diffInMinutes = (now.getTime() - lastActive.getTime()) / 1000 / 60;
-      
       if (diffInMinutes < 5) return "Дар хат";
-      
       return formatDistanceToNowTajik(lastActive);
     } catch (e) {
       return "Чанд вақт пеш";
@@ -221,7 +219,32 @@ export default function ChatPage() {
 
   const isOnline = lastActiveText === "Дар хат";
 
-  if (!listing || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
+  // Handle Redirects and Loading
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || listingLoading || profileLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="font-black uppercase tracking-widest text-[10px] opacity-60">Дар ҳоли боргузорӣ...</p>
+      </div>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
+        <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-black text-secondary mb-2 uppercase tracking-tighter">ЭЪЛОН ЁФТ НАШУД</h2>
+        <p className="text-muted-foreground mb-6 font-medium italic">Мутаассифона, ин эълон дигар мавҷуд нест ё нест карда шудааст.</p>
+        <Button onClick={() => router.push("/")} className="bg-primary rounded-xl font-black px-8 h-12">БА САҲИФАИ АСОСӢ</Button>
+      </div>
+    );
+  }
 
   const currentFee = dealPrice ? calculateFee(parseFloat(dealPrice)) : 0;
 
@@ -257,7 +280,7 @@ export default function ChatPage() {
               <Button size="sm" className="bg-secondary text-white rounded-full px-5 font-black text-xs">ШАРТНОМА</Button>
             </DialogTrigger>
             <DialogContent className="rounded-[2.5rem] p-8 border-none shadow-3xl">
-              {profile.identificationStatus !== 'Verified' ? (
+              {profile?.identificationStatus !== 'Verified' ? (
                 <div className="text-center space-y-6">
                   <ShieldAlert className="h-16 w-16 text-red-500 mx-auto" />
                   <h3 className="text-xl font-black uppercase tracking-tighter">ИДЕНТИФИКАТСИЯ ЛОЗИМ</h3>
@@ -298,25 +321,25 @@ export default function ChatPage() {
 
       {/* MESSAGES */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !messagesLoading ? (
           <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
             <MessageSquare className="h-16 w-16 mb-4" />
             <p className="font-black uppercase tracking-widest text-[10px]">Муколамаи махфӣ бо {otherParty?.name || "усто"}</p>
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.senderId === user.uid ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex ${msg.senderId === user?.uid ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] p-3.5 rounded-[1.25rem] shadow-sm relative ${
-                msg.senderId === user.uid 
+                msg.senderId === user?.uid 
                   ? 'bg-primary text-white rounded-br-none' 
                   : 'bg-white text-secondary rounded-bl-none border border-border'
               }`}>
                 <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
                 <div className={`flex items-center justify-end gap-1 mt-1 opacity-60 text-[8px] font-black ${
-                  msg.senderId === user.uid ? 'text-white' : 'text-muted-foreground'
+                  msg.senderId === user?.uid ? 'text-white' : 'text-muted-foreground'
                 }`}>
-                  <span>{msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  {msg.senderId === user.uid && (
+                  <span>{msg.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {msg.senderId === user?.uid && (
                     msg.isRead ? <CheckCheck className="h-2.5 w-2.5 text-blue-200" /> : <Check className="h-2.5 w-2.5" />
                   )}
                 </div>

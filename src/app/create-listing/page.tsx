@@ -16,7 +16,7 @@ import { Upload, ChevronLeft, Loader2, X, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError, useCollection } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
-import { compressImage } from "@/lib/utils";
+import { compressImage, cn } from "@/lib/utils";
 import Link from "next/link";
 
 export default function CreateListing() {
@@ -87,7 +87,7 @@ export default function CreateListing() {
     
     if (hasListing) {
       toast({ 
-        title: "Маҳдудият", 
+        title: "Маҳдудияти эълон", 
         description: "Шумо аллакай эълон доред. Танҳо 1 эълон иҷозат аст.", 
         variant: "destructive" 
       });
@@ -141,7 +141,14 @@ export default function CreateListing() {
       });
   };
 
-  if (authLoading || checkLoading || !profile) return <div className="min-h-screen flex items-center justify-center">Боргузорӣ...</div>;
+  if (authLoading || checkLoading || !profile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="font-black uppercase tracking-widest text-[10px] opacity-60">Дар ҳоли боргузорӣ...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,25 +160,34 @@ export default function CreateListing() {
         </Button>
 
         {hasListing ? (
-          <Card className="border-none shadow-3xl rounded-[3rem] p-10 text-center bg-white">
-            <div className="mx-auto h-20 w-20 bg-yellow-100 rounded-[2rem] flex items-center justify-center mb-6">
-              <AlertTriangle className="h-10 w-10 text-yellow-600" />
+          <Card className="border-none shadow-3xl rounded-[3rem] p-10 text-center bg-white relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-destructive" />
+            <div className="mx-auto h-24 w-24 bg-red-50 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-inner">
+              <AlertTriangle className="h-12 w-12 text-destructive animate-pulse" />
             </div>
             <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase mb-4">МАҲДУДИЯТИ ЭЪЛОН</h2>
-            <p className="text-muted-foreground font-medium mb-8 leading-relaxed">
-              Дар платформаи KORYOB 2 ҳар як корбар метавонад танҳо **1 эълон** дошта бошад. Барои нашри эълони нав, лутфан аввал эълони қаблии худро аз бахши Профил нест кунед.
+            <div className="p-6 bg-red-50/50 rounded-3xl border-2 border-dashed border-red-100 mb-8">
+              <p className="text-muted-foreground font-medium leading-relaxed">
+                Дар платформаи **KORYOB 2** ҳар як корбар метавонад танҳо **1 эълон** дошта бошад. Шумо аллакай як эълони фаъол доред.
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground font-bold mb-10 italic">
+              Барои нашри эълони нав, лутфан аввал эълони қаблии худро аз бахши Профил нест кунед.
             </p>
-            <Button asChild className="w-full bg-primary h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">
-              <Link href="/profile">БА ПРОФИЛ ГУЗАШТАН</Link>
+            <Button asChild className="w-full bg-secondary h-16 rounded-[2rem] font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02]">
+              <Link href="/profile">БА ПРОФИЛИ МАН</Link>
             </Button>
           </Card>
         ) : (
-          <Card className="border-border shadow-sm rounded-[2rem] overflow-hidden bg-white">
+          <Card className="border-border shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
             <CardHeader className="bg-muted/10 pb-8">
-              <CardTitle className="text-3xl font-headline font-black text-secondary tracking-tighter">ЭЪЛОНИ НАВ</CardTitle>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Шумо метавонед танҳо 1 эълон нашр кунед</p>
+              <CardTitle className="text-3xl font-headline font-black text-secondary tracking-tighter uppercase">ЭЪЛОНИ НАВ</CardTitle>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Танҳо 1 эълон иҷозат аст</p>
+              </div>
             </CardHeader>
-            <CardContent className="pt-8">
+            <CardContent className="pt-8 px-8">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex justify-between items-end">
@@ -238,8 +254,4 @@ export default function CreateListing() {
       </div>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }
