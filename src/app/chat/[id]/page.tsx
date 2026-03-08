@@ -6,29 +6,20 @@ import { Navbar } from "@/components/navbar";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   ChevronLeft, 
   Send, 
   CheckCircle2, 
   Loader2, 
-  Crown, 
-  Flag, 
-  Pencil, 
-  Trash2, 
-  X, 
   Check, 
   CheckCheck,
-  MoreVertical,
   Scale,
-  Clock,
-  Handshake
+  AlertTriangle
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
   doc, 
   collection, 
@@ -39,21 +30,12 @@ import {
   getDoc, 
   updateDoc, 
   increment, 
-  addDoc, 
-  arrayUnion,
   writeBatch,
-  where,
-  getDocs
 } from "firebase/firestore";
-import { Listing, Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT, Deal } from "@/lib/storage";
+import { Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT, Deal } from "@/lib/storage";
 import { cn, hasProfanity } from "@/lib/utils";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ChatPage() {
   const { id: listingId } = useParams();
@@ -67,22 +49,13 @@ export default function ChatPage() {
   const targetClientId = searchParams.get("client");
   
   const [newMessage, setNewMessage] = useState("");
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
-  
-  const [dealTitle, setDealTitle] = useState("");
-  const [dealPrice, setDealPrice] = useState("");
-  const [dealDuration, setDealDuration] = useState("");
-  const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [isSendingReport, setIsSendingReport] = useState(false);
+  const [otherParty, setOtherParty] = useState<UserProfile | null>(null);
 
   const listingRef = useMemo(() => listingId ? doc(db, "listings", listingId as string) : null, [db, listingId]);
-  const { data: listing, loading: listingLoading } = useDoc<Listing>(listingRef as any);
+  const { data: listing } = useDoc<any>(listingRef as any);
 
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
-  const { data: profile, loading: profileLoading } = useDoc<UserProfile>(userProfileRef as any);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const chatId = useMemo(() => {
     if (!listingId || !user) return null;
@@ -90,26 +63,21 @@ export default function ChatPage() {
     return `${listingId}_${clientId}`;
   }, [listingId, user, targetClientId]);
 
-  const [otherParty, setOtherParty] = useState<UserProfile | null>(null);
-
   useEffect(() => {
     if (!chatId || !user || !db) return;
     getDoc(doc(db, "chats", chatId)).then(snap => {
+      let otherId = "";
       if (snap.exists()) {
         const chatData = snap.data();
-        const otherId = user.uid === chatData.clientId ? chatData.artisanId : chatData.clientId;
-        if (otherId) {
-          getDoc(doc(db, "users", otherId)).then(uSnap => {
-            if (uSnap.exists()) setOtherParty(uSnap.data() as UserProfile);
-          });
-        }
+        otherId = user.uid === chatData.clientId ? chatData.artisanId : chatData.clientId;
       } else if (listing) {
-        const otherId = user.uid === listing.userId ? targetClientId : listing.userId;
-        if (otherId) {
-          getDoc(doc(db, "users", otherId)).then(uSnap => {
-            if (uSnap.exists()) setOtherParty(uSnap.data() as UserProfile);
-          });
-        }
+        otherId = user.uid === listing.userId ? targetClientId! : listing.userId;
+      }
+      
+      if (otherId) {
+        getDoc(doc(db, "users", otherId)).then(uSnap => {
+          if (uSnap.exists()) setOtherParty({ ...uSnap.data(), id: uSnap.id } as UserProfile);
+        });
       }
     });
   }, [db, chatId, user, listing, targetClientId]);
@@ -139,12 +107,11 @@ export default function ChatPage() {
   const isLimitReached = totalChars >= CHAR_LIMIT;
   const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
 
-  const handleSendMessage = async (e?: React.FormEvent, type: 'text' | 'deal' = 'text', dealId?: string) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (type === 'text' && !newMessage.trim()) return;
-    if (!user || !listingId || !profile || !chatId) return;
+    if (!newMessage.trim() || !user || !listingId || !profile || !chatId) return;
 
-    if (type === 'text' && hasProfanity(newMessage)) {
+    if (hasProfanity(newMessage)) {
       const newWarningCount = (profile.warningCount || 0) + 1;
       await updateDoc(userProfileRef!, { 
         warningCount: increment(1),
@@ -156,27 +123,9 @@ export default function ChatPage() {
       return;
     }
 
-    if (totalChars + (type === 'text' ? newMessage.length : 0) > CHAR_LIMIT) {
+    if (totalChars + newMessage.length > CHAR_LIMIT) {
       toast({ title: "Лимит", description: "Лимити аломатҳо гузашт", variant: "destructive" });
       return;
-    }
-
-    let currentDealId = dealId;
-    if (type === 'deal' && !dealId) {
-      const newDealRef = doc(collection(db, "deals"));
-      currentDealId = newDealRef.id;
-      const dealData: Deal = {
-        id: newDealRef.id,
-        listingId: listingId as string,
-        clientId: targetClientId || user.uid,
-        artisanId: listing?.userId || otherParty?.id || "",
-        title: dealTitle,
-        price: parseFloat(dealPrice),
-        duration: parseInt(dealDuration),
-        status: 'Pending',
-        createdAt: serverTimestamp()
-      };
-      await setDoc(newDealRef, dealData);
     }
 
     const chatRef = doc(db, "chats", chatId);
@@ -186,11 +135,10 @@ export default function ChatPage() {
       chatId,
       senderId: user.uid,
       senderName: profile.name,
-      text: type === 'deal' ? "Дархости шартнома фиристода шуд" : newMessage,
+      text: newMessage,
       createdAt: serverTimestamp(),
       isRead: false,
-      type,
-      dealId: currentDealId || null,
+      type: 'text',
       isPremiumSender: profile.isPremium || false
     };
 
@@ -206,7 +154,7 @@ export default function ChatPage() {
     }, { merge: true });
 
     setDoc(msgRef, messageData);
-    if (type === 'text') setNewMessage("");
+    setNewMessage("");
   };
 
   const handleAcceptDeal = async (dealId: string, msgId: string) => {
@@ -217,11 +165,23 @@ export default function ChatPage() {
     toast({ title: "Шартнома фаъол шуд" });
   };
 
+  const handleStartDeal = () => {
+    if (otherParty?.identificationStatus !== 'Verified') {
+      toast({
+        variant: "destructive",
+        title: "Амният",
+        description: `Ҳамсуҳбат ${otherParty?.name || ""} верификатсия накардааст. Барои амнияти шумо мо наметавонем шартномаатонро бо ин шахс фаъол созем.`
+      });
+      return;
+    }
+    router.push(`/create-deal/${listingId}?client=${targetClientId || user?.uid}`);
+  };
+
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  if (authLoading || listingLoading || profileLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (authLoading || !profile) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   const isPremiumTheme = profile?.isPremium;
 
@@ -246,7 +206,14 @@ export default function ChatPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button disabled={profile?.identificationStatus !== 'Verified'} size="sm" onClick={() => setIsDealDialogOpen(true)} className="rounded-full font-black text-[10px] px-6 h-10 bg-secondary text-white">ШАРТНОМА</Button>
+            <Button 
+              disabled={profile?.identificationStatus !== 'Verified'} 
+              size="sm" 
+              onClick={handleStartDeal} 
+              className="rounded-full font-black text-[10px] px-6 h-10 bg-secondary text-white shadow-xl hover:scale-105 transition-all"
+            >
+              ШАРТНОМА
+            </Button>
           </div>
         </div>
         <div className="px-6 pb-3 space-y-1">
@@ -264,13 +231,13 @@ export default function ChatPage() {
                 isMe ? (isPremiumTheme ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-secondary" : "bg-primary text-white") : (isPremiumTheme ? "bg-white/5 text-white" : "bg-white text-secondary border")
               )}>
                 {msg.type === 'deal' && msg.dealId ? (
-                  <DealMessage dealId={msg.dealId} isMe={isMe} onAccept={() => handleAcceptDeal(msg.dealId!, msg.id)} />
+                  <DealCard dealId={msg.dealId} isMe={isMe} onAccept={() => handleAcceptDeal(msg.dealId!, msg.id)} />
                 ) : (
                   <p className="text-sm font-bold">{msg.text}</p>
                 )}
                 <div className="flex justify-end mt-1">
                   <span className="text-[8px] opacity-60 mr-2">{msg.createdAt?.toDate()?.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                  {isMe && (msg.isRead ? <CheckCheck className="h-3 w-3 text-blue-400" /> : <Check className="h-3 w-3 opacity-60" />)}
+                  {isMe && (msg.isRead ? <CheckCheck className="h-3.5 w-3.5 text-blue-400" /> : <Check className="h-3.5 w-3.5 opacity-60" />)}
                 </div>
               </div>
             </div>
@@ -280,55 +247,46 @@ export default function ChatPage() {
 
       <div className={cn("p-6 border-t", isPremiumTheme ? "bg-black/40 border-white/10" : "bg-white")}>
         <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-3 max-w-4xl mx-auto items-center">
-          <Input placeholder="Нависед..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className={cn("rounded-full h-14 px-8", isPremiumTheme ? "bg-white/5 border-white/10 text-white" : "bg-muted/30 border-none")} />
+          <Input 
+            placeholder="Нависед..." 
+            value={newMessage} 
+            onChange={(e) => setNewMessage(e.target.value)} 
+            className={cn("rounded-full h-14 px-8", isPremiumTheme ? "bg-white/5 border-white/10 text-white" : "bg-muted/30 border-none")} 
+          />
           <Button type="submit" size="icon" className="rounded-full h-14 w-14 bg-primary"><Send className="h-6 w-6 text-white" /></Button>
         </form>
       </div>
-
-      <Dialog open={isDealDialogOpen} onOpenChange={setIsDealDialogOpen}>
-        <DialogContent className="rounded-3xl p-8 max-w-sm">
-          <DialogHeader><DialogTitle className="font-black uppercase">ДАРХОСТИ ШАРТНОМА</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-1"><Label className="text-[10px] font-black uppercase opacity-60">Номи кор</Label><Input placeholder="Масалан: Ремонти хона" value={dealTitle} onChange={e => setDealTitle(e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase opacity-60">Нарх (TJS)</Label><Input type="number" value={dealPrice} onChange={e => setDealPrice(e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase opacity-60">Мӯҳлат (рӯз)</Label><Input type="number" value={dealDuration} onChange={e => setDealDuration(e.target.value)} /></div>
-            </div>
-            <Button onClick={() => { handleSendMessage(undefined, 'deal'); setIsDealDialogOpen(false); }} className="w-full bg-primary h-12 font-black uppercase">ФИРИСТОДАН</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-function DealMessage({ dealId, isMe, onAccept }: { dealId: string, isMe: boolean, onAccept: () => void }) {
+function DealCard({ dealId, isMe, onAccept }: { dealId: string, isMe: boolean, onAccept: () => void }) {
   const db = useFirestore();
   const { data: deal } = useDoc<Deal>(doc(db, "deals", dealId) as any);
 
   if (!deal) return <Loader2 className="animate-spin h-5 w-5" />;
 
   return (
-    <div className="space-y-4 min-w-[240px]">
+    <div className="space-y-4 min-w-[260px]">
       <div className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl">
-        <Scale className="h-6 w-6 text-yellow-400" />
+        <Scale className="h-7 w-7 text-yellow-400" />
         <div>
-          <h4 className="font-black text-xs uppercase tracking-tight">Шартнома</h4>
-          <p className="text-[10px] opacity-70">Ҳифзи 100% маблағ</p>
+          <h4 className="font-black text-xs uppercase tracking-tight">Шартномаи Амниятӣ</h4>
+          <p className="text-[10px] opacity-70">Ҳифзи 100% маблағи шумо</p>
         </div>
       </div>
       <div className="space-y-2">
-        <h3 className="font-black text-sm uppercase">{deal.title}</h3>
+        <h3 className="font-black text-sm uppercase leading-tight">{deal.title}</h3>
         <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
-          <div className="bg-black/20 p-2 rounded-xl"><p className="opacity-60">НАРХ:</p><p className="text-base text-yellow-400">{deal.price} TJS</p></div>
-          <div className="bg-black/20 p-2 rounded-xl"><p className="opacity-60">МӮҲЛАТ:</p><p className="text-base">{deal.duration} рӯз</p></div>
+          <div className="bg-black/20 p-2 rounded-xl text-center"><p className="opacity-60 text-[8px]">НАРХ:</p><p className="text-sm text-yellow-400">{deal.price} TJS</p></div>
+          <div className="bg-black/20 p-2 rounded-xl text-center"><p className="opacity-60 text-[8px]">МӮҲЛАТ:</p><p className="text-sm">{deal.duration} рӯз</p></div>
         </div>
       </div>
       {!isMe && deal.status === 'Pending' && (
-        <Button onClick={onAccept} className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-10 rounded-xl">ҚАБУЛ КАРДАН</Button>
+        <Button onClick={onAccept} className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-10 rounded-xl shadow-lg">ҚАБУЛ КАРДАН</Button>
       )}
       <Badge className={cn("w-full justify-center h-8 rounded-lg font-black uppercase text-[9px]", deal.status === 'Active' ? "bg-green-500" : "bg-black/20")}>
-        ҲОЛАТ: {deal.status === 'Pending' ? 'Интизорӣ' : deal.status === 'Active' ? 'ФАЪОЛ' : deal.status}
+        ҲОЛАТ: {deal.status === 'Pending' ? 'Интизории қабул' : deal.status === 'Active' ? 'ФАЪОЛ (Escrow)' : deal.status === 'Completed' ? 'АНҶОМЁФТА' : deal.status}
       </Badge>
     </div>
   );
