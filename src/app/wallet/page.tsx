@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   Wallet, 
   ArrowUpRight, 
@@ -21,7 +22,9 @@ import {
   Upload,
   CreditCard,
   History,
-  ShieldCheck
+  ShieldCheck,
+  Phone,
+  Smartphone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
@@ -47,6 +50,7 @@ export default function WalletPage() {
   const [mode, setMode] = useState<'main' | 'deposit' | 'withdraw'>('main');
   const [amount, setAmount] = useState("");
   const [cardNumber, setCardNumber] = useState("");
+  const [withdrawalType, setWithdrawalType] = useState<'DC' | 'Phone' | 'KortiMilli'>('DC');
   const [receiptImage, setReceiptImage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,8 +85,6 @@ export default function WalletPage() {
 
     try {
       await setDoc(depositRef, depositData);
-      
-      // Сабти транзаксия ҳамчун Pending
       await addDoc(collection(db, "transactions"), {
         userId: user.uid,
         amount: parseFloat(amount),
@@ -91,7 +93,6 @@ export default function WalletPage() {
         description: "Пур кардани ҳисоб (дар баррасӣ)",
         createdAt: serverTimestamp()
       });
-
       toast({ title: "Дархост фиристода шуд", description: "Маблағ дар муддати 24 соат тасдиқ мешавад." });
       setMode('main');
       setAmount("");
@@ -122,24 +123,22 @@ export default function WalletPage() {
       userName: profile.name,
       amount: parseFloat(amount),
       cardNumber,
+      withdrawalType,
       status: 'Pending',
       submittedAt: serverTimestamp()
     };
 
     try {
       await setDoc(withdrawRef, withdrawData);
-      
-      // Сабти транзаксия
       await addDoc(collection(db, "transactions"), {
         userId: user.uid,
         amount: parseFloat(amount),
         type: 'Withdrawal',
         status: 'Pending',
-        description: `Бозхонд ба корти ${cardNumber.slice(-4)}`,
+        description: `Бозхонд (${withdrawalType}): ${cardNumber}`,
         createdAt: serverTimestamp()
       });
-
-      toast({ title: "Дархости бозхонд қабул шуд", description: "Маблағ дар муддати 24 соат ба корти шумо мерасад." });
+      toast({ title: "Дархости бозхонд қабул шуд", description: "Маблағ дар муддати 24 соат ба шумо мерасад." });
       setMode('main');
       setAmount("");
       setCardNumber("");
@@ -165,7 +164,6 @@ export default function WalletPage() {
 
         {mode === 'main' && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Balance Card */}
             <Card className="border-none shadow-3xl bg-secondary text-white rounded-[3rem] p-10 overflow-hidden relative">
               <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-primary/20 blur-[80px] rounded-full" />
               <div className="relative z-10">
@@ -188,7 +186,6 @@ export default function WalletPage() {
               </div>
             </Card>
 
-            {/* History */}
             <div className="space-y-6">
               <h3 className="text-xl font-black text-secondary uppercase tracking-tighter flex items-center gap-2">
                 <History className="h-5 w-5 text-primary" /> ТАЪРИХИ АМАЛИЁТҲО
@@ -247,7 +244,6 @@ export default function WalletPage() {
               <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase">ПУР КАРДАН</h2>
               <p className="text-sm text-muted-foreground font-medium italic">Маблағро ба суратҳисоб гузаронед ва чекро бор кунед.</p>
             </div>
-
             <div className="p-8 bg-secondary/5 rounded-[2.5rem] border-2 border-dashed border-secondary/20 space-y-6 text-center">
               <div className="flex justify-center"><CreditCard className="h-10 w-10 text-secondary" /></div>
               <div>
@@ -256,37 +252,21 @@ export default function WalletPage() {
                 <p className="text-sm font-bold text-primary mt-2">Ном: А Б</p>
               </div>
             </div>
-
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Маблағ (TJS)</Label>
                 <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-14 rounded-2xl font-bold" />
               </div>
-
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Сурати чек</Label>
                 <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} accept="image/*" />
-                <Button 
-                  onClick={() => fileInputRef.current?.click()} 
-                  variant="outline" 
-                  className="w-full h-32 border-dashed border-2 rounded-2xl flex flex-col gap-2"
-                >
+                <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full h-32 border-dashed border-2 rounded-2xl flex flex-col gap-2">
                   {isSubmitting ? <Loader2 className="animate-spin h-6 w-6 text-primary" /> : <Upload className="h-6 w-6 text-muted-foreground" />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    {receiptImage ? "ЧЕК БОР ШУД" : "ИЛОВАИ СУРАТИ ЧЕК"}
-                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{receiptImage ? "ЧЕК БОР ШУД" : "ИЛОВАИ СУРАТИ ЧЕК"}</span>
                 </Button>
                 {receiptImage && <div className="mt-4 relative h-32 w-32 mx-auto rounded-xl overflow-hidden shadow-md"><Image src={receiptImage} fill alt="receipt" className="object-cover" /></div>}
               </div>
             </div>
-
-            <div className="bg-yellow-50 p-6 rounded-2xl border-2 border-dashed border-yellow-200 flex gap-4">
-              <AlertCircle className="h-6 w-6 text-yellow-600 shrink-0" />
-              <p className="text-[10px] font-black text-yellow-700 uppercase leading-relaxed">
-                ДИҚҚАТ: Пур кардани ҳисоб дар муддати 24 соат пас аз тафтиши чек аз тарафи мо анҷом меёбад.
-              </p>
-            </div>
-
             <Button onClick={handleDeposit} disabled={isSubmitting || !amount || !receiptImage} className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">ФИРИСТОДАН</Button>
           </Card>
         )}
@@ -295,13 +275,34 @@ export default function WalletPage() {
           <Card className="border-none shadow-3xl rounded-[3rem] p-10 bg-white space-y-8 animate-in slide-in-from-left-10 duration-500">
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase">БОЗХОНДИ МАБЛАҒ</h2>
-              <p className="text-sm text-muted-foreground font-medium italic">Маблағ ба корти шумо дар муддати 24 соат мерасад.</p>
+              <p className="text-sm text-muted-foreground font-medium italic">Маблағ дар муддати 24 соат мерасад.</p>
             </div>
-
             <div className="space-y-6">
+              <div className="space-y-3">
+                <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Намуди интиқол</Label>
+                <RadioGroup value={withdrawalType} onValueChange={(v) => setWithdrawalType(v as any)} className="grid grid-cols-3 gap-2">
+                  <Label className={cn("flex flex-col items-center p-3 rounded-2xl border-2 cursor-pointer", withdrawalType === 'DC' ? "border-primary bg-primary/5" : "border-muted opacity-60")}>
+                    <RadioGroupItem value="DC" className="sr-only" />
+                    <CreditCard className="h-5 w-5 mb-1" />
+                    <span className="text-[9px] font-black">DC</span>
+                  </Label>
+                  <Label className={cn("flex flex-col items-center p-3 rounded-2xl border-2 cursor-pointer", withdrawalType === 'Phone' ? "border-primary bg-primary/5" : "border-muted opacity-60")}>
+                    <RadioGroupItem value="Phone" className="sr-only" />
+                    <Phone className="h-5 w-5 mb-1" />
+                    <span className="text-[9px] font-black">НОМЕР</span>
+                  </Label>
+                  <Label className={cn("flex flex-col items-center p-3 rounded-2xl border-2 cursor-pointer", withdrawalType === 'KortiMilli' ? "border-primary bg-primary/5" : "border-muted opacity-60")}>
+                    <RadioGroupItem value="KortiMilli" className="sr-only" />
+                    <Smartphone className="h-5 w-5 mb-1" />
+                    <span className="text-[9px] font-black">КОРТ</span>
+                  </Label>
+                </RadioGroup>
+              </div>
               <div className="space-y-2">
-                <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Рақами корт</Label>
-                <Input placeholder="0000 0000 0000 0000" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} className="h-14 rounded-2xl font-bold" maxLength={16} />
+                <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">
+                  {withdrawalType === 'Phone' ? 'Рақами телефон' : 'Рақами корт / Ҳамён'}
+                </Label>
+                <Input placeholder={withdrawalType === 'Phone' ? "900000000" : "0000 0000..."} value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} className="h-14 rounded-2xl font-bold" />
               </div>
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase tracking-widest opacity-60">Маблағ (TJS)</Label>
@@ -309,14 +310,6 @@ export default function WalletPage() {
                 <p className="text-[10px] font-black text-primary uppercase text-right">Мавҷуд: {profile.balance} TJS</p>
               </div>
             </div>
-
-            <div className="bg-blue-50 p-6 rounded-2xl border-2 border-dashed border-blue-200 flex gap-4">
-              <ShieldCheck className="h-6 w-6 text-blue-600 shrink-0" />
-              <p className="text-[10px] font-black text-blue-700 uppercase leading-relaxed">
-                МАЪЛУМОТ: Ҳангоми бозхонд, маблағ аз тавозуни шумо "банд" мешавад ва пас аз тасдиқ ба корт мерасад.
-              </p>
-            </div>
-
             <Button onClick={handleWithdraw} disabled={isSubmitting || !amount || !cardNumber} className="w-full bg-secondary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">ДАРХОСТ ДОДАН</Button>
           </Card>
         )}

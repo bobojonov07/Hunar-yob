@@ -38,8 +38,23 @@
         "userName": { "type": "string" },
         "amount": { "type": "number" },
         "cardNumber": { "type": "string" },
+        "withdrawalType": { "type": "string", "enum": ["DC", "Phone", "KortiMilli"] },
         "status": { "type": "string", "enum": ["Pending", "Completed", "Rejected"] },
         "submittedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Deal": {
+      "title": "Deal",
+      "description": "Шартномаи байни мизоҷ ва усто",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "artisanId": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Active", "Completed", "Cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     },
     "Transaction": {
@@ -71,6 +86,10 @@
     "/withdrawal_requests/{userId}": {
       "schema": "WithdrawalRequest",
       "description": "Дархостҳои бозхонди маблағ"
+    },
+    "/deals/{dealId}": {
+      "schema": "Deal",
+      "description": "Шартномаҳои басташуда"
     },
     "/transactions/{transactionId}": {
       "schema": "Transaction",

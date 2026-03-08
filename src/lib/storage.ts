@@ -5,6 +5,7 @@ export type UserRole = 'Usto' | 'Client';
 export type IdentificationStatus = 'None' | 'Pending' | 'Verified' | 'Rejected' | 'Blocked';
 export type TransactionStatus = 'Pending' | 'Completed' | 'Rejected';
 export type TransactionType = 'Deposit' | 'Withdrawal' | 'PremiumPurchase' | 'DealPayment';
+export type DealStatus = 'Pending' | 'Accepted' | 'Active' | 'Completed' | 'Cancelled';
 
 export interface UserProfile {
   id: string;
@@ -41,6 +42,7 @@ export interface WithdrawalRequest {
   userName: string;
   amount: number;
   cardNumber: string;
+  withdrawalType: 'DC' | 'Phone' | 'KortiMilli';
   status: TransactionStatus;
   submittedAt: any;
 }
@@ -53,6 +55,20 @@ export interface Transaction {
   status: TransactionStatus;
   description: string;
   createdAt: any;
+}
+
+export interface Deal {
+  id: string;
+  listingId: string;
+  clientId: string;
+  artisanId: string;
+  title: string;
+  price: number;
+  duration: number; // дар рӯзҳо
+  status: DealStatus;
+  createdAt: any;
+  acceptedAt?: any;
+  completedAt?: any;
 }
 
 export interface VerificationRequest {
