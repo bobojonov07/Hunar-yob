@@ -17,7 +17,8 @@ import {
   ArrowRight, 
   CreditCard,
   FileText,
-  Clock
+  Clock,
+  RefreshCw
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -74,7 +75,6 @@ export default function VerifyPage() {
     if (!userProfileRef || !profile || !user) return;
     setIsLoading(true);
     
-    // 1. Маълумот барои профили корбар
     const userUpdateData = {
       identificationStatus: 'Pending',
       kycPhotos: photos,
@@ -83,7 +83,6 @@ export default function VerifyPage() {
       errorReason: "" 
     };
 
-    // 2. Маълумот барои коллексияи махсуси админ (Queue)
     const adminQueueData = {
       userId: user.uid,
       userName: profile.name,
@@ -94,20 +93,16 @@ export default function VerifyPage() {
       status: 'Pending'
     };
 
-    console.log("Фиристодани маълумот ба Firestore...", { userUpdateData, adminQueueData });
+    console.log("Фиристодани дархости верификатсия ба Консол...", adminQueueData);
 
     try {
-      // Навсозии профили корбар
       await updateDoc(userProfileRef, userUpdateData);
-      
-      // Илова кардан ба коллексияи "verification_requests" барои осонии кори админ
       const requestRef = doc(db, "verification_requests", user.uid);
       await setDoc(requestRef, adminQueueData);
 
       toast({ title: "Дархост фиристода шуд", description: "Мо дар муддати 24 соат тафтиш мекунем." });
       router.push("/profile");
     } catch (err: any) {
-      console.error("Verification error:", err);
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userProfileRef.path,
         operation: 'update',
@@ -120,8 +115,9 @@ export default function VerifyPage() {
   };
 
   const nextStep = () => {
-    if (step === 1 && (isRejected || photos.length >= 3)) {
+    if (step === 1 && photos.length >= 3) {
       if (isRejected) {
+        // Skip payment step if rejected before
         setStep(3); 
       } else {
         setStep(2);
@@ -146,24 +142,13 @@ export default function VerifyPage() {
         <div className="container mx-auto px-4 py-24 max-w-2xl text-center space-y-8">
           <div className="mx-auto h-32 w-32 bg-yellow-50 rounded-[3rem] flex items-center justify-center shadow-inner relative">
             <Clock className="h-16 w-16 text-yellow-500 animate-pulse" />
-            <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-lg">
-              <ShieldCheck className="h-6 w-6 text-yellow-500" />
-            </div>
           </div>
           <div className="space-y-4">
             <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">ДАР ҲОЛИ БАРРАСӢ</h1>
             <p className="text-xl font-medium text-muted-foreground leading-relaxed italic px-6">
-              "Дар ҳоли баррасӣ. Мо дар муддати 24 соат маълумоти шуморо баррасӣ ва фаъол месозем."
+              "Мо дар муддати 24 соат маълумоти шуморо баррасӣ ва фаъол месозем."
             </p>
           </div>
-          <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-8 border-2 border-dashed border-yellow-100">
-            <div className="flex items-start gap-4 text-left">
-              <AlertCircle className="h-6 w-6 text-yellow-600 shrink-0" />
-              <p className="text-xs font-bold text-yellow-700 uppercase tracking-widest leading-relaxed">
-                Лутфан сабр кунед. Мо тамоми суратҳо ва чеки пардохти шуморо дастӣ месанҷем. Пас аз тасдиқ, тамоми имкониятҳои KORYOB 2 барои шумо боз мешаванд.
-              </p>
-            </div>
-          </Card>
           <Button onClick={() => router.push("/profile")} className="bg-secondary h-16 px-10 rounded-2xl font-black uppercase tracking-widest shadow-xl">
             БА ПРОФИЛ БАРГАРДЕД
           </Button>
@@ -183,16 +168,26 @@ export default function VerifyPage() {
         <div className="space-y-8">
           <div className="text-center space-y-4">
             <div className="mx-auto h-20 w-20 bg-primary/10 rounded-[2rem] flex items-center justify-center shadow-inner">
-              <ShieldCheck className="h-10 w-10 text-primary" />
+              {isRejected ? <RefreshCw className="h-10 w-10 text-orange-500 animate-spin-slow" /> : <ShieldCheck className="h-10 w-10 text-primary" />}
             </div>
-            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">ТАСДИҚИ ШАХСИЯТ</h1>
+            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">
+              {isRejected ? "ТАҶДИДИ МАЪЛУМОТ" : "ТАСДИҚИ ШАХСИЯТ"}
+            </h1>
+            {isRejected && (
+              <div className="bg-orange-50 p-4 rounded-2xl border-2 border-dashed border-orange-200">
+                <p className="text-xs font-black text-orange-700 uppercase tracking-widest">
+                  МАЪЛУМОТРО ДУБОРА ФИРИСТЕД. СУРАТҲОРО БО СИФАТИ ХУБ БОР КУНЕД.
+                </p>
+              </div>
+            )}
             <div className="flex justify-center gap-2">
               {[1, 2, 3].map((s) => (
                 <div 
                   key={s} 
                   className={cn(
                     "h-2 w-12 rounded-full transition-all duration-500",
-                    step >= s ? "bg-primary" : "bg-muted"
+                    step >= s ? "bg-primary" : "bg-muted",
+                    isRejected && s === 2 && "hidden" // Hide payment step for rejected
                   )} 
                 />
               ))}
