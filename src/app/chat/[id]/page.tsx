@@ -13,8 +13,7 @@ import {
   Loader2, 
   Check, 
   CheckCheck,
-  Scale,
-  AlertTriangle
+  Scale
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -31,11 +30,11 @@ import {
   updateDoc, 
   increment, 
   writeBatch,
+  addDoc
 } from "firebase/firestore";
 import { Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT, Deal } from "@/lib/storage";
 import { cn, hasProfanity } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ChatPage() {
   const { id: listingId } = useParams();
@@ -158,11 +157,54 @@ export default function ChatPage() {
   };
 
   const handleAcceptDeal = async (dealId: string, msgId: string) => {
-    if (!db || !chatId) return;
+    if (!db || !chatId || !user || !profile) return;
+    
     const dealRef = doc(db, "deals", dealId);
-    await updateDoc(dealRef, { status: 'Active', acceptedAt: serverTimestamp() });
-    await updateDoc(doc(db, "chats", chatId, "messages", msgId), { text: "Шартнома қабул шуд" });
-    toast({ title: "Шартнома фаъол шуд" });
+    const dealSnap = await getDoc(dealRef);
+    if (!dealSnap.exists()) return;
+    
+    const deal = dealSnap.data() as Deal;
+
+    // Танҳо мизоҷ метавонад пардохт ва қабул кунад
+    if (profile.role !== 'Client') {
+      toast({ title: "Танҳо мизоҷ метавонад шартномаро қабул кунад", variant: "destructive" });
+      return;
+    }
+
+    if (profile.balance < deal.price) {
+      toast({ title: "Маблағ нокифоя аст", description: "Лутфан ҳамёни худро пур кунед", variant: "destructive" });
+      router.push("/wallet");
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Гирифтани маблағ аз мизоҷ
+      batch.update(doc(db, "users", user.uid), { balance: increment(-deal.price) });
+
+      // 2. Сабти транзаксия
+      const transRef = doc(collection(db, "transactions"));
+      batch.set(transRef, {
+        userId: user.uid,
+        amount: deal.price,
+        type: 'DealPayment',
+        status: 'Completed',
+        description: `Пардохт барои шартнома: ${deal.title}`,
+        createdAt: serverTimestamp()
+      });
+
+      // 3. Фаъол кардани шартнома
+      batch.update(dealRef, { status: 'Active', acceptedAt: serverTimestamp() });
+
+      // 4. Навсозии паём
+      batch.update(doc(db, "chats", chatId, "messages", msgId), { text: "Шартнома қабул ва пардохт шуд" });
+
+      await batch.commit();
+      toast({ title: "Шартнома фаъол шуд!", description: "Маблағ дар Escrow маҳфуз аст." });
+    } catch (err) {
+      toast({ title: "Хатогӣ ҳангоми пардохт", variant: "destructive" });
+    }
   };
 
   const handleStartDeal = () => {
@@ -262,9 +304,14 @@ export default function ChatPage() {
 
 function DealCard({ dealId, isMe, onAccept }: { dealId: string, isMe: boolean, onAccept: () => void }) {
   const db = useFirestore();
+  const { user } = useUser();
   const { data: deal } = useDoc<Deal>(doc(db, "deals", dealId) as any);
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
-  if (!deal) return <Loader2 className="animate-spin h-5 w-5" />;
+  if (!deal || !profile) return <Loader2 className="animate-spin h-5 w-5" />;
+
+  const canAccept = !isMe && deal.status === 'Pending' && profile.role === 'Client';
 
   return (
     <div className="space-y-4 min-w-[260px]">
@@ -282,11 +329,14 @@ function DealCard({ dealId, isMe, onAccept }: { dealId: string, isMe: boolean, o
           <div className="bg-black/20 p-2 rounded-xl text-center"><p className="opacity-60 text-[8px]">МӮҲЛАТ:</p><p className="text-sm">{deal.duration} рӯз</p></div>
         </div>
       </div>
-      {!isMe && deal.status === 'Pending' && (
-        <Button onClick={onAccept} className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-10 rounded-xl shadow-lg">ҚАБУЛ КАРДАН</Button>
+      {canAccept && (
+        <Button onClick={onAccept} className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-10 rounded-xl shadow-lg">ҚАБУЛ ВА ПАРДОХТ</Button>
       )}
-      <Badge className={cn("w-full justify-center h-8 rounded-lg font-black uppercase text-[9px]", deal.status === 'Active' ? "bg-green-500" : "bg-black/20")}>
-        ҲОЛАТ: {deal.status === 'Pending' ? 'Интизории қабул' : deal.status === 'Active' ? 'ФАЪОЛ (Escrow)' : deal.status === 'Completed' ? 'АНҶОМЁФТА' : deal.status}
+      {deal.status === 'Pending' && profile.role === 'Usto' && isMe && (
+        <p className="text-[9px] font-black uppercase text-center opacity-60">Интизории қабули мизоҷ...</p>
+      )}
+      <Badge className={cn("w-full justify-center h-8 rounded-lg font-black uppercase text-[9px]", deal.status === 'Active' ? "bg-green-500 text-white" : "bg-black/20 text-white")}>
+        ҲОЛАТ: {deal.status === 'Pending' ? 'Интизории розигӣ' : deal.status === 'Active' ? 'ФАЪОЛ (МАСДУД)' : deal.status}
       </Badge>
     </div>
   );
