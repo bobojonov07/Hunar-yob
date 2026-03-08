@@ -7,15 +7,16 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare, AlertCircle, Loader2, Crown } from "lucide-react";
+import { ChevronLeft, Send, ShieldCheck, CheckCircle2, MessageSquare, Loader2, Crown, Volume2, PlayCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Link from "next/link";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Listing, Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT } from "@/lib/storage";
+import { textToSpeech } from "@/ai/flows/tts-flow";
+import { cn } from "@/lib/utils";
 
 function formatDistanceToNowTajik(date: Date) {
   const now = new Date();
@@ -47,6 +48,7 @@ export default function ChatPage() {
   const [dealPrice, setDealPrice] = useState("");
   const [dealDuration, setDealDuration] = useState("");
   const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
   const listingRef = useMemo(() => listingId ? doc(db, "listings", listingId as string) : null, [db, listingId]);
   const { data: listing, loading: listingLoading } = useDoc<Listing>(listingRef as any);
@@ -110,15 +112,6 @@ export default function ChatPage() {
     if (type === 'text' && !newMessage.trim()) return;
     if (!user || !listingId || !profile || !chatId) return;
 
-    if (type === 'deal' && profile.identificationStatus !== 'Verified') {
-      toast({ 
-        title: "Верификатсия лозим аст", 
-        description: "Танҳо корбарони тасдиқшуда метавонанд шартнома банданд.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
     if (totalChars + (type === 'text' ? newMessage.length : 0) > CHAR_LIMIT) {
       toast({ title: "Лимит", description: "Лимити аломатҳо гузашт", variant: "destructive" });
       return;
@@ -127,7 +120,7 @@ export default function ChatPage() {
     const chatRef = doc(db, "chats", chatId);
     const msgRef = doc(collection(db, "chats", chatId, "messages"));
     const clientId = targetClientId || user.uid;
-    const artisanId = listing?.userId || (chatId.split('_')[0] === listingId ? (otherParty?.id || "") : "");
+    const artisanId = listing?.userId || otherParty?.id || "";
 
     const messageData = {
       id: msgRef.id,
@@ -138,14 +131,15 @@ export default function ChatPage() {
       createdAt: serverTimestamp(),
       isRead: false,
       type,
-      dealId: dealId || null
+      dealId: dealId || null,
+      isPremiumSender: profile.isPremium || false
     };
 
     const chatUpdate = {
       id: chatId,
       listingId: listingId as string,
       clientId: clientId,
-      artisanId: artisanId || otherParty?.id || "",
+      artisanId: artisanId || "",
       lastMessage: messageData.text,
       lastSenderId: user.uid,
       updatedAt: serverTimestamp(),
@@ -164,16 +158,21 @@ export default function ChatPage() {
     if (type === 'text') setNewMessage("");
   };
 
-  const handleOpenDealDialog = () => {
-    if (profile?.identificationStatus !== 'Verified') {
-      toast({ 
-        title: "Верификатсия лозим аст", 
-        description: "Барои бастани шартнома аввал шахсияти худро тасдиқ кунед.", 
-        variant: "destructive" 
-      });
+  const handlePlayTTS = async (text: string, msgId: string) => {
+    if (!profile?.isPremium) {
+      toast({ title: "Танҳо барои Premium", description: "Барои истифодаи AI Voice аввал Premium гиред." });
       return;
     }
-    setIsDealDialogOpen(true);
+    setPlayingAudioId(msgId);
+    try {
+      const { audioDataUri } = await textToSpeech({ text });
+      const audio = new Audio(audioDataUri);
+      audio.onended = () => setPlayingAudioId(null);
+      audio.play();
+    } catch (e) {
+      toast({ title: "Хатогӣ дар AI", variant: "destructive" });
+      setPlayingAudioId(null);
+    }
   };
 
   const lastActiveText = useMemo(() => {
@@ -187,35 +186,45 @@ export default function ChatPage() {
   }, [otherParty]);
 
   if (authLoading || listingLoading || profileLoading) {
-    return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+    return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   }
 
+  const isPremiumTheme = profile?.isPremium;
+
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className={cn("flex flex-col h-screen transition-colors duration-500", isPremiumTheme ? "bg-secondary" : "bg-background")}>
       <Navbar />
       
-      <div className="flex flex-col bg-white border-b shadow-sm sticky top-[64px] z-10">
-        <div className="flex items-center justify-between p-3">
+      <div className={cn(
+        "flex flex-col border-b shadow-lg sticky top-[64px] z-10",
+        isPremiumTheme ? "bg-black/40 backdrop-blur-xl border-white/10" : "bg-white"
+      )}>
+        <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className={cn("rounded-full", isPremiumTheme ? "text-white" : "")}>
               <ChevronLeft className="h-6 w-6" />
             </Button>
-            <Avatar className="h-10 w-10 border">
+            <Avatar className={cn("h-12 w-12 border-2", otherParty?.isPremium ? "border-yellow-400" : "border-muted")}>
               <AvatarImage src={otherParty?.profileImage} className="object-cover" />
               <AvatarFallback className="bg-primary text-white font-black">{otherParty?.name?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h3 className="font-black text-secondary text-sm truncate max-w-[120px]">{otherParty?.name || "Корбар"}</h3>
-                {otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                {otherParty?.isPremium && <Crown className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />}
+                <h3 className={cn("font-black text-base truncate max-w-[150px]", isPremiumTheme ? "text-white" : "text-secondary")}>
+                  {otherParty?.name || "Корбар"}
+                </h3>
+                {otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                {otherParty?.isPremium && <Crown className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
               </div>
-              <p className="text-[9px] text-muted-foreground font-bold">{lastActiveText}</p>
+              <p className={cn("text-[10px] font-bold", isPremiumTheme ? "text-white/60" : "text-muted-foreground")}>{lastActiveText}</p>
             </div>
           </div>
 
           <Dialog open={isDealDialogOpen} onOpenChange={setIsDealDialogOpen}>
-            <Button size="sm" onClick={handleOpenDealDialog} className="bg-secondary text-white rounded-full font-black text-[10px]">ШАРТНОМА</Button>
+            <Button size="sm" onClick={() => setIsDealDialogOpen(true)} className={cn(
+              "rounded-full font-black text-[10px] px-6 h-10 shadow-xl transition-all hover:scale-105",
+              isPremiumTheme ? "bg-yellow-500 text-secondary" : "bg-secondary text-white"
+            )}>ШАРТНОМА</Button>
             <DialogContent className="rounded-3xl p-8 max-w-sm">
               <DialogHeader><DialogTitle className="font-black uppercase tracking-tighter">ДАРХОСТИ КОР</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-4">
@@ -230,43 +239,91 @@ export default function ChatPage() {
           </Dialog>
         </div>
         
-        <div className="px-4 pb-2 space-y-1">
-          <div className="flex justify-between text-[8px] font-black uppercase">
-            <span>Лимити аломатҳо {profile?.isPremium && "(PREMIUM)"}</span>
+        <div className="px-6 pb-3 space-y-1">
+          <div className={cn("flex justify-between text-[9px] font-black uppercase tracking-widest", isPremiumTheme ? "text-yellow-400" : "text-muted-foreground")}>
+            <span>Лимити аломатҳо {profile?.isPremium && "★ PREMIUM ★"}</span>
             <span>{totalChars} / {CHAR_LIMIT}</span>
           </div>
-          <Progress value={charProgress} className="h-1" />
+          <Progress value={charProgress} className={cn("h-1.5", isPremiumTheme ? "bg-white/10 [&>div]:bg-yellow-500" : "")} />
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 && !messagesLoading ? (
           <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
-            <MessageSquare className="h-12 w-12 mb-2" />
-            <p className="font-black uppercase text-[10px]">Муколамаро оғоз кунед</p>
+            <MessageSquare className={cn("h-20 w-20 mb-4", isPremiumTheme ? "text-white" : "")} />
+            <p className={cn("font-black uppercase text-xs tracking-[0.3em]", isPremiumTheme ? "text-white" : "")}>Сӯҳбатро оғоз кунед</p>
           </div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.senderId === user?.uid ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${msg.senderId === user?.uid ? 'bg-primary text-white' : 'bg-white text-secondary border'}`}>
-                <p className="text-sm font-medium">{msg.text}</p>
-                <div className="flex justify-end mt-1 opacity-60 text-[8px] font-black">
-                  {msg.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          messages.map((msg) => {
+            const isMe = msg.senderId === user?.uid;
+            return (
+              <div key={msg.id} className={cn("flex flex-col group", isMe ? 'items-end' : 'items-start')}>
+                <div className={cn(
+                  "relative max-w-[85%] p-4 rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02]",
+                  isMe 
+                    ? (isPremiumTheme ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-secondary ring-4 ring-yellow-400/20" : "bg-primary text-white") 
+                    : (isPremiumTheme ? "bg-white/5 backdrop-blur-md text-white border border-white/10" : "bg-white text-secondary border")
+                )}>
+                  <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
+                  
+                  <div className="flex justify-between items-center mt-3 gap-4">
+                    <span className="text-[8px] font-black uppercase opacity-60">
+                      {msg.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    
+                    {profile?.isPremium && (
+                      <button 
+                        onClick={() => handlePlayTTS(msg.text, msg.id)}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 rounded-full transition-all",
+                          playingAudioId === msg.id ? "bg-white/20 animate-pulse" : "hover:bg-white/10"
+                        )}
+                      >
+                        {playingAudioId === msg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Volume2 className="h-3 w-3" />}
+                        <span className="text-[8px] font-black uppercase">ГӮШ КАРДАН</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      <div className="p-4 bg-white border-t">
+      <div className={cn(
+        "p-6 border-t shadow-[0_-10px_30px_rgba(0,0,0,0.05)]",
+        isPremiumTheme ? "bg-black/40 border-white/10" : "bg-white"
+      )}>
         {!isLimitReached ? (
-          <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-2">
-            <Input placeholder="Нависед..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} className="rounded-full h-11 px-6 flex-1" />
-            <Button type="submit" size="icon" className="bg-primary rounded-full h-11 w-11 shrink-0"><Send className="h-5 w-5 text-white" /></Button>
+          <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-3 max-w-4xl mx-auto">
+            <Input 
+              placeholder="Нависед..." 
+              value={newMessage} 
+              onChange={(e) => setNewMessage(e.target.value)} 
+              className={cn(
+                "rounded-full h-14 px-8 flex-1 text-base font-bold transition-all focus:ring-4",
+                isPremiumTheme 
+                  ? "bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-yellow-400/20" 
+                  : "bg-muted/30 border-none"
+              )} 
+            />
+            <Button 
+              type="submit" 
+              size="icon" 
+              className={cn(
+                "rounded-full h-14 w-14 shadow-2xl transition-transform active:scale-90",
+                isPremiumTheme ? "bg-yellow-500 hover:bg-yellow-400" : "bg-primary"
+              )}
+            >
+              <Send className={cn("h-6 w-6", isPremiumTheme ? "text-secondary" : "text-white")} />
+            </Button>
           </form>
         ) : (
-          <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black text-center uppercase">Лимит ба охир расид. {!profile?.isPremium && "Premium гиред!"}</div>
+          <div className="p-4 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black text-center uppercase tracking-widest border border-red-500/20">
+            Лимити аломатҳо ба охир расид. {!profile?.isPremium && "БАРОИ ИДОМА PREMIUM ГИРЕД!"}
+          </div>
         )}
       </div>
     </div>
