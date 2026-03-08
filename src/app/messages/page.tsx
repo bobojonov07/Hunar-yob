@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, CheckCheck, ChevronLeft, Loader2, CheckCircle2 } from "lucide-react";
+import { MessageSquare, CheckCheck, ChevronLeft, Loader2, CheckCircle2, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -147,7 +147,6 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
     }
   }, [conv.updatedAt]);
 
-  // Гузариш ба чат бо истифода аз listingId ва clientId барои муайян кардани chatId
   const chatLink = `/chat/${conv.listingId}?client=${conv.clientId}`;
 
   return (
@@ -167,6 +166,7 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
                   {conv.otherParty?.name || "Корбар"}
                 </h3>
                 {conv.otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                {conv.otherParty?.isPremium && <Crown className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500 shrink-0" />}
               </div>
               <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest shrink-0">
                 {formattedTime}

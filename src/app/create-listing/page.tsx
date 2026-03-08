@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ALL_CATEGORIES, UserProfile, Listing } from "@/lib/storage";
+import { ALL_CATEGORIES, UserProfile, Listing, REGULAR_LISTING_LIMIT, PREMIUM_LISTING_LIMIT } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ChevronLeft, Loader2, X, AlertTriangle } from "lucide-react";
+import { Upload, ChevronLeft, Loader2, X, AlertTriangle, Crown } from "lucide-react";
 import Image from "next/image";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError, useCollection } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
@@ -35,7 +35,9 @@ export default function CreateListing() {
   }, [db, user]);
   
   const { data: userListings = [], loading: checkLoading } = useCollection<Listing>(userListingsQuery as any);
-  const hasListing = userListings.length > 0;
+  
+  const listingLimit = profile?.isPremium ? PREMIUM_LISTING_LIMIT : REGULAR_LISTING_LIMIT;
+  const hasReachedLimit = userListings.length >= listingLimit;
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -85,10 +87,10 @@ export default function CreateListing() {
     e.preventDefault();
     if (!profile || !user) return;
     
-    if (hasListing) {
+    if (hasReachedLimit) {
       toast({ 
         title: "Маҳдудияти эълон", 
-        description: "Шумо аллакай эълон доред. Танҳо 1 эълон иҷозат аст.", 
+        description: `Шумо лимити ${listingLimit} эълонро истифода бурдед.`, 
         variant: "destructive" 
       });
       return;
@@ -159,21 +161,23 @@ export default function CreateListing() {
           БОЗГАШТ
         </Button>
 
-        {hasListing ? (
+        {hasReachedLimit ? (
           <Card className="border-none shadow-3xl rounded-[3rem] p-10 text-center bg-white relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-destructive" />
-            <div className="mx-auto h-24 w-24 bg-red-50 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-inner">
-              <AlertTriangle className="h-12 w-12 text-destructive animate-pulse" />
+            <div className="absolute top-0 left-0 w-full h-2 bg-yellow-500" />
+            <div className="mx-auto h-24 w-24 bg-yellow-50 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-inner">
+              <Crown className="h-12 w-12 text-yellow-500 animate-pulse" />
             </div>
             <h2 className="text-3xl font-black text-secondary tracking-tighter uppercase mb-4">МАҲДУДИЯТИ ЭЪЛОН</h2>
-            <div className="p-6 bg-red-50/50 rounded-3xl border-2 border-dashed border-red-100 mb-8">
+            <div className="p-6 bg-yellow-50/50 rounded-3xl border-2 border-dashed border-yellow-100 mb-8">
               <p className="text-muted-foreground font-medium leading-relaxed">
-                Дар платформаи **KORYOB 2** ҳар як корбар метавонад танҳо **1 эълон** дошта бошад. Шумо аллакай як эълони фаъол доред.
+                Шумо тамоми лимити худро ({listingLimit} эълон) истифода бурдед.
               </p>
             </div>
-            <p className="text-xs text-muted-foreground font-bold mb-10 italic">
-              Барои нашри эълони нав, лутфан аввал эълони қаблии худро аз бахши Профил нест кунед.
-            </p>
+            {!profile.isPremium && (
+              <p className="text-xs text-muted-foreground font-bold mb-10 italic">
+                Барои нашри то 5 эълон, лутфан ба ҳолати **PREMIUM** гузаред.
+              </p>
+            )}
             <Button asChild className="w-full bg-secondary h-16 rounded-[2rem] font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02]">
               <Link href="/profile">БА ПРОФИЛИ МАН</Link>
             </Button>
@@ -181,10 +185,15 @@ export default function CreateListing() {
         ) : (
           <Card className="border-border shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
             <CardHeader className="bg-muted/10 pb-8">
-              <CardTitle className="text-3xl font-headline font-black text-secondary tracking-tighter uppercase">ЭЪЛОНИ НАВ</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-3xl font-headline font-black text-secondary tracking-tighter uppercase">ЭЪЛОНИ НАВ</CardTitle>
+                {profile.isPremium && <Badge className="bg-yellow-500 text-white font-black">PREMIUM</Badge>}
+              </div>
               <div className="flex items-center gap-2 mt-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Танҳо 1 эълон иҷозат аст</p>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
+                  Шумо метавонед боз {listingLimit - userListings.length} эълон гузоред
+                </p>
               </div>
             </CardHeader>
             <CardContent className="pt-8 px-8">

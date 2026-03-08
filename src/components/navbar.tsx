@@ -4,7 +4,7 @@
 import { useUser, useAuth, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck } from "lucide-react";
+import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck, Crown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -65,6 +65,12 @@ export function Navbar() {
               </SheetHeader>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                {user && profile?.isPremium && (
+                  <div className="p-4 mb-2 bg-yellow-400/10 rounded-2xl border-2 border-yellow-400/20 flex items-center gap-3">
+                    <Crown className="h-6 w-6 text-yellow-600 fill-yellow-600" />
+                    <span className="font-black text-[10px] text-yellow-700 uppercase tracking-widest">PREMIUM УЗВ</span>
+                  </div>
+                )}
                 {menuItems.map((item) => {
                   if (item.authRequired && !user) return null;
                   return (
@@ -123,13 +129,21 @@ export function Navbar() {
                   <Heart className="h-5 w-5" />
                 </Link>
               </Button>
-              <Link href="/profile" className="hover:opacity-80 transition-opacity">
-                <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-lg">
+              <Link href="/profile" className="hover:opacity-80 transition-opacity relative">
+                <Avatar className={cn(
+                  "h-10 w-10 border-2 shadow-lg",
+                  profile?.isPremium ? "border-yellow-400" : "border-primary/20"
+                )}>
                   <AvatarImage src={profile?.profileImage || user.photoURL || ""} className="object-cover" />
                   <AvatarFallback className="bg-primary text-white font-black text-xs">
                     {profile?.name?.charAt(0) || user.displayName?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
+                {profile?.isPremium && (
+                  <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 shadow-sm">
+                    <Crown className="h-3 w-3 text-secondary fill-secondary" />
+                  </div>
+                )}
               </Link>
             </>
           ) : (

@@ -14,6 +14,7 @@ export interface UserProfile {
   profileImage?: string;
   balance: number;
   identificationStatus: IdentificationStatus;
+  isPremium?: boolean;
   favorites?: string[];
   fcmTokens?: string[];
   lastActive?: any;
@@ -81,6 +82,13 @@ export interface Message {
 
 export const VIP_PRICE = 20;
 export const KYC_PRICE = 10;
+export const PREMIUM_PRICE = 50;
+
+export const REGULAR_LISTING_LIMIT = 1;
+export const PREMIUM_LISTING_LIMIT = 5;
+
+export const REGULAR_CHAR_LIMIT = 1000;
+export const PREMIUM_CHAR_LIMIT = 5000;
 
 export const ALL_REGIONS = [
   "Душанбе", "Бохтар", "Кӯлоб", "Хуҷанд", "Истаравшан", "Конибодом", "Панҷакент", 

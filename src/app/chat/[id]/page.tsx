@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare, AlertCircle, Loader2 } from "lucide-react";
+import { ChevronLeft, Send, ShieldCheck, ShieldAlert, CheckCircle2, Check, CheckCheck, MessageSquare, AlertCircle, Loader2, Crown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
-import { Listing, Message, UserProfile } from "@/lib/storage";
+import { Listing, Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT } from "@/lib/storage";
 
 function formatDistanceToNowTajik(date: Date) {
   const now = new Date();
@@ -91,7 +91,7 @@ export default function ChatPage() {
   }, [db, chatId]);
   const { data: messages = [], loading: messagesLoading } = useCollection<Message>(messagesQuery as any);
 
-  const CHAR_LIMIT = 1000;
+  const CHAR_LIMIT = profile?.isPremium ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
   const totalChars = useMemo(() => messages.reduce((sum, msg) => sum + (msg.text?.length || 0), 0), [messages]);
   const isLimitReached = totalChars >= CHAR_LIMIT;
   const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
@@ -208,6 +208,7 @@ export default function ChatPage() {
               <div className="flex items-center gap-1.5">
                 <h3 className="font-black text-secondary text-sm truncate max-w-[120px]">{otherParty?.name || "Корбар"}</h3>
                 {otherParty?.identificationStatus === 'Verified' && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                {otherParty?.isPremium && <Crown className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />}
               </div>
               <p className="text-[9px] text-muted-foreground font-bold">{lastActiveText}</p>
             </div>
@@ -231,7 +232,7 @@ export default function ChatPage() {
         
         <div className="px-4 pb-2 space-y-1">
           <div className="flex justify-between text-[8px] font-black uppercase">
-            <span>Лимити аломатҳо</span>
+            <span>Лимити аломатҳо {profile?.isPremium && "(PREMIUM)"}</span>
             <span>{totalChars} / {CHAR_LIMIT}</span>
           </div>
           <Progress value={charProgress} className="h-1" />
@@ -265,7 +266,7 @@ export default function ChatPage() {
             <Button type="submit" size="icon" className="bg-primary rounded-full h-11 w-11 shrink-0"><Send className="h-5 w-5 text-white" /></Button>
           </form>
         ) : (
-          <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black text-center uppercase">Лимит ба охир расид</div>
+          <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black text-center uppercase">Лимит ба охир расид. {!profile?.isPremium && "Premium гиред!"}</div>
         )}
       </div>
     </div>
