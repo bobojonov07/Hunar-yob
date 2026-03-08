@@ -3,11 +3,10 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { UserProfile, ALL_REGIONS, KYC_PRICE } from "@/lib/storage";
+import { UserProfile, KYC_PRICE } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { 
   ShieldCheck, 
   Camera, 
@@ -15,10 +14,10 @@ import {
   Loader2, 
   CheckCircle2, 
   AlertCircle, 
-  Wallet, 
   ArrowRight, 
   CreditCard,
-  FileText
+  FileText,
+  Clock
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -41,8 +40,8 @@ export default function VerifyPage() {
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // If user was rejected, we skip payment step (Step 2)
   const isRejected = profile?.identificationStatus === 'Rejected';
+  const isPending = profile?.identificationStatus === 'Pending';
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -55,13 +54,18 @@ export default function VerifyPage() {
     setIsLoading(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const compressed = await compressImage(reader.result as string, 800, 0.7);
-      if (step === 1) {
-        setPhotos(prev => [...prev, compressed]);
-      } else {
-        setReceipt(compressed);
+      try {
+        const compressed = await compressImage(reader.result as string, 800, 0.7);
+        if (step === 1) {
+          setPhotos(prev => [...prev, compressed]);
+        } else {
+          setReceipt(compressed);
+        }
+      } catch (err) {
+        console.error("Image compression error:", err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     reader.readAsDataURL(file);
   };
@@ -75,21 +79,37 @@ export default function VerifyPage() {
       kycPhotos: photos,
       kycPaymentCheck: isRejected ? (profile?.kycPaymentCheck || "") : receipt,
       kycSubmittedAt: serverTimestamp(),
-      errorReason: "" // Clear any previous error reason
+      errorReason: "" 
     };
+
+    console.log("Sending verification data to Firestore...", updateData);
 
     updateDoc(userProfileRef, updateData)
       .then(() => {
         toast({ title: "Дархост фиристода шуд", description: "Мо дар муддати 24 соат тафтиш мекунем." });
+        // After updating, the profile data in this component should trigger re-render
+        // but let's force a push to profile just in case
         router.push("/profile");
       })
-      .catch(() => toast({ title: "Хатогӣ", variant: "destructive" }))
+      .catch((err) => {
+        console.error("Verification error:", err);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userProfileRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        }));
+        toast({ title: "Хатогӣ ҳангоми фиристодан", variant: "destructive" });
+      })
       .finally(() => setIsLoading(false));
   };
 
   const nextStep = () => {
-    if (step === 1 && isRejected) {
-      setStep(3); // Skip payment if rejected previously
+    if (step === 1 && (isRejected || photos.length >= 3)) {
+      if (isRejected) {
+        setStep(3); 
+      } else {
+        setStep(2);
+      }
     } else {
       setStep(step + 1);
     }
@@ -99,6 +119,40 @@ export default function VerifyPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // --- ЭКРАНИ ПЕНДИНГ (Pending Screen) ---
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-24 max-w-2xl text-center space-y-8">
+          <div className="mx-auto h-32 w-32 bg-yellow-50 rounded-[3rem] flex items-center justify-center shadow-inner relative">
+            <Clock className="h-16 w-16 text-yellow-500 animate-pulse" />
+            <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <ShieldCheck className="h-6 w-6 text-yellow-500" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">ДАР ҲОЛИ БАРРАСӢ</h1>
+            <p className="text-xl font-medium text-muted-foreground leading-relaxed italic px-6">
+              "Дар ҳоли баррасӣ. Мо дар муддати 24 соат маълумоти шуморо баррасӣ ва фаъол месозем."
+            </p>
+          </div>
+          <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-8 border-2 border-dashed border-yellow-100">
+            <div className="flex items-start gap-4 text-left">
+              <AlertCircle className="h-6 w-6 text-yellow-600 shrink-0" />
+              <p className="text-xs font-bold text-yellow-700 uppercase tracking-widest leading-relaxed">
+                Лутфан сабр кунед. Мо тамоми суратҳо ва чеки пардохти шуморо дастӣ месанҷем. Пас аз тасдиқ, тамоми имкониятҳои KORYOB 2 барои шумо боз мешаванд.
+              </p>
+            </div>
+          </Card>
+          <Button onClick={() => router.push("/profile")} className="bg-secondary h-16 px-10 rounded-2xl font-black uppercase tracking-widest shadow-xl">
+            БА ПРОФИЛ БАРГАРДЕД
+          </Button>
+        </div>
       </div>
     );
   }
