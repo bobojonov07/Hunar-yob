@@ -40,7 +40,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, collection, query, where, deleteDoc, increment } from "firebase/firestore";
+import { doc, updateDoc, collection, query, where, deleteDoc, increment, addDoc } from "firebase/firestore";
 import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { compressImage, cn } from "@/lib/utils";
@@ -124,7 +124,7 @@ export default function Profile() {
   };
 
   const handleBuyPremium = async () => {
-    if (!userProfileRef || !profile) return;
+    if (!userProfileRef || !profile || !user) return;
     if (profile.balance < PREMIUM_PRICE) {
       toast({ title: "Маблағ нокифоя аст", description: `Барои PREMIUM ${PREMIUM_PRICE} сомонӣ лозим аст.`, variant: "destructive" });
       return;
@@ -132,10 +132,30 @@ export default function Profile() {
 
     setIsSaving(true);
     const updateData = { balance: increment(-PREMIUM_PRICE), isPremium: true };
-    updateDoc(userProfileRef, updateData)
-      .then(() => toast({ title: "Табрик! Шумо PREMIUM ҳастед!" }))
-      .catch((err) => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: userProfileRef.path, operation: 'update', requestResourceData: updateData })))
-      .finally(() => setIsSaving(false));
+    
+    try {
+      await updateDoc(userProfileRef, updateData);
+      
+      // Сабти транзаксия барои хариди Premium
+      await addDoc(collection(db, "transactions"), {
+        userId: user.uid,
+        amount: PREMIUM_PRICE,
+        type: 'PremiumPurchase',
+        status: 'Completed',
+        description: "Хариди акаунти PREMIUM",
+        createdAt: serverTimestamp()
+      });
+
+      toast({ title: "Табрик! Шумо PREMIUM ҳастед!" });
+    } catch (err: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: userProfileRef.path, 
+        operation: 'update', 
+        requestResourceData: updateData 
+      }));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {

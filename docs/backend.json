@@ -16,19 +16,43 @@
         "identificationStatus": { "type": "string", "enum": ["None", "Pending", "Verified", "Rejected", "Blocked"] }
       }
     },
-    "VerificationRequest": {
-      "title": "VerificationRequest",
-      "description": "Дархости муфассали верификатсия бо ҳуҷҷатҳо ва чек",
+    "DepositRequest": {
+      "title": "DepositRequest",
+      "description": "Дархости пур кардани ҳисоб тавассути чек",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "userName": { "type": "string" },
-        "userPhone": { "type": "string" },
-        "photos": { "type": "array", "items": { "type": "string" } },
-        "receipt": { "type": "string" },
-        "status": { "type": "string", "enum": ["Pending", "Verified", "Rejected", "Blocked"] },
-        "submittedAt": { "type": "string", "format": "date-time" },
-        "errorReason": { "type": "string" }
+        "amount": { "type": "number" },
+        "receiptImage": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Completed", "Rejected"] },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "WithdrawalRequest": {
+      "title": "WithdrawalRequest",
+      "description": "Дархости бозхонди маблағ ба корт",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "amount": { "type": "number" },
+        "cardNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Completed", "Rejected"] },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Таърихи амалиётҳои молиявии корбар",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["Deposit", "Withdrawal", "PremiumPurchase", "DealPayment"] },
+        "status": { "type": "string", "enum": ["Pending", "Completed", "Rejected"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -40,13 +64,17 @@
       "schema": "UserProfile",
       "description": "Профилҳои асосии корбарон"
     },
-    "/verification_requests/{userId}": {
-      "schema": "VerificationRequest",
-      "description": "Навбати баррасии ҳуҷҷатҳо ва чекҳо (KYC Queue)"
+    "/deposit_requests/{userId}": {
+      "schema": "DepositRequest",
+      "description": "Дархостҳои пур кардани ҳисоб"
     },
-    "/listings/{listingId}": {
-      "schema": "Listing",
-      "description": "Эълонҳои устоҳо"
+    "/withdrawal_requests/{userId}": {
+      "schema": "WithdrawalRequest",
+      "description": "Дархостҳои бозхонди маблағ"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Таърихи транзаксияҳо"
     }
   }
 }

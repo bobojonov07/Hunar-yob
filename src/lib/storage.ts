@@ -3,6 +3,8 @@
 
 export type UserRole = 'Usto' | 'Client';
 export type IdentificationStatus = 'None' | 'Pending' | 'Verified' | 'Rejected' | 'Blocked';
+export type TransactionStatus = 'Pending' | 'Completed' | 'Rejected';
+export type TransactionType = 'Deposit' | 'Withdrawal' | 'PremiumPurchase' | 'DealPayment';
 
 export interface UserProfile {
   id: string;
@@ -21,6 +23,36 @@ export interface UserProfile {
   createdAt: any;
   warningCount: number;
   isBlocked: boolean;
+}
+
+export interface DepositRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  receiptImage: string;
+  status: TransactionStatus;
+  submittedAt: any;
+}
+
+export interface WithdrawalRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  cardNumber: string;
+  status: TransactionStatus;
+  submittedAt: any;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  amount: number;
+  type: TransactionType;
+  status: TransactionStatus;
+  description: string;
+  createdAt: any;
 }
 
 export interface VerificationRequest {
@@ -67,7 +99,7 @@ export interface Chat {
   lastSenderId: string;
   updatedAt: any;
   unreadCount: Record<string, number>;
-  deletedBy?: string[]; // Рӯйхати корбароне, ки чатро барои худ нест кардаанд
+  deletedBy?: string[]; 
 }
 
 export interface Message {
@@ -82,7 +114,7 @@ export interface Message {
   dealId?: string;
   isEdited?: boolean;
   isDeletedForEveryone?: boolean;
-  deletedFor?: string[]; // Рӯйхати корбароне, ки паёмро барои худ нест кардаанд
+  deletedFor?: string[]; 
 }
 
 export const VIP_PRICE = 20;
@@ -106,9 +138,6 @@ export const ALL_CATEGORIES = [
   "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
 ];
 
-/**
- * Рӯйхати калимаҳои мамнӯъ (Дашномҳо ва калимаҳои қабеҳ)
- */
 export const FORBIDDEN_WORDS = [
   "сука", "лаънат", "харом", "ганд", "наҳс", "кун", "гом", "хароми", "даюс"
 ];
