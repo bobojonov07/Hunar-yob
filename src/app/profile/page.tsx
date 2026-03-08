@@ -13,14 +13,31 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, LogOut, Plus, MapPin, Camera, ShieldAlert, ShieldCheck, Clock, Crown, Zap, ChevronLeft, Wallet, FileCheck, Loader2, Heart, CheckCircle2, Trash2, Calendar, AlertCircle, Edit3, Lock, Eye, EyeOff, Upload, ArrowRight, Ban } from "lucide-react";
+import { 
+  Settings, 
+  LogOut, 
+  Plus, 
+  Camera, 
+  ShieldAlert, 
+  ShieldCheck, 
+  Clock, 
+  ChevronLeft, 
+  Wallet, 
+  Loader2, 
+  Heart, 
+  CheckCircle2, 
+  Trash2, 
+  AlertCircle, 
+  Ban,
+  Zap
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, collection, query, where, getDocs, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { doc, updateDoc, collection, query, where, deleteDoc } from "firebase/firestore";
 import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { compressImage } from "@/lib/utils";
@@ -48,12 +65,6 @@ export default function Profile() {
 
   const { data: displayListings = [], loading: dataLoading } = useCollection<Listing>(dataQuery as any);
 
-  const [isKycDialogOpen, setIsKycDialogOpen] = useState(false);
-  const [kycStep, setKycStep] = useState(1);
-  const [kycPhotos, setKycPhotos] = useState<string[]>([]);
-  const [kycCheck, setKycCheck] = useState("");
-  const [isKycLoading, setIsKycLoading] = useState(false);
-
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,7 +73,6 @@ export default function Profile() {
   const [editRegion, setEditRegion] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -72,7 +82,6 @@ export default function Profile() {
   }, [profile]);
 
   const profileFileInputRef = useRef<HTMLInputElement>(null);
-  const kycInputRef = useRef<HTMLInputElement>(null);
 
   const completion = useMemo(() => {
     if (!profile) return 0;
@@ -84,44 +93,6 @@ export default function Profile() {
     if (profile.profileImage) points += 20;
     return points;
   }, [profile]);
-
-  const handleKycPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsKycLoading(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const compressed = await compressImage(reader.result as string, 800, 0.7);
-      if (kycStep === 1) {
-        setKycPhotos(prev => [...prev, compressed]);
-      } else if (kycStep === 3) {
-        setKycCheck(compressed);
-      }
-      setIsKycLoading(false);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const submitKyc = async () => {
-    if (!userProfileRef) return;
-    setIsKycLoading(true);
-    const updateData = {
-      identificationStatus: 'Pending',
-      kycPhotos: kycPhotos,
-      kycPaymentCheck: kycCheck,
-      kycSubmittedAt: serverTimestamp()
-    };
-    updateDoc(userProfileRef, updateData)
-      .then(() => {
-        toast({ title: "Дархост фиристода шуд", description: "Мо дар муддати 24 соат тафтиш мекунем ва фаъол месозем." });
-        setIsKycDialogOpen(false);
-        setKycStep(1);
-        setKycPhotos([]);
-        setKycCheck("");
-      })
-      .catch(() => toast({ title: "Хатогӣ", variant: "destructive" }))
-      .finally(() => setIsKycLoading(false));
-  };
 
   const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -270,96 +241,34 @@ export default function Profile() {
                   </div>
                 </button>
 
-                <Dialog open={isKycDialogOpen} onOpenChange={setIsKycDialogOpen}>
-                  <DialogTrigger asChild>
-                    <button className={`w-full p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 text-left transition-all ${
-                      profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
-                      profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
-                      profile.identificationStatus === 'Rejected' ? 'bg-orange-50 border-orange-200 text-orange-700 animate-pulse' :
-                      profile.identificationStatus === 'Blocked' ? 'bg-red-50 border-red-200 text-red-700' :
-                      'bg-red-50 border-red-200 text-red-700'
-                    }`}>
-                      <div className="h-10 w-10 rounded-2xl bg-white/50 flex items-center justify-center shrink-0">
-                        {profile.identificationStatus === 'Verified' ? <ShieldCheck className="h-6 w-6" /> : 
-                         profile.identificationStatus === 'Pending' ? <Clock className="h-6 w-6" /> : 
-                         profile.identificationStatus === 'Blocked' ? <Ban className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">
-                          {profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : 
-                           profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 
-                           profile.identificationStatus === 'Rejected' ? 'Рад шуд' : 
-                           profile.identificationStatus === 'Blocked' ? 'БЛОК ШУДААСТ' : 'Тасдиқи шахсият'}
-                        </p>
-                        <p className="text-[9px] font-medium opacity-60">
-                          {profile.identificationStatus === 'Rejected' ? 'Маълумотро дубора фиристед' : 'Барои гирифтани нишони касбӣ пахш кунед'}
-                        </p>
-                      </div>
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-[2.5rem] p-10 border-none shadow-3xl max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-black text-secondary tracking-tighter uppercase">ВЕРИФИКАТСИЯ (KYC)</DialogTitle>
-                      <DialogDescription className="font-bold text-[10px] text-primary uppercase">МАБЛАҒИ ВЕРИФИКАТСИЯ: {KYC_PRICE} СОМОНӢ</DialogDescription>
-                    </DialogHeader>
-
-                    {kycStep === 1 && (
-                      <div className="space-y-6 pt-4">
-                        <p className="text-xs font-bold uppercase tracking-widest opacity-60">Қадами 1: Бор кардани суратҳои шиноснома (3 дона)</p>
-                        <div className="grid grid-cols-1 gap-3">
-                          <div className="text-[10px] font-bold text-muted-foreground flex flex-col gap-1">
-                            <span>1. Пеши шиноснома</span>
-                            <span>2. Пушти шиноснома</span>
-                            <span>3. Шумо бо шиноснома дар даст (Selfie)</span>
-                          </div>
-                          <input type="file" className="hidden" ref={kycInputRef} onChange={handleKycPhotoUpload} accept="image/*" />
-                          <Button onClick={() => kycInputRef.current?.click()} variant="outline" className="h-24 border-dashed rounded-2xl" disabled={kycPhotos.length >= 3 || isKycLoading}>
-                            {isKycLoading ? <Loader2 className="animate-spin" /> : <Camera className="mr-2" />} {kycPhotos.length}/3 Сурат
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          {kycPhotos.map((p, i) => <div key={i} className="h-12 w-12 rounded-lg bg-muted relative overflow-hidden"><Image src={p} fill alt="kyc" className="object-cover" /></div>)}
-                        </div>
-                        <Button disabled={kycPhotos.length < 3} onClick={() => setKycStep(2)} className="w-full bg-primary h-14 rounded-2xl font-black uppercase">ҚАДАМИ НАВБАТӢ</Button>
-                      </div>
-                    )}
-
-                    {kycStep === 2 && (
-                      <div className="space-y-6 pt-4">
-                        <p className="text-xs font-bold uppercase tracking-widest opacity-60">Қадами 2: Пардохти маблағ</p>
-                        <div className="p-6 bg-secondary/5 rounded-3xl border-2 border-dashed border-secondary/20 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <Image src="https://picsum.photos/seed/dcity/100/100" width={40} height={40} alt="DC" className="rounded-xl" />
-                            <div className="text-xs font-black">ДУШАНБЕ СИТИ / СПИТАМЕН</div>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-[10px] font-bold opacity-50 uppercase">Рақам барои интиқол:</div>
-                            <div className="text-xl font-black text-secondary">975638778</div>
-                            <div className="text-xs font-bold">Ном: А Б</div>
-                          </div>
-                        </div>
-                        <Button onClick={() => setKycStep(3)} className="w-full bg-primary h-14 rounded-2xl font-black uppercase">МАН ПАРДОХТ КАРДАМ</Button>
-                      </div>
-                    )}
-
-                    {kycStep === 3 && (
-                      <div className="space-y-6 pt-4">
-                        <p className="text-xs font-bold uppercase tracking-widest opacity-60">Қадами 3: Бор кардани сурати чек</p>
-                        <Button onClick={() => kycInputRef.current?.click()} variant="outline" className="w-full h-32 border-dashed rounded-2xl" disabled={isKycLoading}>
-                          {isKycLoading ? <Loader2 className="animate-spin" /> : kycCheck ? "ЧЕК ИНТИХОБ ШУД" : "ИЛОВАИ СУРАТИ ЧЕК"}
-                        </Button>
-                        {kycCheck && <div className="h-20 w-20 rounded-xl bg-muted relative mx-auto overflow-hidden"><Image src={kycCheck} fill alt="check" className="object-cover" /></div>}
-                        
-                        <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex gap-3">
-                          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                          <p className="text-[9px] font-bold text-red-600 uppercase leading-relaxed">ДИҚҚАТ: Дар ҳолати чеки қалбакӣ мо акаунти шуморо пурра БЛОК мекунем.</p>
-                        </div>
-
-                        <Button disabled={!kycCheck || isKycLoading} onClick={submitKyc} className="w-full bg-secondary h-16 rounded-2xl font-black uppercase">ФИРИСТОДАН</Button>
-                      </div>
-                    )}
-                  </DialogContent>
-                </Dialog>
+                <button 
+                  onClick={() => router.push("/verify")}
+                  className={`w-full p-6 rounded-[2rem] border-2 border-dashed flex items-center gap-4 text-left transition-all ${
+                    profile.identificationStatus === 'Verified' ? 'bg-green-50 border-green-200 text-green-700' :
+                    profile.identificationStatus === 'Pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                    profile.identificationStatus === 'Rejected' ? 'bg-orange-50 border-orange-200 text-orange-700 animate-pulse' :
+                    profile.identificationStatus === 'Blocked' ? 'bg-red-50 border-red-200 text-red-700' :
+                    'bg-red-50 border-red-200 text-red-700'
+                  }`}
+                >
+                  <div className="h-10 w-10 rounded-2xl bg-white/50 flex items-center justify-center shrink-0">
+                    {profile.identificationStatus === 'Verified' ? <ShieldCheck className="h-6 w-6" /> : 
+                     profile.identificationStatus === 'Pending' ? <Clock className="h-6 w-6" /> : 
+                     profile.identificationStatus === 'Blocked' ? <Ban className="h-6 w-6" /> : <ShieldAlert className="h-6 w-6" />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                      {profile.identificationStatus === 'Verified' ? 'Тасдиқшуда' : 
+                       profile.identificationStatus === 'Pending' ? 'Дар баррасӣ' : 
+                       profile.identificationStatus === 'Rejected' ? 'Маълумотро дубора фиристед' : 
+                       profile.identificationStatus === 'Blocked' ? 'БЛОК ШУДААСТ' : 'Тасдиқи шахсият'}
+                    </p>
+                    <p className="text-[9px] font-medium opacity-60">
+                      {profile.identificationStatus === 'Rejected' ? 'Маълумотро дубора фиристед' : 
+                       profile.identificationStatus === 'Verified' ? 'Шумо устои тасдиқшуда ҳастед' : 'Барои гирифтани нишони касбӣ пахш кунед'}
+                    </p>
+                  </div>
+                </button>
 
                 <div className="space-y-3">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-60"><span>Пуррагии профил</span><span>{completion}%</span></div>

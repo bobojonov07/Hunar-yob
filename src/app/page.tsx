@@ -12,14 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Search, 
   MapPin, 
-  Briefcase, 
   ChevronRight, 
-  Zap, 
   Crown, 
-  X, 
-  Instagram, 
-  MessageCircle, 
-  Send as TelegramIcon,
   ExternalLink,
   ArrowRight,
   LogIn,
@@ -67,10 +61,6 @@ export default function Home() {
   const filteredListings = useMemo(() => {
     let result = allListings;
     
-    if (!user) {
-      result = result.filter(l => l.isVip);
-    }
-    
     if (selectedCategory) {
       result = result.filter(l => l.category === selectedCategory);
     }
@@ -85,7 +75,7 @@ export default function Home() {
     }
     
     return result;
-  }, [allListings, user, selectedCategory, searchQuery]);
+  }, [allListings, selectedCategory, searchQuery]);
 
   const vipListings = filteredListings.filter(l => l.isVip);
 
@@ -234,46 +224,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
               {vipListings.map((listing) => (
-                <Card key={listing.id} className="overflow-hidden group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] transition-all duration-700 border-none bg-white rounded-[3.5rem] ring-8 ring-yellow-400/5">
-                  <div className="relative h-80 w-full overflow-hidden">
-                    <Image
-                      src={listing.images[0] || PlaceHolderImages[1].imageUrl}
-                      alt={listing.title}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-1000"
-                    />
-                    <div className="absolute top-8 right-8 z-10">
-                      <Badge className="bg-yellow-500 text-white border-none shadow-2xl px-6 py-2.5 text-[10px] font-black rounded-full">
-                        VIP PREMIUM
-                      </Badge>
-                    </div>
-                  </div>
-                  <CardContent className="p-10">
-                    <div className="flex items-center gap-5">
-                      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white text-xl font-black shadow-xl">
-                        {listing.userName.charAt(0)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-lg font-black text-secondary block leading-none truncate">{listing.userName}</span>
-                        <span className="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.2em] mt-2 block">Профили тасдиқшуда</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-8 border-t border-yellow-100 flex justify-between items-center bg-yellow-50/30">
-                    <div className="flex items-center text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-                      <MapPin className="h-4 w-4 mr-2 text-primary" />
-                      Тоҷикистон
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => handleMoreInfoClick(listing.id)}
-                      className="text-yellow-600 font-black group/btn hover:bg-yellow-100 rounded-2xl px-8 h-12"
-                    >
-                      БИНЕД
-                      <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-2 transition-transform duration-500" />
-                    </Button>
-                  </CardFooter>
-                </Card>
+                <VipCard key={listing.id} listing={listing} handleMoreInfoClick={handleMoreInfoClick} db={db} />
               ))}
             </div>
           </div>
@@ -289,5 +240,65 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function VipCard({ listing, handleMoreInfoClick, db }: { listing: Listing, handleMoreInfoClick: any, db: any }) {
+  const [artisan, setArtisan] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (listing.userId) {
+      getDoc(doc(db, "users", listing.userId)).then(snap => {
+        if (snap.exists()) setArtisan(snap.data() as UserProfile);
+      });
+    }
+  }, [db, listing.userId]);
+
+  return (
+    <Card className="overflow-hidden group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] transition-all duration-700 border-none bg-white rounded-[3.5rem] ring-8 ring-yellow-400/5">
+      <div className="relative h-80 w-full overflow-hidden">
+        <Image
+          src={listing.images[0] || PlaceHolderImages[1].imageUrl}
+          alt={listing.title}
+          fill
+          className="object-cover group-hover:scale-110 transition-transform duration-1000"
+        />
+        <div className="absolute top-8 right-8 z-10">
+          <Badge className="bg-yellow-500 text-white border-none shadow-2xl px-6 py-2.5 text-[10px] font-black rounded-full">
+            VIP PREMIUM
+          </Badge>
+        </div>
+      </div>
+      <CardContent className="p-10">
+        <div className="flex items-center gap-5">
+          <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white text-xl font-black shadow-xl">
+            {listing.userName.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-lg font-black text-secondary block leading-none truncate">{listing.userName}</span>
+              {artisan?.identificationStatus === 'Verified' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+            </div>
+            <span className="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.2em] mt-2 block">
+              {artisan?.identificationStatus === 'Verified' ? 'Устои тасдиқшуда' : 'Профили санҷидашуда'}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="p-8 border-t border-yellow-100 flex justify-between items-center bg-yellow-50/30">
+        <div className="flex items-center text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+          <MapPin className="h-4 w-4 mr-2 text-primary" />
+          Тоҷикистон
+        </div>
+        <Button 
+          variant="ghost" 
+          onClick={() => handleMoreInfoClick(listing.id)}
+          className="text-yellow-600 font-black group/btn hover:bg-yellow-100 rounded-2xl px-8 h-12"
+        >
+          БИНЕД
+          <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-2 transition-transform duration-500" />
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
