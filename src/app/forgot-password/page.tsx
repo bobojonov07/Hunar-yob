@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Mail, ArrowLeft, Key, Send, Loader2, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowLeft, Key, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { useAuth } from "@/firebase";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -24,23 +25,37 @@ export default function ForgotPassword() {
 
   const handleRecover = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email.trim()) {
-      toast({ title: "Хатогӣ", description: "Почтаро ворид кунед", variant: "destructive" });
+      toast({ 
+        title: "Хатогӣ", 
+        description: "Лутфан почтаи электрониро ворид кунед", 
+        variant: "destructive" 
+      });
       return;
     }
 
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      // Ирсоли паёми барқарорсозӣ тавассути Firebase
+      await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
       toast({
         title: "Паём фиристода шуд",
-        description: "Дастурамал ба почтаи шумо рафт. Лутфан бахши Spam-ро низ тафтиш кунед.",
+        description: "Дастурамал барои ивази рамз ба почтаи шумо ирсол гардид.",
       });
     } catch (error: any) {
+      let errorMessage = "Хатогӣ дар сервер рӯй дод. Лутфан дертар кӯшиш кунед.";
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "Корбар бо ин почта ёфт нашуд.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Почтаи электронӣ нодуруст ворид шудааст.";
+      }
+
       toast({
         title: "Хатогӣ",
-        description: "Корбар бо ин почта ёфт нашуд ё хатогӣ дар сервер рӯй дод.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -59,9 +74,10 @@ export default function ForgotPassword() {
             </div>
             <CardTitle className="text-3xl font-black font-headline text-secondary tracking-tighter uppercase leading-none">БАРҚАРОРИИ РАМЗ</CardTitle>
             <CardDescription className="font-bold text-[10px] uppercase tracking-widest mt-4">
-              {sent ? "ПАЁМ БО МУВАФФАКИЯТ ФИРИСТОДА ШУД" : "ПОЧТАИ ХУДРО ВОРИД КУНЕД"}
+              {sent ? "ПАЁМ БО МУВАФФАҚИЯТ ФИРИСТОДА ШУД" : "ПОЧТАИ ХУДРО ВОРИД КУНЕД"}
             </CardDescription>
           </CardHeader>
+          
           <CardContent className="space-y-6 pt-10 px-10">
             {!sent ? (
               <form onSubmit={handleRecover} className="space-y-6">
@@ -76,39 +92,64 @@ export default function ForgotPassword() {
                       className="pl-12 h-14 rounded-2xl bg-muted/20 border-muted font-bold"
                       value={email} 
                       onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                   </div>
                 </div>
-                <Button disabled={loading} type="submit" className="w-full bg-primary h-16 text-lg font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02] uppercase tracking-widest">
-                  {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <><Send className="mr-2 h-5 w-5" /> ФИРИСТОДАН</>}
+                
+                <Button 
+                  disabled={loading} 
+                  type="submit" 
+                  className="w-full bg-primary h-16 text-lg font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02] active:scale-95 uppercase tracking-widest"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin h-6 w-6 mr-2" />
+                      ДАР ҲОЛИ ИҶРО...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-5 w-5" />
+                      ФИРИСТОДАН
+                    </>
+                  )}
                 </Button>
               </form>
             ) : (
-              <div className="text-center space-y-6 py-4">
-                <div className="mx-auto h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+              <div className="text-center space-y-8 py-4">
+                <div className="mx-auto h-20 w-20 bg-green-100 rounded-full flex items-center justify-center shadow-inner">
                   <CheckCircle2 className="h-12 w-12 text-green-600" />
                 </div>
-                <div className="space-y-4">
+                
+                <div className="space-y-6">
                   <p className="text-sm font-medium leading-relaxed text-muted-foreground italic">
                     Мо ба почтаи <b>{email}</b> пайванд барои ивази рамзро фиристодем. 
                   </p>
-                  <div className="p-4 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
-                    <p className="text-[11px] font-black text-yellow-700 uppercase tracking-tight">
-                      ДИҚҚАТ: Лутфан бахши <span className="underline">SPAM</span>-ро ҳатман тафтиш кунед!
-                    </p>
-                  </div>
+                  
+                  <Alert variant="default" className="bg-yellow-50 border-yellow-200 rounded-3xl p-6 border-2 border-dashed">
+                    <AlertCircle className="h-5 w-5 text-yellow-600" />
+                    <AlertTitle className="text-yellow-700 font-black uppercase text-xs tracking-tighter text-left mb-2">ДИҚҚАТИ МАХСУС!</AlertTitle>
+                    <AlertDescription className="text-yellow-600 font-bold text-[11px] text-left leading-relaxed">
+                      Агар паём ба қуттии асосӣ наомада бошад, ҳатман бахши <span className="underline decoration-2 underline-offset-4">SPAM (СПАМ)</span>-ро тафтиш кунед.
+                    </AlertDescription>
+                  </Alert>
                 </div>
+                
+                <Button onClick={() => setSent(false)} variant="ghost" className="text-primary font-black uppercase text-[10px] tracking-widest">
+                  ДУБОРА КӮШИШ КАРДАН
+                </Button>
               </div>
             )}
           </CardContent>
+          
           <CardFooter className="flex flex-col space-y-4 pb-16 px-10">
-            <Button variant="ghost" asChild className="w-full text-muted-foreground font-black text-[10px] uppercase tracking-widest">
+            <Button variant="ghost" asChild className="w-full text-muted-foreground font-black text-[10px] uppercase tracking-widest hover:text-primary">
               <Link href="/login">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 БОЗГАШТ БА ВОРИДШАВӢ
               </Link>
             </Button>
-            <p className="text-[10px] text-center text-muted-foreground font-black uppercase tracking-[0.5em] pt-4">
+            <p className="text-[10px] text-center text-muted-foreground font-black uppercase tracking-[0.5em] pt-4 opacity-30">
               &copy; 2026 KORYOB 2. ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB
             </p>
           </CardFooter>
