@@ -27,7 +27,8 @@ import {
   Lock,
   User,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  PlusCircle
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -140,6 +141,7 @@ export default function Profile() {
   if (authLoading || !profile) return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   const registrationDate = profile.createdAt?.toDate()?.toLocaleDateString('tg-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
+  const isUsto = profile.role === 'Usto';
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -294,7 +296,15 @@ export default function Profile() {
                 )}
               </TabsContent>
 
-              <TabsContent value="listings" className="mt-8">
+              <TabsContent value="listings" className="mt-8 space-y-6">
+                {isUsto && (
+                  <div className="flex justify-end mb-4">
+                    <Button asChild className="bg-primary hover:bg-primary/90 h-14 px-8 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">
+                      <Link href="/create-listing"><PlusCircle className="mr-2 h-5 w-5" /> ЭЪЛОНИ НАВ</Link>
+                    </Button>
+                  </div>
+                )}
+
                 {myListings.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {myListings.map(listing => (

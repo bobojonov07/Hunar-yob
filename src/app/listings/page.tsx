@@ -3,18 +3,18 @@
 
 import { useMemo, useState } from "react";
 import { Navbar } from "@/components/navbar";
-import { Listing, ALL_CATEGORIES } from "@/lib/storage";
+import { Listing, ALL_CATEGORIES, UserProfile } from "@/lib/storage";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, ChevronRight, Crown, Zap, X, ChevronLeft } from "lucide-react";
+import { Search, MapPin, ChevronRight, Crown, Zap, X, ChevronLeft, PlusCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { useCollection, useUser, useFirestore } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { useCollection, useUser, useFirestore, useDoc } from "@/firebase";
+import { collection, query, orderBy, limit, doc } from "firebase/firestore";
 
 export default function ListingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,6 +23,9 @@ export default function ListingsPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const q = useMemo(() => {
     if (!db) return null;
@@ -59,6 +62,7 @@ export default function ListingsPage() {
     }
   };
 
+  const isUsto = profile?.role === 'Usto';
   const vipListings = filteredListings.filter(l => l.isVip);
   const regularListings = filteredListings.filter(l => !l.isVip);
 
@@ -67,15 +71,23 @@ export default function ListingsPage() {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-10 space-y-6">
-          <Button variant="ghost" onClick={() => router.back()} className="hover:text-primary p-0 font-black">
-            <ChevronLeft className="mr-2 h-5 w-5" />
-            БОЗГАШТ
-          </Button>
+          <div className="flex justify-between items-center">
+            <Button variant="ghost" onClick={() => router.back()} className="hover:text-primary p-0 font-black">
+              <ChevronLeft className="mr-2 h-5 w-5" />
+              БОЗГАШТ
+            </Button>
+            {isUsto && (
+              <Button asChild className="bg-primary hover:bg-primary/90 h-12 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg">
+                <Link href="/create-listing"><PlusCircle className="mr-2 h-4 w-4" /> ЭЪЛОНИ НАВ</Link>
+              </Button>
+            )}
+          </div>
+          
           <h1 className="text-4xl font-black text-secondary tracking-tighter">ҲАМАИ ЭЪЛОНҲО</h1>
           
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-3 h-5 w-5 text-muted-foreground" />
+              <Search className="absolute left-4 top-3 h-5 w-5 text-muted-foreground top-1/2 -translate-y-1/2" />
               <Input 
                 placeholder="Ҷустуҷӯи устоҳо..." 
                 className="pl-12 h-12 rounded-2xl"

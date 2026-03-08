@@ -18,14 +18,15 @@ import {
   ArrowRight,
   LogIn,
   CheckCircle2,
-  BriefcaseBusiness
+  BriefcaseBusiness,
+  PlusCircle
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useCollection, useUser, useFirestore } from "@/firebase";
+import { useCollection, useUser, useDoc, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { UserProfile, Listing } from "@/lib/storage";
 
@@ -50,6 +51,9 @@ export default function Home() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const listingsQuery = useMemo(() => {
     if (!db) return null;
@@ -90,6 +94,8 @@ export default function Home() {
       router.push(`/listing/${listingId}`);
     }
   };
+
+  const isUsto = profile?.role === 'Usto';
 
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/30">
@@ -145,6 +151,14 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {isUsto && (
+              <div className="mt-12 flex justify-center">
+                <Button asChild size="lg" className="h-20 px-12 rounded-[2.5rem] bg-gradient-to-r from-primary to-orange-600 hover:shadow-primary/20 text-white font-black text-xl shadow-2xl uppercase tracking-widest transition-all hover:scale-105 border-4 border-white/20">
+                  <Link href="/create-listing"><PlusCircle className="mr-3 h-8 w-8" /> ИЛОВАИ ЭЪЛОН</Link>
+                </Button>
+              </div>
+            )}
 
             {!user && (
               <div className="mt-12 flex flex-col sm:flex-row justify-center gap-6">

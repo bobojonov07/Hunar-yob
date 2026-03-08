@@ -4,7 +4,7 @@
 import { useUser, useAuth, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck, Crown, Globe } from "lucide-react";
+import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck, Crown, Globe, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -51,6 +51,8 @@ export function Navbar() {
     { label: t.nav.about, icon: Info, href: "/about" },
   ];
 
+  const isUsto = profile?.role === 'Usto';
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -70,6 +72,15 @@ export function Navbar() {
               </SheetHeader>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                {isUsto && (
+                  <Link href="/create-listing">
+                    <div className="flex items-center gap-4 p-4 mb-2 rounded-2xl bg-primary/10 border-2 border-dashed border-primary/30 transition-all hover:bg-primary/20 group">
+                      <PlusCircle className="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-primary text-sm tracking-tight uppercase">Нашри эълон</span>
+                    </div>
+                  </Link>
+                )}
+
                 {menuItems.map((item) => {
                   if (item.authRequired && !user) return null;
                   return (
