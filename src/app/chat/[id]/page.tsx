@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -7,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, ShieldCheck, CheckCircle2, MessageSquare, Loader2, Crown, Volume2, PlayCircle } from "lucide-react";
+import { ChevronLeft, Send, ShieldCheck, CheckCircle2, MessageSquare, Loader2, Crown, Sparkles, Wand2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Listing, Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT } from "@/lib/storage";
-import { textToSpeech } from "@/ai/flows/tts-flow";
+import { improveMessage } from "@/ai/flows/improve-message-flow";
 import { cn } from "@/lib/utils";
 
 function formatDistanceToNowTajik(date: Date) {
@@ -48,7 +47,7 @@ export default function ChatPage() {
   const [dealPrice, setDealPrice] = useState("");
   const [dealDuration, setDealDuration] = useState("");
   const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [isImproving, setIsImproving] = useState(false);
 
   const listingRef = useMemo(() => listingId ? doc(db, "listings", listingId as string) : null, [db, listingId]);
   const { data: listing, loading: listingLoading } = useDoc<Listing>(listingRef as any);
@@ -93,7 +92,8 @@ export default function ChatPage() {
   }, [db, chatId]);
   const { data: messages = [], loading: messagesLoading } = useCollection<Message>(messagesQuery as any);
 
-  const CHAR_LIMIT = profile?.isPremium ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
+  // If EITHER party is Premium, the limit is 5000
+  const CHAR_LIMIT = (profile?.isPremium || otherParty?.isPremium) ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
   const totalChars = useMemo(() => messages.reduce((sum, msg) => sum + (msg.text?.length || 0), 0), [messages]);
   const isLimitReached = totalChars >= CHAR_LIMIT;
   const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
@@ -158,20 +158,17 @@ export default function ChatPage() {
     if (type === 'text') setNewMessage("");
   };
 
-  const handlePlayTTS = async (text: string, msgId: string) => {
-    if (!profile?.isPremium) {
-      toast({ title: "Танҳо барои Premium", description: "Барои истифодаи AI Voice аввал Premium гиред." });
-      return;
-    }
-    setPlayingAudioId(msgId);
+  const handleAIImprove = async () => {
+    if (!newMessage.trim() || !profile?.isPremium) return;
+    setIsImproving(true);
     try {
-      const { audioDataUri } = await textToSpeech({ text });
-      const audio = new Audio(audioDataUri);
-      audio.onended = () => setPlayingAudioId(null);
-      audio.play();
+      const { improvedText } = await improveMessage({ text: newMessage });
+      setNewMessage(improvedText);
+      toast({ title: "AI Таҳрир кард", description: "Матни шумо касбӣ шуд." });
     } catch (e) {
-      toast({ title: "Хатогӣ дар AI", variant: "destructive" });
-      setPlayingAudioId(null);
+      toast({ title: "Хатогии AI", variant: "destructive" });
+    } finally {
+      setIsImproving(false);
     }
   };
 
@@ -241,7 +238,7 @@ export default function ChatPage() {
         
         <div className="px-6 pb-3 space-y-1">
           <div className={cn("flex justify-between text-[9px] font-black uppercase tracking-widest", isPremiumTheme ? "text-yellow-400" : "text-muted-foreground")}>
-            <span>Лимити аломатҳо {profile?.isPremium && "★ PREMIUM ★"}</span>
+            <span>Лимити аломатҳо {(profile?.isPremium || otherParty?.isPremium) && "★ PREMIUM LIMIT ★"}</span>
             <span>{totalChars} / {CHAR_LIMIT}</span>
           </div>
           <Progress value={charProgress} className={cn("h-1.5", isPremiumTheme ? "bg-white/10 [&>div]:bg-yellow-500" : "")} />
@@ -271,19 +268,6 @@ export default function ChatPage() {
                     <span className="text-[8px] font-black uppercase opacity-60">
                       {msg.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    
-                    {profile?.isPremium && (
-                      <button 
-                        onClick={() => handlePlayTTS(msg.text, msg.id)}
-                        className={cn(
-                          "flex items-center gap-1 px-2 py-1 rounded-full transition-all",
-                          playingAudioId === msg.id ? "bg-white/20 animate-pulse" : "hover:bg-white/10"
-                        )}
-                      >
-                        {playingAudioId === msg.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Volume2 className="h-3 w-3" />}
-                        <span className="text-[8px] font-black uppercase">ГӮШ КАРДАН</span>
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -297,7 +281,21 @@ export default function ChatPage() {
         isPremiumTheme ? "bg-black/40 border-white/10" : "bg-white"
       )}>
         {!isLimitReached ? (
-          <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-3 max-w-4xl mx-auto">
+          <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-3 max-w-4xl mx-auto items-center">
+            {profile?.isPremium && (
+              <Button 
+                type="button" 
+                onClick={handleAIImprove} 
+                disabled={isImproving || !newMessage.trim()}
+                variant="outline"
+                className={cn(
+                  "rounded-full h-14 w-14 shrink-0 border-2",
+                  isPremiumTheme ? "border-yellow-400 text-yellow-400 bg-white/5" : "border-primary text-primary"
+                )}
+              >
+                {isImproving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+              </Button>
+            )}
             <Input 
               placeholder="Нависед..." 
               value={newMessage} 
@@ -322,7 +320,7 @@ export default function ChatPage() {
           </form>
         ) : (
           <div className="p-4 bg-red-500/10 text-red-500 rounded-2xl text-[10px] font-black text-center uppercase tracking-widest border border-red-500/20">
-            Лимити аломатҳо ба охир расид. {!profile?.isPremium && "БАРОИ ИДОМА PREMIUM ГИРЕД!"}
+            Лимити аломатҳо ба охир расид. {(!profile?.isPremium && !otherParty?.isPremium) && "БАРОИ ИДОМА PREMIUM ГИРЕД!"}
           </div>
         )}
       </div>
