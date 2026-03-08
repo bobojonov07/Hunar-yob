@@ -3,7 +3,7 @@
   "entities": {
     "UserProfile": {
       "title": "UserProfile",
-      "description": "Маълумоти шахсии корбар ва ҳолати верификатсия",
+      "description": "Маълумоти асосии корбар ва ҳолати верификатсия",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -13,14 +13,12 @@
         "phone": { "type": "string" },
         "region": { "type": "string" },
         "balance": { "type": "number" },
-        "identificationStatus": { "type": "string", "enum": ["None", "Pending", "Verified", "Rejected", "Blocked"] },
-        "kycSubmittedAt": { "type": "string", "format": "date-time" },
-        "errorReason": { "type": "string" }
+        "identificationStatus": { "type": "string", "enum": ["None", "Pending", "Verified", "Rejected", "Blocked"] }
       }
     },
     "VerificationRequest": {
       "title": "VerificationRequest",
-      "description": "Дархости верификатсия бо суратҳои паспорт ва чек",
+      "description": "Дархости муфассали верификатсия бо ҳуҷҷатҳо ва чек",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
@@ -28,8 +26,9 @@
         "userPhone": { "type": "string" },
         "photos": { "type": "array", "items": { "type": "string" } },
         "receipt": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Verified", "Rejected", "Blocked"] },
         "submittedAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Pending", "Reviewed"] }
+        "errorReason": { "type": "string" }
       }
     }
   },
@@ -39,11 +38,11 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
-      "description": "Профилҳои корбарон"
+      "description": "Профилҳои асосии корбарон"
     },
     "/verification_requests/{userId}": {
       "schema": "VerificationRequest",
-      "description": "Маълумоти верификатсия ва навбати дархостҳо (KYC Queue)"
+      "description": "Навбати баррасии ҳуҷҷатҳо ва чекҳо (KYC Queue)"
     },
     "/listings/{listingId}": {
       "schema": "Listing",

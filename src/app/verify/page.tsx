@@ -75,14 +75,12 @@ export default function VerifyPage() {
     if (!userProfileRef || !profile || !user) return;
     setIsLoading(true);
     
-    // 1. Навсозии ҳолат дар ҷадвали асосии 'users' (Танҳо ҳолат, бе суратҳо)
+    // Танҳо ҳолатро дар ҳуҷҷати 'users' нав мекунем
     const userUpdateData = {
-      identificationStatus: 'Pending',
-      kycSubmittedAt: serverTimestamp(),
-      errorReason: "" 
+      identificationStatus: 'Pending'
     };
 
-    // 2. Сабти тамоми маълумоти верификатсия дар коллексияи алоҳидаи 'verification_requests'
+    // Тамоми маълумоти вазнин (суратҳо) танҳо дар 'verification_requests' сабт мешавад
     const adminQueueData = {
       id: user.uid,
       userId: user.uid,
@@ -91,14 +89,15 @@ export default function VerifyPage() {
       photos: photos,
       receipt: isRejected && !receipt ? "Re-submitted" : receipt,
       submittedAt: serverTimestamp(),
-      status: 'Pending'
+      status: 'Pending',
+      errorReason: "" 
     };
 
     try {
-      // Навсозии профили корбар
+      // 1. Навсозии ҳолати корбар
       await updateDoc(userProfileRef, userUpdateData);
       
-      // Сабт дар навбати баррасии админ
+      // 2. Сабти маълумоти верификатсия
       const requestRef = doc(db, "verification_requests", user.uid);
       await setDoc(requestRef, adminQueueData);
 

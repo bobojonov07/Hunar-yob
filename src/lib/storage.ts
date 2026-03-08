@@ -14,10 +14,6 @@ export interface UserProfile {
   profileImage?: string;
   balance: number;
   identificationStatus: IdentificationStatus;
-  kycSubmittedAt?: any;
-  errorReason?: string;
-  isPremium?: boolean;
-  warningCount?: number;
   favorites?: string[];
   fcmTokens?: string[];
   lastActive?: any;
@@ -31,8 +27,9 @@ export interface VerificationRequest {
   userPhone: string;
   photos: string[]; // [front, back, selfie]
   receipt: string;  // image of receipt
-  status: 'Pending' | 'Reviewed';
+  status: IdentificationStatus;
   submittedAt: any;
+  errorReason?: string;
 }
 
 export interface Transaction {
