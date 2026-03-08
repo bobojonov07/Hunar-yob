@@ -89,7 +89,6 @@ export default function CreateListing() {
 
     setIsSubmitting(true);
     
-    // Manual Profanity Check
     if (hasProfanity(`${title} ${description}`)) {
       const newWarningCount = (profile.warningCount || 0) + 1;
       await updateDoc(userProfileRef, { 
@@ -99,7 +98,7 @@ export default function CreateListing() {
       });
       toast({ 
         title: "Огоҳӣ!", 
-        description: `Дар эълон калимаҳои қабеҳ ёфт шуд. Огоҳии шумо: ${newWarningCount}/5. Баъди 5 бор акаунтон БЛОК мешавад.`, 
+        description: `Дар эълон калимаҳои қабеҳ ёфт шуд. Огоҳии шумо: ${newWarningCount}/5.`, 
         variant: "destructive" 
       });
       setIsSubmitting(false);
@@ -144,14 +143,17 @@ export default function CreateListing() {
           <Card className="border-none shadow-3xl rounded-[3rem] p-10 text-center bg-white">
             <div className="mx-auto h-24 w-24 bg-yellow-50 rounded-[2.5rem] flex items-center justify-center mb-8"><Crown className="h-12 w-12 text-yellow-500 animate-pulse" /></div>
             <h2 className="text-3xl font-black text-secondary uppercase mb-4">ЛИМИТИ ЭЪЛОН</h2>
-            <p className="text-muted-foreground font-medium mb-10">Шумо ҳамаи лимити худро ({listingLimit} эълон) истифода бурдед.</p>
+            <p className="text-muted-foreground font-medium mb-10">Шумо ҳамаи лимити худро ({listingLimit} эълон) истифода бурдед. Барои илова кардани эълони нав акаунти худро ба Premium навсозӣ кунед ё эълонҳои кӯҳнаро нест кунед.</p>
             <Button asChild className="w-full bg-secondary h-16 rounded-[2rem] font-black uppercase shadow-2xl transition-all hover:scale-[1.02]"><Link href="/profile">БА ПРОФИЛ</Link></Button>
           </Card>
         ) : (
           <Card className="border-border shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
             <CardHeader className="bg-muted/10 pb-8">
               <CardTitle className="text-3xl font-black text-secondary uppercase">ЭЪЛОНИ НАВ</CardTitle>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Боз {listingLimit - userListings.length} эълон гузошта метавонед</p>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Боз {listingLimit - userListings.length} эълон гузошта метавонед</p>
+                {profile.isPremium && <Badge className="bg-yellow-500 text-secondary text-[8px] font-black">PREMIUM LIMIT: 5</Badge>}
+              </div>
             </CardHeader>
             <CardContent className="pt-8 px-8">
               <form onSubmit={handleSubmit} className="space-y-6">

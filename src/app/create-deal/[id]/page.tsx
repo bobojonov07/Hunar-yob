@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useMemo } from "react";
@@ -15,24 +14,28 @@ import {
   Loader2, 
   Lock, 
   Wallet,
-  AlertTriangle
+  AlertTriangle,
+  Briefcase
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
 import { 
   doc, 
   collection, 
   setDoc, 
   serverTimestamp, 
   getDoc, 
-  increment 
+  increment,
+  query,
+  where 
 } from "firebase/firestore";
 import { UserProfile, Deal, Listing } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CreateDealPage() {
-  const { id: listingId } = useParams();
+  const { id: initialListingId } = useParams();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useUser();
   const db = useFirestore();
@@ -41,35 +44,59 @@ export default function CreateDealPage() {
 
   const targetClientId = searchParams.get("client");
   
+  const [selectedListingId, setSelectedListingId] = useState<string>(initialListingId as string || "");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const listingRef = useMemo(() => listingId ? doc(db, "listings", listingId as string) : null, [db, listingId]);
-  const { data: listing } = useDoc<Listing>(listingRef as any);
-
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const [otherParty, setOtherParty] = useState<UserProfile | null>(null);
 
+  // Fetch initial listing to identify the artisan
+  const initialListingRef = useMemo(() => initialListingId ? doc(db, "listings", initialListingId as string) : null, [db, initialListingId]);
+  const { data: initialListing } = useDoc<Listing>(initialListingRef as any);
+
+  const artisanId = useMemo(() => {
+    if (!initialListing) return null;
+    return initialListing.userId;
+  }, [initialListing]);
+
+  // Fetch all listings of the artisan
+  const artisanListingsQuery = useMemo(() => {
+    if (!db || !artisanId) return null;
+    return query(collection(db, "listings"), where("userId", "==", artisanId));
+  }, [db, artisanId]);
+  const { data: artisanListings = [] } = useCollection<Listing>(artisanListingsQuery as any);
+
   useEffect(() => {
-    if (!user || !db || !listingId || !listing) return;
-    const clientId = targetClientId || user.uid;
-    const otherId = user.uid === listing?.userId ? clientId : listing?.userId;
+    if (!user || !db || !artisanId) return;
+    const clientId = targetClientId || (profile?.role === 'Client' ? user.uid : "");
+    const otherId = user.uid === artisanId ? (targetClientId || "") : artisanId;
     
     if (otherId) {
       getDoc(doc(db, "users", otherId)).then(snap => {
         if (snap.exists()) setOtherParty({ ...snap.data(), id: snap.id } as UserProfile);
       });
     }
-  }, [db, user, listing, targetClientId, listingId]);
+  }, [db, user, artisanId, targetClientId, profile]);
+
+  const selectedListing = useMemo(() => {
+    return artisanListings.find(l => l.id === selectedListingId);
+  }, [artisanListings, selectedListingId]);
+
+  useEffect(() => {
+    if (selectedListing && !title) {
+      setTitle(selectedListing.title);
+    }
+  }, [selectedListing, title]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !profile || !otherParty || !listing || !listingId) return;
+    if (!user || !profile || !otherParty || !selectedListingId || !artisanId) return;
 
     if (profile.identificationStatus !== 'Verified') {
       toast({ title: "Верификатсия лозим аст", description: "Аввал профилро тасдиқ кунед", variant: "destructive" });
@@ -79,7 +106,7 @@ export default function CreateDealPage() {
     if (profile.role === otherParty.role) {
       toast({ 
         title: "Имконнопазир", 
-        description: `Ҳамсуҳбат ${otherParty.name} верификатсия накардааст ё нақши шумо якхела аст. Барои амнияти шумо мо наметавонем шартномаатонро бо ин шахс фаъол созем.`, 
+        description: `Ҳамсуҳбат ${otherParty.name} нақши шуморо дорад. Шартнома танҳо байни Мизоҷ ва Усто имконпазир аст.`, 
         variant: "destructive" 
       });
       return;
@@ -91,9 +118,9 @@ export default function CreateDealPage() {
 
     const dealData: Deal = {
       id: dealId,
-      listingId: listingId as string,
-      clientId: targetClientId || (profile.role === 'Client' ? user.uid : otherParty.id),
-      artisanId: profile.role === 'Usto' ? user.uid : (listing.userId),
+      listingId: selectedListingId,
+      clientId: profile.role === 'Client' ? user.uid : otherParty.id,
+      artisanId: profile.role === 'Usto' ? user.uid : otherParty.id,
       title,
       price: parseFloat(price),
       duration: parseInt(duration),
@@ -104,7 +131,7 @@ export default function CreateDealPage() {
     try {
       await setDoc(dealRef, dealData);
 
-      const chatId = `${listingId}_${dealData.clientId}`;
+      const chatId = `${selectedListingId}_${dealData.clientId}`;
       const msgRef = doc(collection(db, "chats", chatId, "messages"));
       await setDoc(msgRef, {
         id: msgRef.id,
@@ -116,10 +143,13 @@ export default function CreateDealPage() {
         isRead: false,
         type: 'deal',
         dealId,
-        isPremiumSender: profile.isPremium || false
       });
 
       await setDoc(doc(db, "chats", chatId), {
+        id: chatId,
+        listingId: selectedListingId,
+        clientId: dealData.clientId,
+        artisanId: dealData.artisanId,
         lastMessage: "Дархости шартнома",
         lastSenderId: user.uid,
         updatedAt: serverTimestamp(),
@@ -127,7 +157,7 @@ export default function CreateDealPage() {
       }, { merge: true });
 
       toast({ title: "Дархост фиристода шуд" });
-      router.push(`/chat/${listingId}?client=${dealData.clientId}`);
+      router.push(`/chat/${selectedListingId}?client=${dealData.clientId}`);
     } catch (err) {
       toast({ title: "Хатогӣ ҳангоми сохтан", variant: "destructive" });
     } finally {
@@ -175,10 +205,25 @@ export default function CreateDealPage() {
           <Card className="border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
             <CardHeader className="bg-muted/10 pb-8">
               <CardTitle className="text-xl font-black text-secondary uppercase">ТАФСИЛОТИ КОР</CardTitle>
-              <p className="text-[9px] font-black text-primary uppercase">Барои эълони: {listing?.title}</p>
             </CardHeader>
             <CardContent className="p-10 space-y-6">
               <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="font-black text-xs uppercase tracking-widest opacity-60">ИНТИХОБИ ЭЪЛОН (ХИДМАТ)</Label>
+                  <Select value={selectedListingId} onValueChange={setSelectedListingId}>
+                    <SelectTrigger className="h-14 rounded-2xl font-bold bg-muted/20 border-none">
+                      <SelectValue placeholder="Интихоби эълон" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl">
+                      {artisanListings.map(listing => (
+                        <SelectItem key={listing.id} value={listing.id} className="font-bold">
+                          {listing.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="font-black text-xs uppercase tracking-widest opacity-60">НОМИ ЛОИҲА</Label>
                   <Input 
@@ -231,13 +276,13 @@ export default function CreateDealPage() {
                 <div className="p-6 bg-yellow-50 rounded-[2.5rem] flex items-start gap-4 border-2 border-dashed border-yellow-100">
                   <Lock className="h-6 w-6 text-yellow-500 shrink-0" />
                   <p className="text-[10px] font-black text-yellow-600 uppercase leading-relaxed">
-                    Пас аз қабули мизоҷ, маблағи {price || "0"} TJS дар Escrow-и платформа банд мешавад. Шарҳ ва баҳои шумо ба ин эълон сабт мегардад.
+                    Пас аз қабули мизоҷ, маблағи {price || "0"} TJS дар Escrow-и платформа банд мешавад.
                   </p>
                 </div>
 
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting || !title || !price || !duration || profile.role === otherParty?.role} 
+                  disabled={isSubmitting || !title || !price || !duration || !selectedListingId || profile.role === otherParty?.role} 
                   className="w-full h-16 bg-primary font-black uppercase tracking-widest rounded-2xl shadow-2xl hover:scale-[1.02] transition-all"
                 >
                   {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "ФИРИСТОДАНИ ДАРХОСТ"}
