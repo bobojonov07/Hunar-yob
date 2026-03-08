@@ -14,18 +14,25 @@ export interface UserProfile {
   profileImage?: string;
   balance: number;
   identificationStatus: IdentificationStatus;
-  kycPhotos?: string[]; // [front, back, selfie]
-  kycPaymentCheck?: string; // image of receipt
   kycSubmittedAt?: any;
-  passportNumber?: string;
+  errorReason?: string;
   isPremium?: boolean;
-  isArtisanFeePaid?: boolean;
   warningCount?: number;
-  isBlocked?: boolean;
   favorites?: string[];
   fcmTokens?: string[];
   lastActive?: any;
   createdAt: any;
+}
+
+export interface VerificationRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone: string;
+  photos: string[]; // [front, back, selfie]
+  receipt: string;  // image of receipt
+  status: 'Pending' | 'Reviewed';
+  submittedAt: any;
 }
 
 export interface Transaction {
@@ -75,34 +82,7 @@ export interface Message {
   dealId?: string;
 }
 
-export interface Deal {
-  id: string;
-  listingId: string;
-  clientId: string;
-  artisanId: string;
-  title: string;
-  price: number;
-  fee: number;
-  durationDays: number;
-  status: 'Pending' | 'Accepted' | 'Completed' | 'Confirmed' | 'Cancelled' | 'Expired';
-  senderId: string;
-  createdAt: any;
-  updatedAt: any;
-}
-
-export interface Review {
-  id: string;
-  listingId: string;
-  userId: string;
-  userName: string;
-  rating: number;
-  comment: string;
-  createdAt: any;
-  dealId: string;
-}
-
 export const VIP_PRICE = 20;
-export const PREMIUM_PRICE = 100;
 export const KYC_PRICE = 10;
 
 export const ALL_REGIONS = [
@@ -115,9 +95,3 @@ export const ALL_CATEGORIES = [
   "Ронанда", "Ошпаз", "Муаллим", "Табиб", "Сартарош", "Рангуборчӣ", 
   "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
 ];
-
-export function calculateFee(price: number): number {
-  if (price < 100) return 5;
-  if (price < 1000) return 20;
-  return Math.floor(price * 0.05);
-}

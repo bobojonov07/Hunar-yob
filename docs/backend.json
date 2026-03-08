@@ -14,14 +14,13 @@
         "region": { "type": "string" },
         "balance": { "type": "number" },
         "identificationStatus": { "type": "string", "enum": ["None", "Pending", "Verified", "Rejected", "Blocked"] },
-        "kycPhotos": { "type": "array", "items": { "type": "string" } },
-        "kycPaymentCheck": { "type": "string" },
-        "kycSubmittedAt": { "type": "string", "format": "date-time" }
+        "kycSubmittedAt": { "type": "string", "format": "date-time" },
+        "errorReason": { "type": "string" }
       }
     },
     "VerificationRequest": {
       "title": "VerificationRequest",
-      "description": "Дархости верификатсия барои баррасии админ",
+      "description": "Дархости верификатсия бо суратҳои паспорт ва чек",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
@@ -44,7 +43,7 @@
     },
     "/verification_requests/{userId}": {
       "schema": "VerificationRequest",
-      "description": "Навбати дархостҳо барои админ (KYC Queue)"
+      "description": "Маълумоти верификатсия ва навбати дархостҳо (KYC Queue)"
     },
     "/listings/{listingId}": {
       "schema": "Listing",

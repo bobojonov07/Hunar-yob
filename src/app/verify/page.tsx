@@ -75,33 +75,37 @@ export default function VerifyPage() {
     if (!userProfileRef || !profile || !user) return;
     setIsLoading(true);
     
-    // Маълумоти сабук барои ҳуҷҷати корбар
+    // 1. Навсозии ҳолат дар ҷадвали асосии 'users' (Танҳо ҳолат, бе суратҳо)
     const userUpdateData = {
       identificationStatus: 'Pending',
       kycSubmittedAt: serverTimestamp(),
       errorReason: "" 
     };
 
-    // Маълумоти пурра бо суратҳо танҳо барои коллексияи дархостҳо
+    // 2. Сабти тамоми маълумоти верификатсия дар коллексияи алоҳидаи 'verification_requests'
     const adminQueueData = {
+      id: user.uid,
       userId: user.uid,
       userName: profile.name,
       userPhone: profile.phone || "Номаълум",
       photos: photos,
-      receipt: isRejected ? "Re-submitted without new payment" : receipt,
+      receipt: isRejected && !receipt ? "Re-submitted" : receipt,
       submittedAt: serverTimestamp(),
       status: 'Pending'
     };
 
     try {
-      // 1. Навсозии ҳолати корбар
+      // Навсозии профили корбар
       await updateDoc(userProfileRef, userUpdateData);
       
-      // 2. Фиристодани суратҳо ба коллексияи алоҳида
+      // Сабт дар навбати баррасии админ
       const requestRef = doc(db, "verification_requests", user.uid);
       await setDoc(requestRef, adminQueueData);
 
-      toast({ title: "Дархост фиристода шуд", description: "Мо дар муддати 24 соат тафтиш мекунем." });
+      toast({ 
+        title: "Дархост фиристода шуд", 
+        description: "Мо дар муддати 24 соат маълумоти шуморо баррасӣ мекунем." 
+      });
       router.push("/profile");
     } catch (err: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
