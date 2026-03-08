@@ -6,12 +6,12 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, CheckCheck, ChevronLeft, Loader2, CheckCircle2, Crown } from "lucide-react";
+import { MessageSquare, CheckCheck, ChevronLeft, Loader2, CheckCircle2, Crown, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { collection, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { Chat, UserProfile } from "@/lib/storage";
 
 interface Conversation extends Chat {
@@ -24,7 +24,11 @@ export default function MessagesList() {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const profilesCache = useRef<Record<string, UserProfile>>({});
+
+  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const clientChatsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -52,7 +56,12 @@ export default function MessagesList() {
       if (!user || clientLoading || artisanLoading) return;
 
       const allChatsMap = new Map<string, Chat>();
-      [...clientChats, ...artisanChats].forEach(chat => allChatsMap.set(chat.id, chat));
+      [...clientChats, ...artisanChats].forEach(chat => {
+        // Намоиш надодани чатҳои нестшуда
+        if (!chat.deletedBy?.includes(user.uid)) {
+          allChatsMap.set(chat.id, chat);
+        }
+      });
       
       const sortedChats = Array.from(allChatsMap.values()).sort((a, b) => {
         const timeA = a.updatedAt?.toMillis() || 0;
@@ -71,18 +80,18 @@ export default function MessagesList() {
         const otherId = user.uid === chat.clientId ? chat.artisanId : chat.clientId;
         if (!otherId) continue;
         
-        let profile = profilesCache.current[otherId];
-        if (!profile) {
+        let otherProfile = profilesCache.current[otherId];
+        if (!otherProfile) {
           const otherSnap = await getDoc(doc(db, "users", otherId));
           if (otherSnap.exists()) {
-            profile = { ...(otherSnap.data() as UserProfile), id: otherSnap.id };
-            profilesCache.current[otherId] = profile;
+            otherProfile = { ...(otherSnap.data() as UserProfile), id: otherSnap.id };
+            profilesCache.current[otherId] = otherProfile;
           }
         }
         
         results.push({
           ...chat,
-          otherParty: profile || null
+          otherParty: otherProfile || null
         });
       }
       
@@ -93,18 +102,56 @@ export default function MessagesList() {
     fetchConversationDetails();
   }, [clientChats, artisanChats, user, db, clientLoading, artisanLoading]);
 
+  const filteredConversations = useMemo(() => {
+    if (!showUnreadOnly) return conversations;
+    return conversations.filter(conv => (conv.unreadCount?.[user?.uid || ""] || 0) > 0);
+  }, [conversations, showUnreadOnly, user]);
+
+  const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !db) return;
+    
+    if (!confirm("Оё мехоҳед ин чатро аз рӯйхати худ нест кунед?")) return;
+
+    const chatRef = doc(db, "chats", chatId);
+    updateDoc(chatRef, {
+      deletedBy: arrayUnion(user.uid)
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: chatRef.path,
+        operation: 'update',
+        requestResourceData: { deletedBy: user.uid }
+      }));
+    });
+  };
+
   if (!user) return <div className="min-h-screen flex items-center justify-center">Вуруд лозим аст...</div>;
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <div className="mb-8 flex flex-col gap-4">
-          <Button variant="ghost" onClick={() => router.back()} className="w-fit hover:text-primary p-0 font-black">
-            <ChevronLeft className="mr-2 h-5 w-5" />
-            БОЗГАШТ
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col gap-4">
+            <Button variant="ghost" onClick={() => router.back()} className="w-fit hover:text-primary p-0 font-black">
+              <ChevronLeft className="mr-2 h-5 w-5" />
+              БОЗГАШТ
+            </Button>
+            <h1 className="text-3xl font-black text-secondary tracking-tighter uppercase">Паёмҳо</h1>
+          </div>
+          
+          <Button 
+            onClick={() => setShowUnreadOnly(!showUnreadOnly)} 
+            variant={showUnreadOnly ? "default" : "outline"}
+            className={cn(
+              "rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest transition-all",
+              showUnreadOnly ? "bg-primary shadow-xl scale-105" : "border-2"
+            )}
+          >
+            <Filter className="mr-2 h-4 w-4" />
+            {showUnreadOnly ? "ҲАМАИ ЧАТҲО" : "ТАНҲО НОХОНДАҲО"}
           </Button>
-          <h1 className="text-3xl font-black text-secondary tracking-tighter uppercase">Паёмҳо</h1>
         </div>
 
         {initialLoading ? (
@@ -112,16 +159,28 @@ export default function MessagesList() {
             <Loader2 className="animate-spin h-10 w-10 text-primary" />
             <p className="font-black uppercase tracking-widest text-[10px]">Дар ҳоли боргузорӣ...</p>
           </div>
-        ) : conversations.length > 0 ? (
+        ) : filteredConversations.length > 0 ? (
           <div className="space-y-3">
-            {conversations.map((conv) => (
-              <ConversationItem key={conv.id} conv={conv} currentUser={user} />
+            {filteredConversations.map((conv) => (
+              <div key={conv.id} className="relative group">
+                <ConversationItem conv={conv} currentUser={user} />
+                {profile?.isPremium && (
+                  <button 
+                    onClick={(e) => handleDeleteChat(e, conv.id)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white p-3 rounded-xl shadow-xl hover:scale-110 active:scale-90"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-muted shadow-inner">
             <MessageSquare className="h-16 w-16 mx-auto text-muted mb-4 opacity-30" />
-            <p className="text-muted-foreground font-black text-lg uppercase tracking-widest opacity-40">ҲОЛО ПАЁМ НАДОРЕД</p>
+            <p className="text-muted-foreground font-black text-lg uppercase tracking-widest opacity-40">
+              {showUnreadOnly ? "ПАЁМИ НАВ НЕСТ" : "ҲОЛО ПАЁМ НАДОРЕД"}
+            </p>
             <Button asChild variant="link" className="mt-4 font-black text-primary">
               <Link href="/listings">Ҷустуҷӯи устоҳо</Link>
             </Button>
@@ -159,7 +218,7 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
               {conv.otherParty?.name?.charAt(0) || "U"}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-10">
             <div className="flex justify-between items-center mb-0.5">
               <div className="flex items-center gap-1.5 min-w-0">
                 <h3 className="font-black text-secondary text-base truncate">

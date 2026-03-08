@@ -1,3 +1,4 @@
+
 'use client';
 
 export type UserRole = 'Usto' | 'Client';
@@ -66,6 +67,7 @@ export interface Chat {
   lastSenderId: string;
   updatedAt: any;
   unreadCount: Record<string, number>;
+  deletedBy?: string[]; // Рӯйхати корбароне, ки чатро барои худ нест кардаанд
 }
 
 export interface Message {
@@ -78,6 +80,9 @@ export interface Message {
   isRead: boolean;
   type: 'text' | 'deal';
   dealId?: string;
+  isEdited?: boolean;
+  isDeletedForEveryone?: boolean;
+  deletedFor?: string[]; // Рӯйхати корбароне, ки паёмро барои худ нест кардаанд
 }
 
 export const VIP_PRICE = 20;

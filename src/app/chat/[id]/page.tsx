@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -6,16 +7,15 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Send, ShieldCheck, CheckCircle2, MessageSquare, Loader2, Crown, Sparkles, AlertCircle, Flag } from "lucide-react";
+import { ChevronLeft, Send, ShieldCheck, CheckCircle2, MessageSquare, Loader2, Crown, Sparkles, AlertCircle, Flag, Pencil, Trash2, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment, addDoc } from "firebase/firestore";
+import { doc, collection, query, orderBy, setDoc, serverTimestamp, getDoc, updateDoc, increment, addDoc, arrayUnion } from "firebase/firestore";
 import { Listing, Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT } from "@/lib/storage";
 import { cn, hasProfanity } from "@/lib/utils";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function ChatPage() {
@@ -30,6 +30,9 @@ export default function ChatPage() {
   const targetClientId = searchParams.get("client");
   
   const [newMessage, setNewMessage] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  
   const [dealTitle, setDealTitle] = useState("");
   const [dealPrice, setDealPrice] = useState("");
   const [dealDuration, setDealDuration] = useState("");
@@ -81,31 +84,13 @@ export default function ChatPage() {
   }, [db, chatId]);
   const { data: messages = [], loading: messagesLoading } = useCollection<Message>(messagesQuery as any);
 
-  const CHAR_LIMIT = (profile?.isPremium || otherParty?.isPremium) ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
+  const isBothPremium = profile?.isPremium && otherParty?.isPremium;
+  const isOnePremium = profile?.isPremium || otherParty?.isPremium;
+  const CHAR_LIMIT = isOnePremium ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
+  
   const totalChars = useMemo(() => messages.reduce((sum, msg) => sum + (msg.text?.length || 0), 0), [messages]);
   const isLimitReached = totalChars >= CHAR_LIMIT;
   const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
-
-  const handleSendReport = async () => {
-    if (!user || !otherParty || reportReason.length < 50 || reportReason.length > 100) return;
-    setIsSendingReport(true);
-    try {
-      await addDoc(collection(db, "complaints"), {
-        reportedUserId: otherParty.id,
-        reporterUserId: user.uid,
-        reason: reportReason,
-        status: 'Pending',
-        createdAt: serverTimestamp()
-      });
-      toast({ title: "Шикоят қабул шуд", description: "Мо онро дар муддати кӯтоҳ баррасӣ мекунем." });
-      setIsReportDialogOpen(false);
-      setReportReason("");
-    } catch (e) {
-      toast({ title: "Хатогӣ", variant: "destructive" });
-    } finally {
-      setIsSendingReport(false);
-    }
-  };
 
   const handleSendMessage = async (e?: React.FormEvent, type: 'text' | 'deal' = 'text', dealId?: string) => {
     if (e) e.preventDefault();
@@ -113,7 +98,6 @@ export default function ChatPage() {
     if (!user || !listingId || !profile || !chatId) return;
 
     if (type === 'text') {
-      // Manual Profanity Check
       if (hasProfanity(newMessage)) {
         const newWarningCount = (profile.warningCount || 0) + 1;
         await updateDoc(userProfileRef!, { 
@@ -162,7 +146,8 @@ export default function ChatPage() {
       lastMessage: messageData.text,
       lastSenderId: user.uid,
       updatedAt: serverTimestamp(),
-      [`unreadCount.${otherParty?.id || ""}`]: increment(1)
+      [`unreadCount.${otherParty?.id || ""}`]: increment(1),
+      deletedBy: [] // Бозгашт ба ҳолати фаъол агар паём фиристода шавад
     }, { merge: true });
 
     setDoc(msgRef, messageData).catch((err) => {
@@ -174,6 +159,36 @@ export default function ChatPage() {
     });
 
     if (type === 'text') setNewMessage("");
+  };
+
+  const handleEditMessage = async (msgId: string) => {
+    if (!user || !chatId || !editValue.trim()) return;
+    const msgRef = doc(db, "chats", chatId, "messages", msgId);
+    
+    updateDoc(msgRef, {
+      text: editValue,
+      isEdited: true,
+      editedAt: serverTimestamp()
+    });
+    setEditingMessageId(null);
+    setEditValue("");
+  };
+
+  const handleDeleteMessage = async (msgId: string, forEveryone: boolean) => {
+    if (!user || !chatId) return;
+    const msgRef = doc(db, "chats", chatId, "messages", msgId);
+
+    if (forEveryone) {
+      updateDoc(msgRef, {
+        isDeletedForEveryone: true,
+        text: "Паём нест карда шуд"
+      });
+    } else {
+      updateDoc(msgRef, {
+        deletedFor: arrayUnion(user.uid)
+      });
+    }
+    toast({ title: "Паём нест карда шуд" });
   };
 
   useEffect(() => {
@@ -234,7 +249,19 @@ export default function ChatPage() {
                   </div>
                   <Button 
                     disabled={isSendingReport || reportReason.length < 50 || reportReason.length > 100} 
-                    onClick={handleSendReport} 
+                    onClick={async () => {
+                      setIsSendingReport(true);
+                      await addDoc(collection(db, "complaints"), {
+                        reportedUserId: otherParty?.id,
+                        reporterUserId: user?.uid,
+                        reason: reportReason,
+                        status: 'Pending',
+                        createdAt: serverTimestamp()
+                      });
+                      toast({ title: "Шикоят қабул шуд" });
+                      setIsReportDialogOpen(false);
+                      setIsSendingReport(false);
+                    }} 
                     className="w-full bg-red-500 h-14 rounded-2xl font-black uppercase text-xs"
                   >
                     {isSendingReport ? <Loader2 className="animate-spin h-5 w-5" /> : "ФИРИСТОДАНИ ШИКОЯТ"}
@@ -270,20 +297,44 @@ export default function ChatPage() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.map((msg) => {
+        {messages.filter(m => !m.deletedFor?.includes(user?.uid || "")).map((msg) => {
           const isMe = msg.senderId === user?.uid;
+          const canEdit = isMe && profile?.isPremium && (Date.now() - (msg.createdAt?.toMillis() || 0) < 600000); // 10 mins
+
           return (
             <div key={msg.id} className={cn("flex flex-col group", isMe ? 'items-end' : 'items-start')}>
               <div className={cn(
-                "relative max-w-[85%] p-4 rounded-[2rem] shadow-2xl transition-all",
+                "relative max-w-[85%] p-4 rounded-[2rem] shadow-2xl transition-all group-hover:scale-[1.02]",
                 isMe 
                   ? (isPremiumTheme ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-secondary" : "bg-primary text-white") 
                   : (isPremiumTheme ? "bg-white/5 backdrop-blur-md text-white border border-white/10" : "bg-white text-secondary border")
               )}>
-                <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
-                <span className="text-[8px] font-black uppercase opacity-60 block mt-2">
-                  {msg.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                {editingMessageId === msg.id ? (
+                  <div className="space-y-2 min-w-[200px]">
+                    <Input value={editValue} onChange={e => setEditValue(e.target.value)} className="bg-white/20 border-none text-white h-10 rounded-xl" />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleEditMessage(msg.id)} className="bg-green-500 h-8 rounded-lg text-[10px] font-black uppercase">САБТ</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingMessageId(null)} className="h-8 rounded-lg text-[10px] font-black uppercase">БЕКОР</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-[8px] font-black uppercase opacity-60">
+                        {msg.createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {msg.isEdited && " (таҳриршуда)"}
+                      </span>
+                      {profile?.isPremium && (
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {canEdit && <button onClick={() => { setEditingMessageId(msg.id); setEditValue(msg.text); }} className="text-white/50 hover:text-white"><Pencil className="h-3 w-3" /></button>}
+                          <button onClick={() => handleDeleteMessage(msg.id, false)} className="text-white/50 hover:text-white"><Trash2 className="h-3 w-3" /></button>
+                          {isMe && <button onClick={() => handleDeleteMessage(msg.id, true)} className="text-red-300 hover:text-red-500"><X className="h-3 w-3" /></button>}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           );
