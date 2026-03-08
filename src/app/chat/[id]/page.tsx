@@ -13,7 +13,10 @@ import {
   Loader2, 
   Check, 
   CheckCheck,
-  Scale
+  Scale,
+  Star,
+  Ban,
+  AlertTriangle
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +35,12 @@ import {
   writeBatch,
   addDoc
 } from "firebase/firestore";
-import { Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT, Deal } from "@/lib/storage";
+import { Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT, Deal, Review } from "@/lib/storage";
 import { cn, hasProfanity } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/hooks/use-translation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ChatPage() {
   const { id: listingId } = useParams();
@@ -43,6 +49,7 @@ export default function ChatPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const targetClientId = searchParams.get("client");
@@ -72,7 +79,6 @@ export default function ChatPage() {
       } else if (listing) {
         otherId = user.uid === listing.userId ? targetClientId! : listing.userId;
       }
-      
       if (otherId) {
         getDoc(doc(db, "users", otherId)).then(uSnap => {
           if (uSnap.exists()) setOtherParty({ ...uSnap.data(), id: uSnap.id } as UserProfile);
@@ -103,7 +109,6 @@ export default function ChatPage() {
   const isOnePremium = profile?.isPremium || otherParty?.isPremium;
   const CHAR_LIMIT = isOnePremium ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
   const totalChars = useMemo(() => messages.reduce((sum, msg) => sum + (msg.text?.length || 0), 0), [messages]);
-  const isLimitReached = totalChars >= CHAR_LIMIT;
   const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -137,8 +142,7 @@ export default function ChatPage() {
       text: newMessage,
       createdAt: serverTimestamp(),
       isRead: false,
-      type: 'text',
-      isPremiumSender: profile.isPremium || false
+      type: 'text'
     };
 
     setDoc(chatRef, {
@@ -154,69 +158,6 @@ export default function ChatPage() {
 
     setDoc(msgRef, messageData);
     setNewMessage("");
-  };
-
-  const handleAcceptDeal = async (dealId: string, msgId: string) => {
-    if (!db || !chatId || !user || !profile) return;
-    
-    const dealRef = doc(db, "deals", dealId);
-    const dealSnap = await getDoc(dealRef);
-    if (!dealSnap.exists()) return;
-    
-    const deal = dealSnap.data() as Deal;
-
-    // Танҳо мизоҷ метавонад пардохт ва қабул кунад
-    if (profile.role !== 'Client') {
-      toast({ title: "Танҳо мизоҷ метавонад шартномаро қабул кунад", variant: "destructive" });
-      return;
-    }
-
-    if (profile.balance < deal.price) {
-      toast({ title: "Маблағ нокифоя аст", description: "Лутфан ҳамёни худро пур кунед", variant: "destructive" });
-      router.push("/wallet");
-      return;
-    }
-
-    try {
-      const batch = writeBatch(db);
-
-      // 1. Гирифтани маблағ аз мизоҷ
-      batch.update(doc(db, "users", user.uid), { balance: increment(-deal.price) });
-
-      // 2. Сабти транзаксия
-      const transRef = doc(collection(db, "transactions"));
-      batch.set(transRef, {
-        userId: user.uid,
-        amount: deal.price,
-        type: 'DealPayment',
-        status: 'Completed',
-        description: `Пардохт барои шартнома: ${deal.title}`,
-        createdAt: serverTimestamp()
-      });
-
-      // 3. Фаъол кардани шартнома
-      batch.update(dealRef, { status: 'Active', acceptedAt: serverTimestamp() });
-
-      // 4. Навсозии паём
-      batch.update(doc(db, "chats", chatId, "messages", msgId), { text: "Шартнома қабул ва пардохт шуд" });
-
-      await batch.commit();
-      toast({ title: "Шартнома фаъол шуд!", description: "Маблағ дар Escrow маҳфуз аст." });
-    } catch (err) {
-      toast({ title: "Хатогӣ ҳангоми пардохт", variant: "destructive" });
-    }
-  };
-
-  const handleStartDeal = () => {
-    if (otherParty?.identificationStatus !== 'Verified') {
-      toast({
-        variant: "destructive",
-        title: "Амният",
-        description: `Ҳамсуҳбат ${otherParty?.name || ""} верификатсия накардааст. Барои амнияти шумо мо наметавонем шартномаатонро бо ин шахс фаъол созем.`
-      });
-      return;
-    }
-    router.push(`/create-deal/${listingId}?client=${targetClientId || user?.uid}`);
   };
 
   useEffect(() => {
@@ -247,16 +188,14 @@ export default function ChatPage() {
               <p className={cn("text-[10px] font-bold", isPremiumTheme ? "text-white/60" : "text-muted-foreground")}>{otherParty?.lastActive ? "Дар хат" : "Офлайн"}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              disabled={profile?.identificationStatus !== 'Verified'} 
-              size="sm" 
-              onClick={handleStartDeal} 
-              className="rounded-full font-black text-[10px] px-6 h-10 bg-secondary text-white shadow-xl hover:scale-105 transition-all"
-            >
-              ШАРТНОМА
-            </Button>
-          </div>
+          <Button 
+            disabled={profile?.identificationStatus !== 'Verified'} 
+            size="sm" 
+            onClick={() => router.push(`/create-deal/${listingId}?client=${targetClientId || user?.uid}`)} 
+            className="rounded-full font-black text-[10px] px-6 h-10 bg-secondary text-white shadow-xl hover:scale-105 transition-all"
+          >
+            ШАРТНОМА
+          </Button>
         </div>
         <div className="px-6 pb-3 space-y-1">
           <Progress value={charProgress} className="h-1" />
@@ -273,7 +212,7 @@ export default function ChatPage() {
                 isMe ? (isPremiumTheme ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-secondary" : "bg-primary text-white") : (isPremiumTheme ? "bg-white/5 text-white" : "bg-white text-secondary border")
               )}>
                 {msg.type === 'deal' && msg.dealId ? (
-                  <DealCard dealId={msg.dealId} isMe={isMe} onAccept={() => handleAcceptDeal(msg.dealId!, msg.id)} />
+                  <DealCard dealId={msg.dealId} isMe={isMe} />
                 ) : (
                   <p className="text-sm font-bold">{msg.text}</p>
                 )}
@@ -302,42 +241,147 @@ export default function ChatPage() {
   );
 }
 
-function DealCard({ dealId, isMe, onAccept }: { dealId: string, isMe: boolean, onAccept: () => void }) {
+function DealCard({ dealId, isMe }: { dealId: string, isMe: boolean }) {
   const db = useFirestore();
   const { user } = useUser();
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const { data: deal } = useDoc<Deal>(doc(db, "deals", dealId) as any);
-  const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
-  const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+
+  useEffect(() => {
+    if (user) getDoc(doc(db, "users", user.uid)).then(s => s.exists() && setProfile(s.data() as any));
+  }, [user, db]);
 
   if (!deal || !profile) return <Loader2 className="animate-spin h-5 w-5" />;
 
-  const canAccept = !isMe && deal.status === 'Pending' && profile.role === 'Client';
+  const handleAction = async (status: 'Accepted' | 'Active' | 'Completed' | 'Cancelled') => {
+    if (!deal || !profile || !user) return;
+    const batch = writeBatch(db);
+
+    if (status === 'Active') {
+      if (profile.balance < deal.price) {
+        toast({ title: t.deal.insufficient_balance, variant: "destructive" });
+        return;
+      }
+      batch.update(doc(db, "users", user.uid), { balance: increment(-deal.price) });
+      const transRef = doc(collection(db, "transactions"));
+      batch.set(transRef, {
+        userId: user.uid,
+        amount: deal.price,
+        type: 'DealPayment',
+        status: 'Completed',
+        description: `Сделка: ${deal.title}`,
+        createdAt: serverTimestamp()
+      });
+      batch.update(doc(db, "deals", dealId), { status: 'Active', acceptedAt: serverTimestamp() });
+    } else if (status === 'Cancelled') {
+      if (cancelReason.length < 50) {
+        toast({ title: "Ҳадди ақал 50 аломат нависед", variant: "destructive" });
+        return;
+      }
+      batch.update(doc(db, "deals", dealId), { status: 'Cancelled', cancelReason });
+      // Automatical 0 rating for cancellation if it was active
+      if (deal.status === 'Active') {
+        const ustoRef = doc(db, "users", deal.artisanId);
+        batch.update(ustoRef, { warningCount: increment(1) });
+      }
+      setIsCancelOpen(false);
+    } else if (status === 'Completed') {
+      if (rating === 0) {
+        toast({ title: t.deal.rating_required, variant: "destructive" });
+        return;
+      }
+      const reviewRef = doc(collection(db, "listings", deal.listingId, "reviews"));
+      batch.set(reviewRef, {
+        id: reviewRef.id,
+        listingId: deal.listingId,
+        dealId,
+        userId: user.uid,
+        userName: profile.name,
+        rating,
+        comment,
+        createdAt: serverTimestamp()
+      });
+      batch.update(doc(db, "deals", dealId), { status: 'Completed', completedAt: serverTimestamp(), reviewId: reviewRef.id });
+      // Pay the artisan
+      batch.update(doc(db, "users", deal.artisanId), { balance: increment(deal.price) });
+      setIsReviewOpen(false);
+    } else {
+      batch.update(doc(db, "deals", dealId), { status });
+    }
+
+    await batch.commit();
+    toast({ title: "Навсозӣ шуд" });
+  };
+
+  const isClient = profile.role === 'Client';
+  const isArtisan = profile.role === 'Usto';
 
   return (
     <div className="space-y-4 min-w-[260px]">
       <div className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl">
         <Scale className="h-7 w-7 text-yellow-400" />
-        <div>
-          <h4 className="font-black text-xs uppercase tracking-tight">Шартномаи Амниятӣ</h4>
-          <p className="text-[10px] opacity-70">Ҳифзи 100% маблағи шумо</p>
-        </div>
+        <h4 className="font-black text-xs uppercase tracking-tight">{t.deal.title}</h4>
       </div>
-      <div className="space-y-2">
-        <h3 className="font-black text-sm uppercase leading-tight">{deal.title}</h3>
-        <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
-          <div className="bg-black/20 p-2 rounded-xl text-center"><p className="opacity-60 text-[8px]">НАРХ:</p><p className="text-sm text-yellow-400">{deal.price} TJS</p></div>
-          <div className="bg-black/20 p-2 rounded-xl text-center"><p className="opacity-60 text-[8px]">МӮҲЛАТ:</p><p className="text-sm">{deal.duration} рӯз</p></div>
-        </div>
+      <div className="space-y-1">
+        <h3 className="font-black text-sm uppercase">{deal.title}</h3>
+        <p className="text-xl font-black text-yellow-400">{deal.price} TJS</p>
       </div>
-      {canAccept && (
-        <Button onClick={onAccept} className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-10 rounded-xl shadow-lg">ҚАБУЛ ВА ПАРДОХТ</Button>
-      )}
-      {deal.status === 'Pending' && profile.role === 'Usto' && isMe && (
-        <p className="text-[9px] font-black uppercase text-center opacity-60">Интизории қабули мизоҷ...</p>
-      )}
-      <Badge className={cn("w-full justify-center h-8 rounded-lg font-black uppercase text-[9px]", deal.status === 'Active' ? "bg-green-500 text-white" : "bg-black/20 text-white")}>
-        ҲОЛАТ: {deal.status === 'Pending' ? 'Интизории розигӣ' : deal.status === 'Active' ? 'ФАЪОЛ (МАСДУД)' : deal.status}
+
+      <Badge className="w-full justify-center h-8 rounded-lg font-black uppercase text-[9px] bg-black/20 text-white">
+        {t.deal.status}: {deal.status}
       </Badge>
+
+      <div className="space-y-2">
+        {deal.status === 'Pending' && !isMe && (
+          <Button onClick={() => handleAction('Accepted')} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black uppercase text-[10px] h-10 rounded-xl">{t.deal.accept}</Button>
+        )}
+        {deal.status === 'Accepted' && isClient && (
+          <Button onClick={() => handleAction('Active')} className="w-full bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-10 rounded-xl">{t.deal.pay}</Button>
+        )}
+        {deal.status === 'Active' && isArtisan && !deal.artisanFinished && (
+          <Button onClick={() => updateDoc(doc(db, "deals", dealId), { artisanFinished: true })} className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-black uppercase text-[10px] h-10 rounded-xl">{t.deal.finish}</Button>
+        )}
+        {deal.status === 'Active' && deal.artisanFinished && isClient && (
+          <Button onClick={() => setIsReviewOpen(true)} className="w-full bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] h-10 rounded-xl">{t.deal.complete_btn}</Button>
+        )}
+        {(deal.status === 'Pending' || deal.status === 'Accepted' || deal.status === 'Active') && (
+          <Button variant="ghost" onClick={() => setIsCancelOpen(true)} className="w-full text-red-500 font-black uppercase text-[10px] h-10 rounded-xl">{t.deal.cancel_btn}</Button>
+        )}
+      </div>
+
+      <Dialog open={isCancelOpen} onOpenChange={setIsCancelOpen}>
+        <DialogContent className="rounded-3xl p-8">
+          <DialogHeader><DialogTitle className="font-black uppercase text-red-500 flex items-center gap-2"><Ban /> {t.deal.cancel_btn}</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Textarea placeholder={t.deal.reason_placeholder} value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="min-h-[120px] rounded-2xl" />
+            <p className="text-[9px] font-bold text-red-500 uppercase">ДИҚҚАТ: Бекоркунӣ ба рейтинги усто таъсири манфӣ мерасонад.</p>
+            <Button onClick={() => handleAction('Cancelled')} className="w-full bg-red-500 font-black h-12 rounded-xl">ТАУДИҚИ БЕКОРКУНӢ</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+        <DialogContent className="rounded-3xl p-8">
+          <DialogHeader><DialogTitle className="font-black uppercase text-green-600">{t.deal.complete_btn}</DialogTitle></DialogHeader>
+          <div className="space-y-6 pt-4 text-center">
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map(s => (
+                <Star key={s} onClick={() => setRating(s)} className={cn("h-8 w-8 cursor-pointer transition-all", rating >= s ? "fill-yellow-400 text-yellow-400" : "text-muted")} />
+              ))}
+            </div>
+            <Textarea placeholder={t.deal.review_placeholder} value={comment} onChange={e => setComment(e.target.value)} className="min-h-[100px] rounded-2xl" />
+            <Button onClick={() => handleAction('Completed')} className="w-full bg-green-600 font-black h-12 rounded-xl uppercase">ФИРИСТОДАНИ БАҲО</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

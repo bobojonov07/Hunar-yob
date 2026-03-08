@@ -24,37 +24,8 @@ export interface UserProfile {
   createdAt: any;
   warningCount: number;
   isBlocked: boolean;
-}
-
-export interface DepositRequest {
-  id: string;
-  userId: string;
-  userName: string;
-  amount: number;
-  receiptImage: string;
-  status: TransactionStatus;
-  submittedAt: any;
-}
-
-export interface WithdrawalRequest {
-  id: string;
-  userId: string;
-  userName: string;
-  amount: number;
-  cardNumber: string;
-  withdrawalType: 'DC' | 'Phone' | 'KortiMilli';
-  status: TransactionStatus;
-  submittedAt: any;
-}
-
-export interface Transaction {
-  id: string;
-  userId: string;
-  amount: number;
-  type: TransactionType;
-  status: TransactionStatus;
-  description: string;
-  createdAt: any;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export interface Deal {
@@ -64,32 +35,25 @@ export interface Deal {
   artisanId: string;
   title: string;
   price: number;
-  duration: number; // дар рӯзҳо
+  duration: number;
   status: DealStatus;
   createdAt: any;
   acceptedAt?: any;
   completedAt?: any;
+  artisanFinished?: boolean;
+  cancelReason?: string;
+  reviewId?: string;
 }
 
-export interface VerificationRequest {
+export interface Review {
   id: string;
+  listingId: string;
+  dealId: string;
   userId: string;
   userName: string;
-  userPhone: string;
-  photos: string[]; 
-  receipt: string;  
-  status: IdentificationStatus;
-  submittedAt: any;
-  errorReason?: string;
-}
-
-export interface Complaint {
-  id: string;
-  reportedUserId: string;
-  reporterUserId: string;
-  reason: string;
+  rating: number;
+  comment: string;
   createdAt: any;
-  status: 'Pending' | 'Resolved';
 }
 
 export interface Listing {
@@ -128,30 +92,19 @@ export interface Message {
   isRead: boolean;
   type: 'text' | 'deal';
   dealId?: string;
-  isEdited?: boolean;
-  isDeletedForEveryone?: boolean;
-  deletedFor?: string[]; 
 }
 
 export const VIP_PRICE = 20;
 export const KYC_PRICE = 10;
 export const PREMIUM_PRICE = 50;
-
 export const REGULAR_LISTING_LIMIT = 1;
 export const PREMIUM_LISTING_LIMIT = 5;
-
 export const REGULAR_CHAR_LIMIT = 1000;
 export const PREMIUM_CHAR_LIMIT = 5000;
 
 export const ALL_REGIONS = [
   "Душанбе", "Бохтар", "Кӯлоб", "Хуҷанд", "Истаравшан", "Конибодом", "Панҷакент", 
   "Хоруғ", "Ваҳдат", "Ҳисор", "Турсунзода", "Рашт", "Данғара", "Ёвон"
-];
-
-export const ALL_CATEGORIES = [
-  "Барномасоз", "Дӯзанда", "Дуредгар", "Сантехник", "Барқчӣ", "Меъмор", 
-  "Ронанда", "Ошпаз", "Муаллим", "Табиб", "Сартарош", "Рангуборчӣ", 
-  "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
 ];
 
 export const FORBIDDEN_WORDS = [

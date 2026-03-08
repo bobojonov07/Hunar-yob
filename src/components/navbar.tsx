@@ -4,7 +4,7 @@
 import { useUser, useAuth, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck, Crown } from "lucide-react";
+import { Hammer, LogOut, Heart, LogIn, UserPlus, Menu, Info, Search, MessageSquare, User, Home, ShieldCheck, Crown, Globe } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { doc } from "firebase/firestore";
 import { UserProfile } from "@/lib/storage";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 import {
   Sheet,
   SheetContent,
@@ -19,12 +20,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
   const { user } = useUser();
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
+  const { t, lang, changeLanguage } = useTranslation();
 
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
@@ -35,12 +43,12 @@ export function Navbar() {
   };
 
   const menuItems = [
-    { label: "Асосӣ", icon: Home, href: "/" },
-    { label: "Эълонҳо", icon: Search, href: "/listings" },
-    { label: "Паёмҳо", icon: MessageSquare, href: "/messages", authRequired: true },
-    { label: "Писандидаҳо", icon: Heart, href: "/favorites", authRequired: true },
-    { label: "Профил", icon: User, href: "/profile", authRequired: true },
-    { label: "Оиди мо", icon: Info, href: "/about" },
+    { label: t.nav.home, icon: Home, href: "/" },
+    { label: t.nav.listings, icon: Search, href: "/listings" },
+    { label: t.nav.messages, icon: MessageSquare, href: "/messages", authRequired: true },
+    { label: t.nav.favorites, icon: Heart, href: "/favorites", authRequired: true },
+    { label: t.nav.profile, icon: User, href: "/profile", authRequired: true },
+    { label: t.nav.about, icon: Info, href: "/about" },
   ];
 
   return (
@@ -59,19 +67,9 @@ export function Navbar() {
                   <Hammer className="h-8 w-8 text-primary fill-primary/20" />
                   KORYOB 2
                 </SheetTitle>
-                <div className="flex items-center gap-2 mt-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Амнияти 100% кафолат</p>
-                </div>
               </SheetHeader>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-1">
-                {user && profile?.isPremium && (
-                  <div className="p-4 mb-2 bg-yellow-400/10 rounded-2xl border-2 border-yellow-400/20 flex items-center gap-3">
-                    <Crown className="h-6 w-6 text-yellow-600 fill-yellow-600" />
-                    <span className="font-black text-[10px] text-yellow-700 uppercase tracking-widest">PREMIUM УЗВ</span>
-                  </div>
-                )}
                 {menuItems.map((item) => {
                   if (item.authRequired && !user) return null;
                   return (
@@ -89,13 +87,13 @@ export function Navbar() {
                     <Link href="/login">
                       <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
                         <LogIn className="h-5 w-5 text-primary" />
-                        <span className="font-black text-secondary text-sm tracking-tight uppercase">Воридшавӣ</span>
+                        <span className="font-black text-secondary text-sm tracking-tight uppercase">{t.nav.login}</span>
                       </div>
                     </Link>
                     <Link href="/register">
                       <div className="flex items-center gap-4 p-4 rounded-2xl bg-primary/10 transition-all group">
                         <UserPlus className="h-5 w-5 text-primary" />
-                        <span className="font-black text-primary text-sm tracking-tight uppercase">Сабти ном</span>
+                        <span className="font-black text-primary text-sm tracking-tight uppercase">{t.nav.register}</span>
                       </div>
                     </Link>
                   </>
@@ -103,16 +101,17 @@ export function Navbar() {
               </div>
 
               <div className="mt-auto p-8 border-t bg-muted/5">
+                <div className="flex gap-2 mb-4">
+                  <Button onClick={() => changeLanguage('tg')} variant={lang === 'tg' ? 'default' : 'outline'} size="sm" className="flex-1 rounded-xl">TG</Button>
+                  <Button onClick={() => changeLanguage('ru')} variant={lang === 'ru' ? 'default' : 'outline'} size="sm" className="flex-1 rounded-xl">RU</Button>
+                  <Button onClick={() => changeLanguage('en')} variant={lang === 'en' ? 'default' : 'outline'} size="sm" className="flex-1 rounded-xl">EN</Button>
+                </div>
                 {user && (
                   <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 mb-4 rounded-2xl hover:bg-red-50 transition-all group text-red-500">
                     <LogOut className="h-5 w-5" />
-                    <span className="font-black text-sm tracking-tight uppercase">Баромад</span>
+                    <span className="font-black text-sm tracking-tight uppercase">{t.nav.logout}</span>
                   </button>
                 )}
-                <div className="p-5 bg-white rounded-3xl border-2 border-dashed border-primary/20 text-center shadow-sm">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Version 1.0.0 (2026)</p>
-                  <p className="text-[9px] font-bold text-muted-foreground uppercase">ТАҲИЯШУДА ТАВАССУТИ TAJ.WEB</p>
-                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -123,39 +122,35 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center space-x-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Globe className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-2xl">
+              <DropdownMenuItem onClick={() => changeLanguage('tg')} className="font-black">TG - Тоҷикӣ</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changeLanguage('ru')} className="font-black">RU - Русский</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changeLanguage('en')} className="font-black">EN - English</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {user ? (
-            <>
-              <Button variant="ghost" size="icon" asChild className="text-secondary hover:text-primary rounded-full hidden sm:flex">
-                <Link href="/favorites">
-                  <Heart className="h-5 w-5" />
-                </Link>
-              </Button>
-              <Link href="/profile" className="hover:opacity-80 transition-opacity relative">
-                <Avatar className={cn(
-                  "h-10 w-10 border-2 shadow-lg",
-                  profile?.isPremium ? "border-yellow-400" : "border-primary/20"
-                )}>
-                  <AvatarImage src={profile?.profileImage || user.photoURL || ""} className="object-cover" />
-                  <AvatarFallback className="bg-primary text-white font-black text-xs">
-                    {profile?.name?.charAt(0) || user.displayName?.charAt(0) || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                {profile?.isPremium && (
-                  <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 shadow-sm">
-                    <Crown className="h-3 w-3 text-secondary fill-secondary" />
-                  </div>
-                )}
-              </Link>
-            </>
+            <Link href="/profile" className="hover:opacity-80 transition-opacity relative">
+              <Avatar className={cn(
+                "h-10 w-10 border-2 shadow-lg",
+                profile?.isPremium ? "border-yellow-400" : "border-primary/20"
+              )}>
+                <AvatarImage src={profile?.profileImage} className="object-cover" />
+                <AvatarFallback className="bg-primary text-white font-black text-xs">
+                  {profile?.name?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
           ) : (
-            <>
-              <Button variant="ghost" size="sm" asChild className="flex text-secondary font-black uppercase tracking-widest text-[10px] hover:text-primary">
-                <Link href="/login">Воридшавӣ</Link>
-              </Button>
-              <Button size="sm" asChild className="bg-primary text-white hover:bg-primary/90 font-black rounded-xl px-5 h-10 uppercase tracking-widest text-[10px] shadow-lg hidden xs:flex">
-                <Link href="/register">Сабти ном</Link>
-              </Button>
-            </>
+            <Button size="sm" asChild className="bg-primary text-white font-black rounded-xl px-5 h-10 uppercase tracking-widest text-[10px] shadow-lg">
+              <Link href="/login">{t.nav.login}</Link>
+            </Button>
           )}
         </div>
       </div>
