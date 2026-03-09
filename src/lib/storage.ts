@@ -18,6 +18,7 @@ export interface UserProfile {
   balance: number;
   identificationStatus: IdentificationStatus;
   isPremium?: boolean;
+  premiumExpiresAt?: any; // Санаи ба охир расидани Premium
   favorites?: string[];
   fcmTokens?: string[];
   lastActive?: any;
@@ -96,7 +97,7 @@ export interface Message {
 
 export const VIP_PRICE = 20;
 export const KYC_PRICE = 10;
-export const PREMIUM_PRICE = 50;
+export const PREMIUM_PRICE = 25; // Нархи нав 25 сомон
 export const REGULAR_LISTING_LIMIT = 1;
 export const PREMIUM_LISTING_LIMIT = 5;
 export const REGULAR_CHAR_LIMIT = 1000;

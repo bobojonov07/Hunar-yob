@@ -25,10 +25,10 @@ import {
   Lock,
   User,
   ShieldCheck,
-  AlertTriangle,
   PlusCircle,
   Crown,
-  Sparkles
+  Phone,
+  MapPin
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -58,7 +58,6 @@ export default function Profile() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Edit States
   const [editName, setEditName] = useState("");
   const [editRegion, setEditRegion] = useState("");
   const [oldPassword, setOldPassword] = useState("");
@@ -79,7 +78,7 @@ export default function Profile() {
     if (file && user && userProfileRef) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result as string, 400, 0.7);
+        const compressed = await compressImage(reader.result as string, 800, 0.9);
         updateDoc(userProfileRef, { profileImage: compressed });
         toast({ title: "Сурат навсозӣ шуд" });
       };
@@ -132,7 +131,7 @@ export default function Profile() {
   if (authLoading || !profile) return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   const registrationDate = profile.createdAt?.toDate()?.toLocaleDateString('tg-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
-  const isUsto = profile.role === 'Usto';
+  const premiumExpiryDate = profile.premiumExpiresAt?.toDate()?.toLocaleDateString('tg-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -178,38 +177,62 @@ export default function Profile() {
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-black text-secondary flex items-center justify-center gap-2">
+                  <h2 className="text-3xl font-black text-secondary flex items-center justify-center gap-2 tracking-tighter uppercase leading-none">
                     {profile.name} 
                     {profile.identificationStatus === 'Verified' && <CheckCircle2 className="h-7 w-7 text-green-500 fill-green-500/10" />}
                   </h2>
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <div className="flex flex-wrap justify-center gap-2 pt-2">
                     <Badge className="bg-primary text-white h-8 px-4 font-black uppercase tracking-widest">{profile.role === 'Usto' ? 'УСТО' : 'МИЗОҶ'}</Badge>
                     {profile.isPremium && <Badge className="bg-yellow-500 text-secondary h-8 px-4 font-black uppercase tracking-widest">PREMIUM</Badge>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 py-4 border-y border-dashed">
-                  <div className="text-center">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">ЭЪЛОНҲОИ ФАЪОЛ</p>
-                    <p className="text-2xl font-black text-secondary">{myListings.length}</p>
+                <div className="pt-6 space-y-4 text-left border-t border-dashed">
+                  <div className="flex items-center gap-4 text-muted-foreground">
+                    <Phone className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Рақами телефон</p>
+                      <p className="text-sm font-black text-secondary">+992 {profile.phone}</p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="space-y-4 text-left">
-                  <div className="flex items-center gap-3 text-muted-foreground">
+                  <div className="flex items-center gap-4 text-muted-foreground">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Минтақа</p>
+                      <p className="text-sm font-black text-secondary">{profile.region || "Номаълум"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-muted-foreground">
                     <Calendar className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-bold">Аъзо аз: <b className="text-secondary">{registrationDate}</b></span>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Санаи сабт (Аъзо аз)</p>
+                      <p className="text-sm font-black text-secondary">{registrationDate}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-muted-foreground">
+                  {profile.isPremium && (
+                    <div className="flex items-center gap-4 text-muted-foreground p-4 bg-yellow-50 rounded-2xl border border-yellow-100">
+                      <Crown className="h-5 w-5 text-yellow-500" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-yellow-600">Premium то санаи:</p>
+                        <p className="text-sm font-black text-yellow-700">{premiumExpiryDate}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-4 text-muted-foreground">
                     <ShieldCheck className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-bold">Верификатсия: <b className={cn("uppercase", profile.identificationStatus === 'Verified' ? 'text-green-600' : 'text-orange-500')}>{profile.identificationStatus}</b></span>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Верификатсия</p>
+                      <p className={cn("text-sm font-black uppercase", profile.identificationStatus === 'Verified' ? 'text-green-600' : 'text-orange-500')}>
+                        {profile.identificationStatus}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
                 {!profile.isPremium && (
                   <button 
                     onClick={() => router.push("/premium")} 
-                    className="w-full bg-gradient-to-br from-yellow-400 to-orange-600 p-8 rounded-[2.5rem] text-secondary text-left relative overflow-hidden group hover:scale-[1.02] transition-all shadow-2xl"
+                    className="w-full bg-gradient-to-br from-yellow-400 to-orange-600 p-8 rounded-[2.5rem] text-secondary text-left relative overflow-hidden group hover:scale-[1.02] transition-all shadow-2xl mt-4"
                   >
                     <div className="absolute top-[-50%] right-[-20%] w-40 h-40 bg-white/20 blur-[50px] rounded-full" />
                     <div className="relative z-10 flex justify-between items-center">
@@ -234,13 +257,11 @@ export default function Profile() {
               </TabsList>
               
               <TabsContent value="listings" className="mt-8 space-y-6">
-                {isUsto && (
-                  <div className="flex justify-end mb-4">
-                    <Button asChild className="bg-primary hover:bg-primary/90 h-14 px-8 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">
-                      <Link href="/create-listing"><PlusCircle className="mr-2 h-5 w-5" /> ЭЪЛОНИ НАВ</Link>
-                    </Button>
-                  </div>
-                )}
+                <div className="flex justify-end mb-4">
+                  <Button asChild className="bg-primary hover:bg-primary/90 h-14 px-8 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">
+                    <Link href="/create-listing"><PlusCircle className="mr-2 h-5 w-5" /> ЭЪЛОНИ НАВ</Link>
+                  </Button>
+                </div>
 
                 {myListings.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

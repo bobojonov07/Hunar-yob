@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { FORBIDDEN_WORDS } from "./storage"
@@ -16,9 +17,9 @@ export function hasProfanity(text: string): boolean {
 }
 
 /**
- * Фишурдани сурат дар тарафи клиент барои сарфаи ҳаҷм.
+ * Фишурдани сурат бо сифати баланд.
  */
-export async function compressImage(base64Str: string, maxWidth = 1000, quality = 0.75): Promise<string> {
+export async function compressImage(base64Str: string, maxWidth = 1600, quality = 0.9): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = base64Str;

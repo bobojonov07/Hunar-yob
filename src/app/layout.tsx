@@ -1,3 +1,4 @@
+
 "use client"
 
 import './globals.css';
@@ -31,6 +32,7 @@ export default function RootLayout({
           <NotificationHandler />
           <UserGuard>
             <Heartbeat />
+            <PremiumGuard />
             {children}
             <BottomNav />
           </UserGuard>
@@ -55,7 +57,6 @@ function UserGuard({ children }: { children: React.ReactNode }) {
         const snap = await getDocs(q);
         snap.forEach((d) => deleteDoc(d.ref));
         
-        // Mark as blocked in Firestore if reached warning limit
         if (!profile?.isBlocked && (profile?.warningCount || 0) >= 5) {
           updateDoc(userRef!, { isBlocked: true, identificationStatus: 'Blocked' }).catch(() => {});
         }
@@ -86,6 +87,27 @@ function UserGuard({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+function PremiumGuard() {
+  const { user } = useUser();
+  const db = useFirestore();
+  const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userRef as any);
+
+  useEffect(() => {
+    if (profile?.isPremium && profile.premiumExpiresAt) {
+      const expiry = profile.premiumExpiresAt.toDate();
+      if (expiry < new Date()) {
+        updateDoc(userRef!, { 
+          isPremium: false, 
+          premiumExpiresAt: null 
+        }).catch(() => {});
+      }
+    }
+  }, [profile, userRef]);
+
+  return null;
 }
 
 function Heartbeat() {

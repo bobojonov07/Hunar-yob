@@ -13,17 +13,12 @@ import {
   ChevronLeft, 
   Loader2, 
   CheckCircle2, 
-  AlertCircle, 
-  ArrowRight, 
-  CreditCard,
-  FileText,
-  Clock,
-  Sparkles
+  Clock
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { doc, updateDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { compressImage, cn } from "@/lib/utils";
 
 export default function PremiumPurchasePage() {
@@ -52,7 +47,7 @@ export default function PremiumPurchasePage() {
     const reader = new FileReader();
     reader.onloadend = async () => {
       try {
-        const compressed = await compressImage(reader.result as string, 800, 0.7);
+        const compressed = await compressImage(reader.result as string, 1200, 0.9);
         setReceipt(compressed);
       } catch (err) {
         console.error("Image compression error:", err);
@@ -73,7 +68,8 @@ export default function PremiumPurchasePage() {
       receiptImage: receipt,
       submittedAt: serverTimestamp(),
       status: 'Pending',
-      price: PREMIUM_PRICE
+      price: PREMIUM_PRICE,
+      durationMonths: 3
     };
 
     try {
@@ -82,7 +78,7 @@ export default function PremiumPurchasePage() {
 
       toast({ 
         title: "Дархост фиристода шуд", 
-        description: "Пас аз тасдиқи чек, статуси Premium фаъол мешавад." 
+        description: "Пас аз тасдиқи чек, статуси Premium барои 3 моҳ фаъол мешавад." 
       });
       router.push("/profile");
     } catch (err: any) {
@@ -110,8 +106,8 @@ export default function PremiumPurchasePage() {
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-transparent animate-pulse" />
               <Crown className="h-12 w-12 text-yellow-500 relative z-10" />
             </div>
-            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">KORYOB PREMIUM</h1>
-            <p className="text-muted-foreground font-medium italic">Имкониятҳои бемаҳдудро фаъол созед</p>
+            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase leading-none">KORYOB PREMIUM</h1>
+            <p className="text-muted-foreground font-medium italic">Дастрасии махсус барои 3 моҳ</p>
           </div>
 
           <Card className="border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
@@ -119,13 +115,14 @@ export default function PremiumPurchasePage() {
               {step === 1 ? (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="bg-yellow-50 p-8 rounded-[2.5rem] border-2 border-dashed border-yellow-200 text-center space-y-4">
-                    <h2 className="text-xl font-black text-yellow-700 uppercase">Қадами 1: ПАРДОХТ</h2>
+                    <h2 className="text-xl font-black text-yellow-700 uppercase tracking-tighter">Қадами 1: ПАРДОХТ</h2>
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-5xl font-black text-secondary">{PREMIUM_PRICE}</span>
                       <span className="text-xl font-bold text-yellow-600">TJS</span>
                     </div>
+                    <p className="text-[10px] font-black uppercase text-yellow-600 tracking-widest">Барои 3 моҳи истифода</p>
                     <div className="pt-4 space-y-2">
-                      <p className="text-[10px] font-black uppercase opacity-50">Рақами корт (Душанбе Сити):</p>
+                      <p className="text-[10px] font-black uppercase opacity-50">Рақами корт:</p>
                       <p className="text-2xl font-black text-secondary tracking-tighter">975638778</p>
                       <p className="text-sm font-bold text-primary">Ном: А Б</p>
                     </div>
@@ -134,15 +131,11 @@ export default function PremiumPurchasePage() {
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
                       <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
-                      <p className="text-sm font-bold text-secondary">Нашри то 5 эълон (ба ҷои 1 эълон)</p>
+                      <p className="text-sm font-bold text-secondary">Нашри то 5 эълон</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
                       <p className="text-sm font-bold text-secondary">Лимити паёмҳо то 5000 аломат</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
-                      <p className="text-sm font-bold text-secondary">Нишони тиллоии (Premium) дар профил</p>
                     </div>
                   </div>
 
@@ -184,7 +177,7 @@ export default function PremiumPurchasePage() {
                   <div className="p-6 bg-blue-50 rounded-[2rem] border-2 border-dashed border-blue-100 flex gap-4">
                     <Clock className="h-6 w-6 text-blue-500 shrink-0" />
                     <p className="text-[10px] font-black text-blue-600 uppercase leading-relaxed">
-                      Мо чеки шуморо дар муддати 24 соат тафтиш карда, статуси Premium-ро фаъол месозем.
+                      Тасдиқи Premium дар муддати 24 соат сурат мегирад.
                     </p>
                   </div>
 
