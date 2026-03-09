@@ -30,7 +30,9 @@ import {
   Flag,
   ShieldCheck,
   Zap,
-  Sparkles
+  Sparkles,
+  X,
+  Maximize2
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +40,7 @@ import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useDoc, useCollection, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, updateDoc, arrayUnion, arrayRemove, increment, collection, query, orderBy, getDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -53,6 +56,7 @@ export default function ListingDetail() {
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
   const [artisanProfile, setArtisanProfile] = useState<UserProfile | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (listing?.userId) {
@@ -158,7 +162,7 @@ export default function ListingDetail() {
 
   return (
     <div className={cn(
-      "min-h-screen transition-colors duration-1000",
+      "min-h-screen transition-colors duration-1000 pb-20",
       isVip ? "bg-secondary/95 text-white" : "bg-background text-foreground"
     )}>
       <Navbar />
@@ -228,8 +232,14 @@ export default function ListingDetail() {
                 <CarouselContent>
                   {listing.images.map((img, index) => (
                     <CarouselItem key={index}>
-                      <div className="relative aspect-video">
-                        <Image src={img} alt={`${listing.title}`} fill className="object-cover" />
+                      <div 
+                        className="relative aspect-video cursor-zoom-in group"
+                        onClick={() => setSelectedImage(img)}
+                      >
+                        <Image src={img} alt={`${listing.title}`} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Maximize2 className="h-12 w-12 text-white drop-shadow-lg" />
+                        </div>
                       </div>
                     </CarouselItem>
                   ))}
@@ -242,7 +252,7 @@ export default function ListingDetail() {
                 )}
               </Carousel>
               {isVip && (
-                <div className="absolute top-10 right-10 pointer-events-none group">
+                <div className="absolute top-10 right-10 pointer-events-none z-20">
                   <Badge className="bg-yellow-500 text-secondary text-2xl px-10 py-4 shadow-[0_0_50px_rgba(234,179,8,0.5)] font-black rounded-full animate-pulse uppercase tracking-tighter">
                     <Crown className="mr-3 h-8 w-8 fill-secondary" />
                     VIP PREMIUM
@@ -448,6 +458,32 @@ export default function ListingDetail() {
           </div>
         </div>
       </div>
+
+      {/* Full Screen Image Viewer */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-black/90 backdrop-blur-xl flex items-center justify-center rounded-[2rem] overflow-hidden">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-6 right-6 z-50 bg-white/10 hover:bg-white/20 text-white p-3 rounded-2xl transition-all"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            {selectedImage && (
+              <div className="relative w-full h-full min-h-[50vh] flex items-center justify-center p-4">
+                <Image 
+                  src={selectedImage} 
+                  alt="Full view" 
+                  width={1920}
+                  height={1080}
+                  className="max-w-full max-h-screen object-contain rounded-xl shadow-2xl"
+                  priority
+                />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
