@@ -76,7 +76,8 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!chatId || !user || !db) return;
-    getDoc(doc(db, "chats", chatId)).then(snap => {
+    const fetchOther = async () => {
+      const snap = await getDoc(doc(db, "chats", chatId));
       let otherId = "";
       if (snap.exists()) {
         const chatData = snap.data();
@@ -85,11 +86,11 @@ export default function ChatPage() {
         otherId = user.uid === listing.userId ? targetClientId! : listing.userId;
       }
       if (otherId) {
-        getDoc(doc(db, "users", otherId)).then(uSnap => {
-          if (uSnap.exists()) setOtherParty({ ...uSnap.data(), id: uSnap.id } as UserProfile);
-        });
+        const uSnap = await getDoc(doc(db, "users", otherId));
+        if (uSnap.exists()) setOtherParty({ ...uSnap.data(), id: uSnap.id } as UserProfile);
       }
-    });
+    };
+    fetchOther();
   }, [db, chatId, user, listing, targetClientId]);
 
   const messagesQuery = useMemo(() => {
@@ -113,7 +114,14 @@ export default function ChatPage() {
 
   const isOnePremium = profile?.isPremium || otherParty?.isPremium;
   const CHAR_LIMIT = isOnePremium ? PREMIUM_CHAR_LIMIT : REGULAR_CHAR_LIMIT;
-  const totalChars = useMemo(() => messages.reduce((sum, msg) => sum + (msg.text?.length || 0), 0), [messages]);
+  
+  // Лимит танҳо барои паёмҳои нестнашудаи ман ҳисоб карда мешавад
+  const totalChars = useMemo(() => {
+    return messages
+      .filter(msg => msg.senderId === user?.uid && !msg.isDeleted)
+      .reduce((sum, msg) => sum + (msg.text?.length || 0), 0);
+  }, [messages, user]);
+
   const charProgress = Math.min((totalChars / CHAR_LIMIT) * 100, 100);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -133,7 +141,7 @@ export default function ChatPage() {
     }
 
     if (totalChars + newMessage.length > CHAR_LIMIT) {
-      toast({ title: "Лимит", description: "Лимити аломатҳо гузашт", variant: "destructive" });
+      toast({ title: "Лимит", description: "Лимити аломатҳо гузашт. Паёмҳои кӯҳнаро нест кунед ё Premium гиред.", variant: "destructive" });
       return;
     }
 
@@ -243,6 +251,12 @@ export default function ChatPage() {
         )}
 
         <div className="px-6 pb-3 space-y-1">
+          <div className="flex justify-between items-center mb-1">
+            <span className={cn("text-[9px] font-black uppercase tracking-widest", isPremiumTheme ? "text-white/40" : "text-muted-foreground")}>
+              Лимит: {totalChars} / {CHAR_LIMIT}
+            </span>
+            {totalChars > CHAR_LIMIT * 0.8 && <span className="text-[8px] font-bold text-red-500 animate-pulse uppercase">Лимит кам мондааст!</span>}
+          </div>
           <Progress value={charProgress} className="h-1" />
         </div>
       </div>
@@ -261,7 +275,7 @@ export default function ChatPage() {
                 <p className={cn("text-sm font-bold", msg.isDeleted && "italic opacity-50")}>{msg.text}</p>
                 {msg.isEdited && !msg.isDeleted && <span className="text-[8px] opacity-50 ml-1">(таҳрир)</span>}
                 
-                {profile.isPremium && !msg.isDeleted && (
+                {!msg.isDeleted && (
                   <div className="absolute -top-8 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {canEdit && <Button variant="secondary" size="icon" className="h-7 w-7 rounded-lg" onClick={() => { setEditingMessage(msg); setNewMessage(msg.text); }}><Edit2 className="h-3 w-3" /></Button>}
                     <Button variant="destructive" size="icon" className="h-7 w-7 rounded-lg" onClick={() => { setMessageToDelete(msg); setIsDeleteDialogOpen(true); }}><Trash2 className="h-3 w-3" /></Button>

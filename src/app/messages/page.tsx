@@ -93,25 +93,9 @@ export default function MessagesList() {
           }
         }
         
-        let lastMsgDetails = null;
-        try {
-          const msgQuery = query(
-            collection(db, "chats", chat.id, "messages"),
-            orderBy("createdAt", "desc"),
-            limit(1)
-          );
-          const msgSnap = await getDocs(msgQuery);
-          if (!msgSnap.empty) {
-            lastMsgDetails = { ...msgSnap.docs[0].data(), id: msgSnap.docs[0].id } as Message;
-          }
-        } catch (e) {
-          console.error("Error fetching last message:", e);
-        }
-
         results.push({
           ...chat,
-          otherParty: otherProfile || null,
-          lastMessageFull: lastMsgDetails
+          otherParty: otherProfile || null
         });
       }
       
@@ -252,15 +236,6 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {conv.lastSenderId === currentUser.uid && (
-                <div className="shrink-0">
-                  {conv.lastMessageFull?.isRead ? (
-                    <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
-                  ) : (
-                    <Check className="h-3.5 w-3.5 text-muted-foreground opacity-60" />
-                  )}
-                </div>
-              )}
               <p className={cn(
                 "text-xs truncate font-medium text-muted-foreground",
                 (conv.unreadCount?.[currentUser.uid] || 0) > 0 && "font-black text-secondary"
