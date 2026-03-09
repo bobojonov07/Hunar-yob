@@ -1,11 +1,16 @@
 
-# KORYOB 2 — Платформаи устоҳо (Версияи 1.1.0 — 2026)
+# KORYOB_2 — Платформаи устоҳо (Версияи 1.1.0 — 2026)
 
 Ин барнома бо истифода аз **NextJS**, **Firebase** ва **Genkit (AI)** сохта шудааст.
 
 ## 🚀 Чӣ тавр кодро ба GitHub навсозӣ кунем? (Update Code)
 
-Дар терминали худ ин фармонҳоро иҷро кунед:
+Агар шумо номи репозиторийро дар GitHub иваз карда бошед, аввал ин фармонро иҷро кунед:
+```bash
+git remote set-url origin https://github.com/НОМИ_ШУМО/KORYOB_2.git
+```
+
+Баъд барои фиристодани тағйирот:
 
 1. **Ҳамаи файлҳоро омода кунед:**
    ```bash
@@ -14,7 +19,7 @@
 
 2. **Тағйиротро сабт кунед (Commit):**
    ```bash
-   git commit -m "Update 2026: Improved UI, SEO, and Performance"
+   git commit -m "Update: Improved UI, SEO, and Performance"
    ```
 
 3. **Ба GitHub фиристед (Push):**
