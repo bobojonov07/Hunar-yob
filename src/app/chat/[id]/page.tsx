@@ -16,7 +16,9 @@ import {
   Info,
   Trash2,
   Edit2,
-  X
+  X,
+  ShieldAlert,
+  AlertTriangle
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +42,7 @@ import { Message, UserProfile, REGULAR_CHAR_LIMIT, PREMIUM_CHAR_LIMIT } from "@/
 import { cn, hasProfanity } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ChatPage() {
   const { id: listingId } = useParams();
@@ -224,6 +227,21 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
+        
+        {/* Security Warning for Unverified Users */}
+        {otherParty && otherParty.identificationStatus !== 'Verified' && (
+          <div className="px-4 pb-2">
+            <Alert variant="destructive" className="rounded-2xl border-2 py-2 bg-orange-50 border-orange-200">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0" />
+                <p className="text-[10px] font-black uppercase text-orange-700 leading-tight">
+                  ДИҚҚАТ! Ин корбар верификатсия накардааст. Барои амнияти худ ягон шартнома набандед ва маълумоти махфиро надиҳед.
+                </p>
+              </div>
+            </Alert>
+          </div>
+        )}
+
         <div className="px-6 pb-3 space-y-1">
           <Progress value={charProgress} className="h-1" />
         </div>

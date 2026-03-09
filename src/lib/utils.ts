@@ -28,6 +28,7 @@ export async function compressImage(base64Str: string, maxWidth = 1600, quality 
       let width = img.width;
       let height = img.height;
 
+      // Maintain aspect ratio while ensuring max resolution is high
       if (width > maxWidth) {
         height = (maxWidth / width) * height;
         width = maxWidth;
@@ -36,7 +37,11 @@ export async function compressImage(base64Str: string, maxWidth = 1600, quality 
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, width, height);
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+      }
       
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
