@@ -8,12 +8,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Филтри дастӣ барои санҷиши дашномҳо.
+ * Филтри дастӣ барои санҷиши дашномҳо бо истифода аз Regular Expressions.
+ * Акнун танҳо калимаҳои пурраро месанҷад, то феълҳоро (мисли 'мекунам') хато нагирад.
  */
 export function hasProfanity(text: string): boolean {
   if (!text) return false;
   const lowerText = text.toLowerCase();
-  return FORBIDDEN_WORDS.some(word => lowerText.includes(word.toLowerCase()));
+  
+  return FORBIDDEN_WORDS.some(word => {
+    // \b калимаро танҳо дар сурати алоҳида будан меёбад
+    const regex = new RegExp(`\\b${word.toLowerCase()}\\b`, 'i');
+    return regex.test(lowerText);
+  });
 }
 
 /**
@@ -30,7 +36,6 @@ export async function compressImage(base64Str: string, maxWidth = 1920, quality 
       let width = img.width;
       let height = img.height;
 
-      // Танҳо агар сурат аз 1920px калон бошад, онро хурд мекунем
       if (width > maxWidth) {
         height = (maxWidth / width) * height;
         width = maxWidth;
@@ -45,7 +50,6 @@ export async function compressImage(base64Str: string, maxWidth = 1920, quality 
         ctx.drawImage(img, 0, 0, width, height);
       }
       
-      // Истифодаи сифати 1.0 (100%) барои пешгирии хирагӣ ва гум шудани сифат
       resolve(canvas.toDataURL('image/jpeg', 1.0));
     };
   });

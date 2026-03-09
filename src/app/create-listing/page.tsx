@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ALL_CATEGORIES, UserProfile, Listing, REGULAR_LISTING_LIMIT, PREMIUM_LISTING_LIMIT } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ChevronLeft, Loader2, X, AlertTriangle, Crown } from "lucide-react";
+import { Upload, ChevronLeft, Loader2, X, AlertTriangle, Crown, PlusCircle } from "lucide-react";
 import Image from "next/image";
 import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError, useCollection } from "@/firebase";
 import { doc, setDoc, serverTimestamp, collection, query, where, updateDoc, increment } from "firebase/firestore";
@@ -107,6 +107,7 @@ export default function CreateListing() {
 
     setIsSubmitting(true);
     
+    // Санҷиши дақиқи калимаҳои қабеҳ
     if (hasProfanity(`${title} ${description}`)) {
       const newWarningCount = (profile.warningCount || 0) + 1;
       await updateDoc(userProfileRef, { 
@@ -144,7 +145,6 @@ export default function CreateListing() {
       router.push("/");
     } catch (err: any) {
       console.error("Submit error:", err);
-      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: listingRef.path, operation: 'create', requestResourceData: listingData }));
     } finally {
       setIsSubmitting(false);
     }
@@ -198,7 +198,7 @@ export default function CreateListing() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between"><Label className="font-black text-xs uppercase tracking-widest opacity-60">Тавсифи хидмат</Label>
-                  <span className={cn("text-[10px] font-black", (description.length < 150) ? "text-red-500" : "text-green-500")}>{description.length} аломат</span></div>
+                  <span className={cn("text-[10px] font-black", (description.length < 50) ? "text-red-500" : "text-green-500")}>{description.length} аломат</span></div>
                   <Textarea placeholder="Дар бораи маҳорати худ нависед..." className="min-h-[180px] rounded-2xl p-6" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <Button type="submit" disabled={isSubmitting || isCompressing} className="w-full bg-primary h-16 font-black rounded-[2rem] shadow-2xl uppercase tracking-widest">

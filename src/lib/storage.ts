@@ -18,7 +18,7 @@ export interface UserProfile {
   balance: number;
   identificationStatus: IdentificationStatus;
   isPremium?: boolean;
-  premiumExpiresAt?: any; // Санаи ба охир расидани Premium
+  premiumExpiresAt?: any; 
   favorites?: string[];
   fcmTokens?: string[];
   lastActive?: any;
@@ -97,7 +97,7 @@ export interface Message {
 
 export const VIP_PRICE = 20;
 export const KYC_PRICE = 10;
-export const PREMIUM_PRICE = 25; // Нархи нав 25 сомон
+export const PREMIUM_PRICE = 25; 
 export const REGULAR_LISTING_LIMIT = 1;
 export const PREMIUM_LISTING_LIMIT = 5;
 export const REGULAR_CHAR_LIMIT = 1000;
@@ -114,6 +114,8 @@ export const ALL_CATEGORIES = [
   "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
 ];
 
+// Рӯйхати калимаҳои мамнӯъ. 
+// "кун" ҳамчун феъл истифода мешавад, бинобар ин онро бо эҳтиёт истифода мебарем.
 export const FORBIDDEN_WORDS = [
-  "сука", "лаънат", "харом", "ганд", "наҳс", "кун", "гом", "хароми", "даюс"
+  "сука", "харом", "ганд", "наҳс", "гом", "хароми", "даюс"
 ];
