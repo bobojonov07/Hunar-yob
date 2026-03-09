@@ -61,12 +61,24 @@ export default function CreateListing() {
     setIsCompressing(true);
     const newImages: string[] = [];
     for (const file of Array.from(files)) {
-      const reader = new FileReader();
-      const compressed = await new Promise<string>((resolve) => {
-        reader.onloadend = async () => resolve(await compressImage(reader.result as string, 1920, 1.0));
-        reader.readAsDataURL(file);
-      });
-      newImages.push(compressed);
+      try {
+        const reader = new FileReader();
+        const compressed = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = async () => {
+            try {
+              const res = await compressImage(reader.result as string, 1920, 1.0);
+              resolve(res);
+            } catch (err) {
+              reject(err);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newImages.push(compressed);
+      } catch (err) {
+        console.error("Compression failed:", err);
+      }
     }
     setImageUrls(prev => [...prev, ...newImages]);
     setIsCompressing(false);
@@ -76,7 +88,7 @@ export default function CreateListing() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile || !user || !userProfileRef) return;
+    if (!profile || !user || !userProfileRef || isSubmitting) return;
     
     if (hasReachedLimit) {
       toast({ title: "Маҳдудияти эълон", description: `Лимити ${listingLimit} эълон тамом шуд.`, variant: "destructive" });
@@ -85,6 +97,11 @@ export default function CreateListing() {
 
     if (imageUrls.length < 1) {
       toast({ title: "Хатогӣ", description: "Ҳадди ақал 1 сурат бор кунед", variant: "destructive" });
+      return;
+    }
+
+    if (!title.trim() || !category || !description.trim()) {
+      toast({ title: "Хатогӣ", description: "Тамоми майдонҳоро пур кунед", variant: "destructive" });
       return;
     }
 
@@ -121,15 +138,16 @@ export default function CreateListing() {
       views: 0
     };
 
-    setDoc(listingRef, listingData)
-      .then(() => {
-        toast({ title: "Эълон нашр шуд" });
-        router.push("/");
-      })
-      .catch((err: any) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: listingRef.path, operation: 'create', requestResourceData: listingData }));
-      })
-      .finally(() => setIsSubmitting(false));
+    try {
+      await setDoc(listingRef, listingData);
+      toast({ title: "Эълон нашр шуд" });
+      router.push("/");
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ path: listingRef.path, operation: 'create', requestResourceData: listingData }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (authLoading || checkLoading || !profile) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -180,7 +198,7 @@ export default function CreateListing() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between"><Label className="font-black text-xs uppercase tracking-widest opacity-60">Тавсифи хидмат</Label>
-                  <span className={cn("text-[10px] font-black", (description.length < 150 || description.length > 250) ? "text-red-500" : "text-green-500")}>{description.length} / 150-250</span></div>
+                  <span className={cn("text-[10px] font-black", (description.length < 150) ? "text-red-500" : "text-green-500")}>{description.length} аломат</span></div>
                   <Textarea placeholder="Дар бораи маҳорати худ нависед..." className="min-h-[180px] rounded-2xl p-6" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <Button type="submit" disabled={isSubmitting || isCompressing} className="w-full bg-primary h-16 font-black rounded-[2rem] shadow-2xl uppercase tracking-widest">

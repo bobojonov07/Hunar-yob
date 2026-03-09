@@ -25,7 +25,8 @@ import {
   Phone,
   MapPin,
   Clock,
-  Trash2
+  Trash2,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -59,7 +60,6 @@ export default function Profile() {
     if (file && user && userProfileRef) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        // Сифати 100% барои сурати профил
         const compressed = await compressImage(reader.result as string, 1920, 1.0);
         updateDoc(userProfileRef, { profileImage: compressed });
         toast({ title: "Сурат навсозӣ шуд" });
@@ -87,19 +87,22 @@ export default function Profile() {
 
   const registrationDate = profile.createdAt?.toDate()?.toLocaleDateString('tg-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
   const premiumExpiryDate = profile.premiumExpiresAt?.toDate()?.toLocaleDateString('tg-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
+  const isPremium = profile.isPremium;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className={cn("min-h-screen pb-20", isPremium ? "bg-secondary" : "bg-background")}>
       <Navbar />
       
-      <div className="bg-secondary pt-12 pb-32 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent" />
+      <div className={cn("pt-12 pb-32 relative overflow-hidden", isPremium ? "bg-black/60" : "bg-secondary")}>
+        {isPremium && (
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 via-transparent to-primary/20 animate-pulse" />
+        )}
         <div className="container mx-auto px-4 relative z-10">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <Button variant="ghost" onClick={() => router.back()} className="text-white hover:bg-white/10 font-black rounded-xl">
               <ChevronLeft className="mr-2 h-5 w-5" /> БОЗГАШТ
             </Button>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
               <Button asChild variant="outline" className="rounded-2xl bg-white/5 text-white border-white/20 h-12 font-black">
                 <Link href="/settings"><Settings className="mr-2 h-5 w-5" /> ТАНЗИМОТ</Link>
               </Button>
@@ -115,10 +118,16 @@ export default function Profile() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           <div className="lg:col-span-4 space-y-6">
-            <Card className="border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
+            <Card className={cn(
+              "border-none shadow-3xl rounded-[3rem] overflow-hidden",
+              isPremium ? "bg-white/95 backdrop-blur-xl ring-4 ring-yellow-400/30" : "bg-white"
+            )}>
               <div className="p-10 text-center space-y-6">
-                <div className="relative mx-auto w-40 h-40">
-                  <Avatar className="w-full h-full border-8 border-background shadow-2xl">
+                <div className="relative mx-auto w-44 h-44">
+                  <Avatar className={cn(
+                    "w-full h-full border-8 shadow-2xl",
+                    isPremium ? "border-yellow-400" : "border-background"
+                  )}>
                     <AvatarImage src={profile.profileImage} className="object-cover" />
                     <AvatarFallback className="text-5xl font-black bg-muted text-secondary">{profile.name.charAt(0)}</AvatarFallback>
                   </Avatar>
@@ -129,16 +138,28 @@ export default function Profile() {
                     <Camera className="h-6 w-6" />
                   </button>
                   <input type="file" className="hidden" ref={profileFileInputRef} onChange={handleProfileImageChange} accept="image/*" />
+                  {isPremium && (
+                    <div className="absolute -top-4 -right-4 bg-yellow-400 p-3 rounded-2xl shadow-2xl rotate-12">
+                      <Crown className="h-6 w-6 text-secondary fill-secondary" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-black text-secondary flex items-center justify-center gap-2 tracking-tighter uppercase leading-none">
+                  <h2 className={cn(
+                    "text-3xl font-black flex items-center justify-center gap-2 tracking-tighter uppercase leading-none",
+                    isPremium ? "text-secondary" : "text-secondary"
+                  )}>
                     {profile.name} 
                     {profile.identificationStatus === 'Verified' && <CheckCircle2 className="h-7 w-7 text-green-500 fill-green-500/10" />}
                   </h2>
                   <div className="flex flex-wrap justify-center gap-2 pt-2">
                     <Badge className="bg-primary text-white h-8 px-4 font-black uppercase tracking-widest">{profile.role === 'Usto' ? 'УСТО' : 'МИЗОҶ'}</Badge>
-                    {profile.isPremium && <Badge className="bg-yellow-500 text-secondary h-8 px-4 font-black uppercase tracking-widest">PREMIUM</Badge>}
+                    {isPremium && (
+                      <Badge className="bg-yellow-500 text-secondary h-8 px-4 font-black uppercase tracking-widest">
+                        <Sparkles className="mr-1 h-3 w-3" /> PREMIUM
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
@@ -165,7 +186,7 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  {profile.isPremium && (
+                  {isPremium && (
                     <div className="flex items-center gap-4 p-6 bg-yellow-50 rounded-[2.5rem] border-2 border-yellow-200 shadow-inner group">
                       <div className="h-12 w-12 bg-yellow-500 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                         <Clock className="h-6 w-6 text-white" />
@@ -188,7 +209,7 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {!profile.isPremium && (
+                {!isPremium && (
                   <button 
                     onClick={() => router.push("/premium")} 
                     className="w-full bg-gradient-to-br from-yellow-400 to-orange-600 p-8 rounded-[2.5rem] text-secondary text-left relative overflow-hidden group hover:scale-[1.02] transition-all shadow-2xl mt-4"
@@ -209,8 +230,14 @@ export default function Profile() {
 
           <div className="lg:col-span-8">
             <Tabs defaultValue="listings" className="w-full">
-              <TabsList className="bg-white/50 backdrop-blur-xl p-2 rounded-[2rem] h-20 w-full shadow-inner border border-white">
-                <TabsTrigger value="listings" className="flex-1 rounded-[1.5rem] font-black text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg">
+              <TabsList className={cn(
+                "p-2 rounded-[2rem] h-20 w-full shadow-inner border",
+                isPremium ? "bg-white/10 border-white/20" : "bg-white/50 border-white"
+              )}>
+                <TabsTrigger value="listings" className={cn(
+                  "flex-1 rounded-[1.5rem] font-black text-xs uppercase tracking-widest",
+                  isPremium ? "text-white data-[state=active]:bg-yellow-500 data-[state=active]:text-secondary" : "data-[state=active]:bg-white data-[state=active]:shadow-lg"
+                )}>
                   <User className="mr-2 h-4 w-4" /> Эълонҳои ман
                 </TabsTrigger>
               </TabsList>
@@ -249,9 +276,15 @@ export default function Profile() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-32 bg-white/50 rounded-[3rem] border-4 border-dashed border-muted shadow-inner">
+                  <div className={cn(
+                    "text-center py-32 rounded-[3rem] border-4 border-dashed shadow-inner",
+                    isPremium ? "border-white/20 bg-black/20" : "border-muted bg-white/50"
+                  )}>
                     <User className="h-20 w-20 mx-auto text-muted mb-6 opacity-30" />
-                    <p className="text-muted-foreground font-black uppercase tracking-widest opacity-40">Шумо ҳоло эълон надоред</p>
+                    <p className={cn(
+                      "font-black uppercase tracking-widest opacity-40",
+                      isPremium ? "text-white" : "text-muted-foreground"
+                    )}>Шумо ҳоло эълон надоред</p>
                     <Button asChild className="mt-6 bg-secondary font-black rounded-2xl h-12 px-8 shadow-xl"><Link href="/create-listing">ЭЪЛОНИ НАВ</Link></Button>
                   </div>
                 )}

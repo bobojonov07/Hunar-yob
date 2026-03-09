@@ -13,7 +13,12 @@ import {
   ChevronLeft, 
   Loader2, 
   CheckCircle2, 
-  Clock
+  Clock,
+  Sparkles,
+  Zap,
+  ShieldCheck,
+  TrendingUp,
+  Award
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -95,53 +100,69 @@ export default function PremiumPurchasePage() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="container mx-auto px-4 py-12 max-w-3xl">
         <Button variant="ghost" onClick={() => router.back()} className="mb-8 hover:text-primary p-0 font-black">
           <ChevronLeft className="mr-2 h-6 w-6" /> БОЗГАШТ
         </Button>
 
-        <div className="space-y-8">
+        <div className="space-y-12">
           <div className="text-center space-y-4">
-            <div className="mx-auto h-24 w-24 bg-yellow-50 rounded-[2.5rem] flex items-center justify-center shadow-inner relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-transparent animate-pulse" />
-              <Crown className="h-12 w-12 text-yellow-500 relative z-10" />
+            <div className="mx-auto h-28 w-28 bg-yellow-50 rounded-[3rem] flex items-center justify-center shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-transparent animate-pulse" />
+              <Crown className="h-16 w-16 text-yellow-500 relative z-10 group-hover:scale-110 transition-transform" />
             </div>
-            <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase leading-none">KORYOB PREMIUM</h1>
-            <p className="text-muted-foreground font-medium italic">Дастрасии махсус барои 3 моҳ</p>
+            <h1 className="text-5xl md:text-7xl font-black text-secondary tracking-tighter uppercase leading-none">
+              KORYOB <span className="text-primary">PREMIUM</span>
+            </h1>
+            <p className="text-xl font-bold text-muted-foreground italic">Имкониятҳои бемаҳдуд барои пешрафти шумо</p>
           </div>
 
-          <Card className="border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white">
-            <CardContent className="p-10">
-              {step === 1 ? (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="bg-yellow-50 p-8 rounded-[2.5rem] border-2 border-dashed border-yellow-200 text-center space-y-4">
-                    <h2 className="text-xl font-black text-yellow-700 uppercase tracking-tighter">Қадами 1: ПАРДОХТ</h2>
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-5xl font-black text-secondary">{PREMIUM_PRICE}</span>
-                      <span className="text-xl font-bold text-yellow-600">TJS</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white p-8 space-y-6">
+              <h2 className="text-2xl font-black text-secondary uppercase tracking-tight flex items-center gap-3">
+                <Sparkles className="h-6 w-6 text-yellow-500" /> ЧӢ БА ДАСТ МЕОРЕД?
+              </h2>
+              <div className="space-y-5">
+                {[
+                  { icon: TrendingUp, title: "ЛИМИТИ 5 ЭЪЛОН", desc: "То 5 эълони хизматрасонӣ нашр кунед" },
+                  { icon: Zap, title: "ЧАТИ БЕМЕҲДУД", desc: "Лимити паёмҳо то 5000 аломат зиёд мешавад" },
+                  { icon: Award, title: "ДИЗАЙНИ МАХСУС", desc: "Профили шумо бо тилло медурахшад" },
+                  { icon: ShieldCheck, title: "ЭЪТИМОДИ БАЛАНД", desc: "Мизоҷон ба Premium бештар бовар мекунанд" }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-4">
+                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                      <item.icon className="h-6 w-6 text-primary" />
                     </div>
-                    <p className="text-[10px] font-black uppercase text-yellow-600 tracking-widest">Барои 3 моҳи истифода</p>
-                    <div className="pt-4 space-y-2">
-                      <p className="text-[10px] font-black uppercase opacity-50">Рақами корт:</p>
-                      <p className="text-2xl font-black text-secondary tracking-tighter">975638778</p>
-                      <p className="text-sm font-bold text-primary">Ном: А Б</p>
+                    <div>
+                      <p className="font-black text-secondary uppercase text-xs tracking-widest">{item.title}</p>
+                      <p className="text-sm text-muted-foreground font-medium">{item.desc}</p>
                     </div>
                   </div>
+                ))}
+              </div>
+            </Card>
 
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
-                      <p className="text-sm font-bold text-secondary">Нашри то 5 эълон</p>
+            <Card className="border-none shadow-3xl rounded-[3rem] overflow-hidden bg-white p-10 flex flex-col justify-center">
+              {step === 1 ? (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em]">НАРХИ МАХСУС</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-8xl font-black text-secondary tracking-tighter">{PREMIUM_PRICE}</span>
+                      <span className="text-2xl font-bold text-primary">TJS</span>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1"><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
-                      <p className="text-sm font-bold text-secondary">Лимити паёмҳо то 5000 аломат</p>
-                    </div>
+                    <p className="text-sm font-bold text-muted-foreground">БАРОИ 3 МОҲ (Ҳамагӣ 8 сомон дар моҳ)</p>
+                  </div>
+
+                  <div className="p-6 bg-muted/20 rounded-[2.5rem] space-y-2">
+                    <p className="text-[10px] font-black uppercase opacity-60">ИНТИҚОЛ БА КОРТ:</p>
+                    <p className="text-2xl font-black text-secondary tracking-tighter">975638778</p>
+                    <p className="text-sm font-bold text-primary">Соҳиби корт: А Б</p>
                   </div>
 
                   <Button 
                     onClick={() => setStep(2)} 
-                    className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl"
+                    className="w-full bg-primary h-20 rounded-3xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all text-lg"
                   >
                     МАН ПАРДОХТ КАРДАМ
                   </Button>
@@ -149,7 +170,7 @@ export default function PremiumPurchasePage() {
               ) : (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                   <div className="space-y-2 text-center">
-                    <h2 className="text-xl font-black text-secondary uppercase tracking-tight">Қадами 2: ТАСДИҚИ ЧЕК</h2>
+                    <h2 className="text-xl font-black text-secondary uppercase tracking-tight">ТАСДИҚИ ЧЕК</h2>
                     <p className="text-sm text-muted-foreground font-medium">Сурати чеки пардохтро бор кунед:</p>
                   </div>
 
@@ -174,13 +195,6 @@ export default function PremiumPurchasePage() {
                     </div>
                   )}
                   
-                  <div className="p-6 bg-blue-50 rounded-[2rem] border-2 border-dashed border-blue-100 flex gap-4">
-                    <Clock className="h-6 w-6 text-blue-500 shrink-0" />
-                    <p className="text-[10px] font-black text-blue-600 uppercase leading-relaxed">
-                      Тасдиқи Premium дар муддати 24 соат сурат мегирад.
-                    </p>
-                  </div>
-
                   <div className="flex gap-3">
                     <Button variant="ghost" onClick={() => setStep(1)} className="flex-1 h-16 rounded-2xl font-black uppercase tracking-widest">БОЗГАШТ</Button>
                     <Button 
@@ -193,8 +207,8 @@ export default function PremiumPurchasePage() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
