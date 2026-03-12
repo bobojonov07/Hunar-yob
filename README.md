@@ -29,6 +29,15 @@ git remote set-url origin https://github.com/bobojonov07/Hunar-yob.git
 
 ---
 
+## 🛠 Мушкилии Vercel (Update Fix)
+Агар дар GitHub код нав шавад, аммо дар Vercel не, ин корҳоро кунед:
+1. Ба **Vercel Dashboard** гузаред.
+2. Лоиҳаро интихоб кунед -> **Settings** -> **Git**.
+3. Репозиторийи кӯҳнаро **Disconnect** кунед.
+4. Репозиторийи навро бо номи **Hunar-yob** дубора **Connect** кунед.
+
+---
+
 ## ✨ Навгониҳои версияи 1.1.0 (2026):
 - **Brand New Name**: Барнома акнун **HUNAR-YOB** ном дорад.
 - **SEO Optimized**: Вебсайт дар Google ва Chrome беҳтар пайдо мешавад.
