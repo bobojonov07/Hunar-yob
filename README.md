@@ -5,12 +5,12 @@
 
 ## 🚀 Чӣ тавр кодро ба GitHub навсозӣ кунем? (Update Code)
 
-Агар шумо номи репозиторийро дар GitHub иваз карда бошед, аввал ин фармонро иҷро кунед:
+Агар шумо номи репозиторийро дар GitHub иваз карда бошед ё хатогии "rejected" гиред, аввал ин фармонро иҷро кунед:
 ```bash
-git remote set-url origin https://github.com/НОМИ_ШУМО/HUNAR-YOB.git
+git remote set-url origin https://github.com/bobojonov07/Hunar-yob.git
 ```
 
-Барат барои фиристодани тағйирот:
+Барои фиристодани тамоми тағйирот ва ислоҳи хатогии Git:
 
 1. **Ҳамаи файлҳоро омода кунед:**
    ```bash
@@ -22,9 +22,9 @@ git remote set-url origin https://github.com/НОМИ_ШУМО/HUNAR-YOB.git
    git commit -m "Update: App renamed to HUNAR-YOB and SEO Optimized"
    ```
 
-3. **Ба GitHub фиристед (Push):**
+3. **Ба GitHub бо зӯрӣ фиристед (Force Push):**
    ```bash
-   git push origin main
+   git push origin main --force
    ```
 
 ---
