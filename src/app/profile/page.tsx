@@ -210,7 +210,7 @@ export default function Profile() {
                       </div>
                     </div>
                     {profile.identificationStatus !== 'Verified' && profile.identificationStatus !== 'Pending' && (
-                      <Button asChild size="sm" className="bg-secondary text-white font-black rounded-xl h-10 px-4 text-[10px] uppercase tracking-widest">
+                      <Button asChild size="sm" className="bg-secondary text-white font-black rounded-xl h-10 px-4 text-[10px] uppercase tracking-widest hover:scale-105 transition-transform">
                         <Link href="/verify">ТАСДИҚ КАРДАН</Link>
                       </Button>
                     )}
