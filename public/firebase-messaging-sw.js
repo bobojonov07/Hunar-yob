@@ -1,9 +1,6 @@
-
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Танзимоти Firebase барои Service Worker
-// Ин маълумотро аз src/firebase/config.ts нусхабардорӣ кунед агар лозим бошад
 firebase.initializeApp({
   apiKey: "AIzaSyDLVl5KMbif7lmHbKejig0jM7i_1qX-Wq4",
   authDomain: "hunar-tj-e58cd.firebaseapp.com",
@@ -15,13 +12,12 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Мантиқи намоиши паём ҳангоми баста будани браузер
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Огоҳии нав дар пасманзар:', payload);
+  console.log('Паём дар пасманзар қабул шуд:', payload);
 
-  const notificationTitle = payload.notification.title || 'Паёми нав';
+  const notificationTitle = payload.notification.title || 'HUNAR-YOB';
   const notificationOptions = {
-    body: payload.notification.body || 'Шумо паёми нав доред',
+    body: payload.notification.body,
     icon: '/favicon.ico'
   };
 

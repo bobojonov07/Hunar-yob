@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
@@ -19,7 +18,7 @@ export function NotificationHandler() {
   const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userRef as any);
 
-  // 1. Мониторинги чатҳо барои огоҳии фаврӣ
+  // 1. Мониторинги чатҳо барои огоҳии фаврӣ дар дохили сайт
   useEffect(() => {
     if (!user || !db || !profile?.notificationsEnabled) return;
 
@@ -40,7 +39,7 @@ export function NotificationHandler() {
             });
             
             if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("HUNAR-YOB: Паёми нав", {
+              new Notification("HUNAR-YOB", {
                 body: chat.lastMessage,
                 icon: "/favicon.ico"
               });
@@ -63,13 +62,11 @@ export function NotificationHandler() {
     };
   }, [user, db, pathname, toast, profile?.notificationsEnabled]);
 
-  // 2. Танзими Push Notifications
+  // 2. Танзими Push Notifications (FCM)
   useEffect(() => {
     if (!user || !profile?.notificationsEnabled || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    // КАЛИДИ VAPID-РО АЗ FIREBASE CONSOLE ГУЗОРЕД
-    // Project Settings -> Cloud Messaging -> Web Push certificates
-    const VAPID_KEY = 'BC_ИНҶО_КАЛИДИ_VAPID_РО_ГУЗОРЕД'; 
+    const VAPID_KEY = 'BGVxKMXQsAoqyit-aDl7ye39XrvHg3yArY5iiU2Xbavitkd5nBdJpNhq2zqFlQcP3GaIIw6p7PsdLesUe8nsRXQ'; 
 
     const setupMessaging = async () => {
       try {
@@ -79,7 +76,7 @@ export function NotificationHandler() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, {
-            vapidKey: VAPID_KEY === 'BC_ИНҶО_КАЛИДИ_VAPID_РО_ГУЗОРЕД' ? undefined : VAPID_KEY,
+            vapidKey: VAPID_KEY,
             serviceWorkerRegistration: registration
           });
 
