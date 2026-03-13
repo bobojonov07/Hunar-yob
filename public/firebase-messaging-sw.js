@@ -1,10 +1,9 @@
 
-// Импорти скриптҳои Firebase
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Танзимоти Firebase (Config)
-// ХАТМАН: Маълумотро аз файли src/firebase/config.ts инҷо нусхабардорӣ кунед
+// Танзимоти Firebase барои Service Worker
+// Ин маълумотро аз src/firebase/config.ts нусхабардорӣ кунед агар лозим бошад
 firebase.initializeApp({
   apiKey: "AIzaSyDLVl5KMbif7lmHbKejig0jM7i_1qX-Wq4",
   authDomain: "hunar-tj-e58cd.firebaseapp.com",
@@ -16,15 +15,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Коркарди паёмҳо дар пасманзар (Background)
+// Мантиқи намоиши паём ҳангоми баста будани браузер
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Паёми пасманзар қабул шуд: ', payload);
+  console.log('[firebase-messaging-sw.js] Огоҳии нав дар пасманзар:', payload);
 
-  const notificationTitle = payload.notification.title || 'HUNAR-YOB: Паёми нав';
+  const notificationTitle = payload.notification.title || 'Паёми нав';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/favicon.ico', // Иконкаи барнома
-    data: payload.data
+    body: payload.notification.body || 'Шумо паёми нав доред',
+    icon: '/favicon.ico'
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

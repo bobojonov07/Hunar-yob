@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
@@ -18,7 +19,7 @@ export function NotificationHandler() {
   const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userRef as any);
 
-  // 1. Мониторинги чатҳои фаъол барои огоҳии фаврӣ (Foreground)
+  // 1. Мониторинги чатҳо барои огоҳии фаврӣ
   useEffect(() => {
     if (!user || !db || !profile?.notificationsEnabled) return;
 
@@ -38,7 +39,6 @@ export function NotificationHandler() {
               description: chat.lastMessage || "Шумо паёми нав доред",
             });
             
-            // Намоиши огоҳии браузерӣ агар иҷозат бошад
             if ("Notification" in window && Notification.permission === "granted") {
               new Notification("HUNAR-YOB: Паёми нав", {
                 body: chat.lastMessage,
@@ -63,12 +63,13 @@ export function NotificationHandler() {
     };
   }, [user, db, pathname, toast, profile?.notificationsEnabled]);
 
-  // 2. Танзими Firebase Messaging барои Push Notifications
+  // 2. Танзими Push Notifications
   useEffect(() => {
     if (!user || !profile?.notificationsEnabled || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    // ИНҶО КАЛИДИ VAPID-РО АЗ FIREBASE CONSOLE ГУЗОРЕД
-    const VAPID_KEY = 'BC_ИНҶО_КАЛИДИ_ХУДРО_ГУЗОРЕД'; 
+    // КАЛИДИ VAPID-РО АЗ FIREBASE CONSOLE ГУЗОРЕД
+    // Project Settings -> Cloud Messaging -> Web Push certificates
+    const VAPID_KEY = 'BC_ИНҶО_КАЛИДИ_VAPID_РО_ГУЗОРЕД'; 
 
     const setupMessaging = async () => {
       try {
@@ -78,7 +79,7 @@ export function NotificationHandler() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, {
-            vapidKey: VAPID_KEY,
+            vapidKey: VAPID_KEY === 'BC_ИНҶО_КАЛИДИ_VAPID_РО_ГУЗОРЕД' ? undefined : VAPID_KEY,
             serviceWorkerRegistration: registration
           });
 
@@ -91,21 +92,20 @@ export function NotificationHandler() {
         }
 
         onMessage(messaging, (payload) => {
-          if (!pathname.includes(payload.data?.chatId || '')) {
-            toast({
-              title: payload.notification?.title || "Паёми нав",
-              description: payload.notification?.body || "Шумо паёми нав доред",
-            });
-          }
+          console.log('Паёми фаврӣ қабул шуд:', payload);
+          toast({
+            title: payload.notification?.title || "Огоҳӣ",
+            description: payload.notification?.body || "Шумо паёми нав доред",
+          });
         });
 
       } catch (error) {
-        console.error('Firebase Messaging хатогӣ:', error);
+        console.error('Хатогӣ дар FCM:', error);
       }
     };
 
     setupMessaging();
-  }, [user, db, toast, pathname, profile?.notificationsEnabled]);
+  }, [user, db, toast, profile?.notificationsEnabled]);
 
   return null;
 }
