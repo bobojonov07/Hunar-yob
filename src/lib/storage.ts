@@ -96,7 +96,7 @@ export interface Message {
 }
 
 export const VIP_PRICE = 20;
-export const KYC_PRICE = 10;
+export const KYC_PRICE = 15; // Нархи нав: 15 сомон
 export const PREMIUM_PRICE = 25; 
 export const REGULAR_LISTING_LIMIT = 1;
 export const PREMIUM_LISTING_LIMIT = 5;
@@ -114,8 +114,6 @@ export const ALL_CATEGORIES = [
   "Кафшергар", "Кондиционерсоз", "Автомеханик", "Дигар"
 ];
 
-// Рӯйхати калимаҳои мамнӯъ. 
-// "кун" ҳамчун феъл истифода мешавад, бинобар ин онро бо эҳтиёт истифода мебарем.
 export const FORBIDDEN_WORDS = [
   "сука", "харом", "ганд", "наҳс", "гом", "хароми", "даюс"
 ];

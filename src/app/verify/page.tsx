@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -18,7 +17,8 @@ import {
   CreditCard,
   FileText,
   Clock,
-  RefreshCw
+  RefreshCw,
+  BellRing
 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
@@ -79,7 +79,6 @@ export default function VerifyPage() {
       identificationStatus: 'Pending'
     };
 
-    // Маълумоти дархост (бе 'photos', зеро мо arrayUnion-ро истифода мебарем)
     const requestData = {
       id: user.uid,
       userId: user.uid,
@@ -92,11 +91,7 @@ export default function VerifyPage() {
     };
 
     try {
-      // 1. Навсозии ҳолати корбар дар ҳуҷҷати 'users'
       await updateDoc(userProfileRef, userUpdateData);
-      
-      // 2. Сабти маълумоти верификатсия дар коллексияи 'verification_requests'
-      // Истифодаи arrayUnion барои илова кардани суратҳои нав ба рӯйхати мавҷуда
       const requestRef = doc(db, "verification_requests", user.uid);
       await setDoc(requestRef, {
         ...requestData,
@@ -132,13 +127,7 @@ export default function VerifyPage() {
     }
   };
 
-  if (authLoading || !profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (authLoading || !profile) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   if (isPending) {
     return (
@@ -154,9 +143,7 @@ export default function VerifyPage() {
               "Мо дар муддати 24 соат маълумоти шуморо баррасӣ ва фаъол месозем."
             </p>
           </div>
-          <Button onClick={() => router.push("/profile")} className="bg-secondary h-16 px-10 rounded-2xl font-black uppercase tracking-widest shadow-xl">
-            БА ПРОФИЛ БАРГАРДЕД
-          </Button>
+          <Button onClick={() => router.push("/profile")} className="bg-secondary h-16 px-10 rounded-2xl font-black uppercase tracking-widest shadow-xl">БА ПРОФИЛ БАРГАРДЕД</Button>
         </div>
       </div>
     );
@@ -178,23 +165,20 @@ export default function VerifyPage() {
             <h1 className="text-4xl font-black text-secondary tracking-tighter uppercase">
               {isRejected ? "ТАҶДИДИ МАЪЛУМОТ" : "ТАСДИҚИ ШАХСИЯТ"}
             </h1>
-            {isRejected && (
-              <div className="bg-orange-50 p-4 rounded-2xl border-2 border-dashed border-orange-200">
-                <p className="text-xs font-black text-orange-700 uppercase tracking-widest">
-                  МАЪЛУМОТРО ДУБОРА ФИРИСТЕД. СУРАТҲОРО БО СИФАТИ ХУБ БОР КУНЕД.
-                </p>
+            
+            <div className="bg-primary/5 p-6 rounded-[2rem] border-2 border-dashed border-primary/20">
+              <div className="flex items-center justify-center gap-3 mb-2 text-primary">
+                <BellRing className="h-5 w-5" />
+                <p className="text-xs font-black uppercase tracking-widest">ИМКОНИЯТИ НАВ</p>
               </div>
-            )}
+              <p className="text-[11px] font-bold text-muted-foreground leading-relaxed italic">
+                "Баъд аз тасдиқи шахсият, огоҳиномаҳо (push notifications) барои паёмҳои нав фаъол мешаванд."
+              </p>
+            </div>
+
             <div className="flex justify-center gap-2">
               {[1, 2, 3].map((s) => (
-                <div 
-                  key={s} 
-                  className={cn(
-                    "h-2 w-12 rounded-full transition-all duration-500",
-                    step >= s ? "bg-primary" : "bg-muted",
-                    isRejected && s === 2 && "hidden"
-                  )} 
-                />
+                <div key={s} className={cn("h-2 w-12 rounded-full transition-all duration-500", step >= s ? "bg-primary" : "bg-muted", isRejected && s === 2 && "hidden")} />
               ))}
             </div>
           </div>
@@ -214,33 +198,14 @@ export default function VerifyPage() {
                   </div>
 
                   <input type="file" className="hidden" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" />
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()} 
-                    variant="outline" 
-                    className="w-full h-40 border-dashed border-2 rounded-[2rem] flex flex-col gap-3 transition-all hover:bg-primary/5"
-                    disabled={photos.length >= 3 || isLoading}
-                  >
+                  <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full h-40 border-dashed border-2 rounded-[2rem] flex flex-col gap-3 transition-all hover:bg-primary/5" disabled={photos.length >= 3 || isLoading}>
                     {isLoading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Camera className="h-8 w-8 text-muted-foreground" />}
-                    <span className="font-black text-xs uppercase tracking-widest">
-                      {photos.length}/3 СУРАТ БОР ШУД
-                    </span>
+                    <span className="font-black text-xs uppercase tracking-widest">{photos.length}/3 СУРАТ БОР ШУД</span>
                   </Button>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    {photos.map((p, i) => (
-                      <div key={i} className="aspect-square rounded-2xl bg-muted relative overflow-hidden shadow-md">
-                        <Image src={p} fill alt="kyc" className="object-cover" />
-                      </div>
-                    ))}
-                  </div>
+                  <div className="grid grid-cols-3 gap-4">{photos.map((p, i) => (<div key={i} className="aspect-square rounded-2xl bg-muted relative overflow-hidden shadow-md"><Image src={p} fill alt="kyc" className="object-cover" /></div>))}</div>
 
-                  <Button 
-                    disabled={photos.length < 3} 
-                    onClick={nextStep} 
-                    className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl"
-                  >
-                    ҚАДАМИ НАВБАТӢ <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
+                  <Button disabled={photos.length < 3} onClick={nextStep} className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">ҚАДАМИ НАВБАТӢ <ArrowRight className="ml-2 h-5 w-5" /></Button>
                 </div>
               )}
 
@@ -253,9 +218,7 @@ export default function VerifyPage() {
 
                   <div className="p-8 bg-secondary/5 rounded-[2.5rem] border-2 border-dashed border-secondary/20 space-y-6">
                     <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-                        <CreditCard className="h-6 w-6 text-secondary" />
-                      </div>
+                      <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm"><CreditCard className="h-6 w-6 text-secondary" /></div>
                       <div className="font-black text-xs uppercase tracking-tighter">ДУШАНБЕ СИТИ / СПИТАМЕН</div>
                     </div>
                     <div className="space-y-1">
@@ -265,12 +228,7 @@ export default function VerifyPage() {
                     </div>
                   </div>
 
-                  <Button 
-                    onClick={() => setStep(3)} 
-                    className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl"
-                  >
-                    МАН ПАРДОХТ КАРДАМ
-                  </Button>
+                  <Button onClick={() => setStep(3)} className="w-full bg-primary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">МАН ПАРДОХТ КАРДАМ</Button>
                 </div>
               )}
 
@@ -282,38 +240,19 @@ export default function VerifyPage() {
                   </div>
 
                   <input type="file" className="hidden" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" />
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()} 
-                    variant="outline" 
-                    className="w-full h-40 border-dashed border-2 rounded-[2rem] flex flex-col gap-3 transition-all hover:bg-primary/5"
-                    disabled={isLoading}
-                  >
+                  <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full h-40 border-dashed border-2 rounded-[2rem] flex flex-col gap-3 transition-all hover:bg-primary/5" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <FileText className="h-8 w-8 text-muted-foreground" />}
-                    <span className="font-black text-xs uppercase tracking-widest">
-                      {receipt ? "ЧЕК БОР ШУД" : "ИЛОВАИ СУРАТИ ЧЕК"}
-                    </span>
+                    <span className="font-black text-xs uppercase tracking-widest">{receipt ? "ЧЕК БОР ШУД" : "ИЛОВАИ СУРАТИ ЧЕК"}</span>
                   </Button>
 
-                  {receipt && (
-                    <div className="h-32 w-full rounded-2xl bg-muted relative overflow-hidden shadow-lg mx-auto max-w-[200px]">
-                      <Image src={receipt} fill alt="check" className="object-cover" />
-                    </div>
-                  )}
+                  {receipt && (<div className="h-32 w-full rounded-2xl bg-muted relative overflow-hidden shadow-lg mx-auto max-w-[200px]"><Image src={receipt} fill alt="check" className="object-cover" /></div>)}
                   
                   <div className="p-6 bg-red-50 rounded-[2rem] border-2 border-dashed border-red-100 flex gap-4">
                     <AlertCircle className="h-6 w-6 text-red-500 shrink-0" />
-                    <p className="text-[10px] font-black text-red-600 uppercase leading-relaxed">
-                      ДИҚҚАТ: Дар ҳолати чеки қалбакӣ мо акаунти шуморо барои ҳамеша БЛОК мекунем.
-                    </p>
+                    <p className="text-[10px] font-black text-red-600 uppercase leading-relaxed">ДИҚҚАТ: Дар ҳолати чеки қалбакӣ мо акаунти шуморо барои ҳамеша БЛОК мекунем.</p>
                   </div>
 
-                  <Button 
-                    disabled={(!receipt && !isRejected) || isLoading} 
-                    onClick={handleSubmit} 
-                    className="w-full bg-secondary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl"
-                  >
-                    ФИРИСТОДАН
-                  </Button>
+                  <Button disabled={(!receipt && !isRejected) || isLoading} onClick={handleSubmit} className="w-full bg-secondary h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl">ФИРИСТОДАН</Button>
                 </div>
               )}
             </CardContent>

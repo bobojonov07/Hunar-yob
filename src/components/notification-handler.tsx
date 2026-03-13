@@ -18,9 +18,9 @@ export function NotificationHandler() {
   const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userRef as any);
 
-  // 1. Мониторинги чатҳо барои огоҳии фаврӣ дар дохили сайт
+  // 1. Мониторинги чатҳо (танҳо барои корбарони Verified ва огоҳиҳояшон фаъол)
   useEffect(() => {
-    if (!user || !db || !profile?.notificationsEnabled) return;
+    if (!user || !db || !profile?.notificationsEnabled || profile?.identificationStatus !== 'Verified') return;
 
     const qClient = query(collection(db, "chats"), where("clientId", "==", user.uid));
     const qArtisan = query(collection(db, "chats"), where("artisanId", "==", user.uid));
@@ -60,11 +60,11 @@ export function NotificationHandler() {
       unsubClient();
       unsubArtisan();
     };
-  }, [user, db, pathname, toast, profile?.notificationsEnabled]);
+  }, [user, db, pathname, toast, profile?.notificationsEnabled, profile?.identificationStatus]);
 
-  // 2. Танзими Push Notifications (FCM)
+  // 2. Танзими Push Notifications (танҳо барои корбарони Verified)
   useEffect(() => {
-    if (!user || !profile?.notificationsEnabled || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (!user || !profile?.notificationsEnabled || profile?.identificationStatus !== 'Verified' || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
     const VAPID_KEY = 'BGVxKMXQsAoqyit-aDl7ye39XrvHg3yArY5iiU2Xbavitkd5nBdJpNhq2zqFlQcP3GaIIw6p7PsdLesUe8nsRXQ'; 
 
@@ -89,7 +89,6 @@ export function NotificationHandler() {
         }
 
         onMessage(messaging, (payload) => {
-          console.log('Паёми фаврӣ қабул шуд:', payload);
           toast({
             title: payload.notification?.title || "Огоҳӣ",
             description: payload.notification?.body || "Шумо паёми нав доред",
@@ -102,7 +101,7 @@ export function NotificationHandler() {
     };
 
     setupMessaging();
-  }, [user, db, toast, profile?.notificationsEnabled]);
+  }, [user, db, toast, profile?.notificationsEnabled, profile?.identificationStatus]);
 
   return null;
 }
