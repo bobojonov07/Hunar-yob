@@ -37,7 +37,6 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      // Ирсоли паёми барқарорсозӣ тавассути Firebase
       await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
       toast({
@@ -59,7 +58,6 @@ export default function ForgotPassword() {
         variant: "destructive",
       });
     } finally {
-      } finally {
       setLoading(false);
     }
   };
