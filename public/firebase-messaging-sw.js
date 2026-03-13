@@ -13,12 +13,13 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  console.log('Паём дар пасманзар қабул шуд:', payload);
-
-  const notificationTitle = payload.notification.title || 'HUNAR-YOB';
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  const notificationTitle = payload.notification.title || "HUNAR-YOB";
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/favicon.ico'
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    data: payload.data
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

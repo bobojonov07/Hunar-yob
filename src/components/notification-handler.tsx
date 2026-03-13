@@ -18,7 +18,7 @@ export function NotificationHandler() {
   const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userRef as any);
 
-  // 1. Мониторинги чатҳо (танҳо барои корбарони Verified ва огоҳиҳояшон фаъол)
+  // 1. Мониторинги чатҳо (Огоҳиҳои дохили барнома)
   useEffect(() => {
     if (!user || !db || !profile?.notificationsEnabled || profile?.identificationStatus !== 'Verified') return;
 
@@ -32,18 +32,11 @@ export function NotificationHandler() {
           const currentUnread = chat.unreadCount?.[user.uid] || 0;
           const previousUnread = lastUnreadCounts.current[chat.id] || 0;
 
-          if (currentUnread > previousUnread && !pathname.includes(chat.id)) {
+          if (currentUnread > previousUnread && !pathname.includes(chat.listingId)) {
             toast({
               title: "Паёми нав",
               description: chat.lastMessage || "Шумо паёми нав доред",
             });
-            
-            if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("HUNAR-YOB", {
-                body: chat.lastMessage,
-                icon: "/favicon.ico"
-              });
-            }
           }
           lastUnreadCounts.current[chat.id] = currentUnread;
         } else if (change.type === "added") {
@@ -62,7 +55,7 @@ export function NotificationHandler() {
     };
   }, [user, db, pathname, toast, profile?.notificationsEnabled, profile?.identificationStatus]);
 
-  // 2. Танзими Push Notifications (танҳо барои корбарони Verified)
+  // 2. Танзими Push Notifications (FCM)
   useEffect(() => {
     if (!user || !profile?.notificationsEnabled || profile?.identificationStatus !== 'Verified' || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
@@ -71,8 +64,11 @@ export function NotificationHandler() {
     const setupMessaging = async () => {
       try {
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('Service Worker registered with scope:', registration.scope);
+
         const messaging = getMessaging();
         
+        // Дархости иҷозат
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, {
@@ -81,6 +77,7 @@ export function NotificationHandler() {
           });
 
           if (token) {
+            console.log('FCM Token generated:', token);
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
               fcmTokens: arrayUnion(token)
@@ -89,6 +86,7 @@ export function NotificationHandler() {
         }
 
         onMessage(messaging, (payload) => {
+          console.log('Foreground message received:', payload);
           toast({
             title: payload.notification?.title || "Огоҳӣ",
             description: payload.notification?.body || "Шумо паёми нав доред",
@@ -96,7 +94,7 @@ export function NotificationHandler() {
         });
 
       } catch (error) {
-        console.error('Хатогӣ дар FCM:', error);
+        console.error('Хатогӣ дар танзими FCM:', error);
       }
     };
 

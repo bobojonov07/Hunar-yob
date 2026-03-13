@@ -1,0 +1,16 @@
+{
+  "short_name": "HUNAR-YOB",
+  "name": "HUNAR-YOB — Платформаи устоҳо",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FF7F50",
+  "background_color": "#F5F5DC",
+  "gcm_sender_id": "103953800507"
+}
