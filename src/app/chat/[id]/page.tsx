@@ -260,7 +260,15 @@ export default function ChatPage() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.filter(m => !m.deletedBy?.includes(user?.uid || "")).map((msg) => {
           const isMe = msg.senderId === user?.uid;
-          const canEdit = isMe && profile.isPremium && (Date.now() - (msg.createdAt?.toMillis() || 0)) < 10 * 60 * 1000 && !msg.isDeleted;
+          const canEdit = isMe && profile.isPremium && msg.createdAt && (Date.now() - (typeof msg.createdAt.toMillis === 'function' ? msg.createdAt.toMillis() : new Date(msg.createdAt).getTime())) < 10 * 60 * 1000 && !msg.isDeleted;
+
+          const formattedMsgTime = () => {
+            if (!msg.createdAt) return "";
+            try {
+              const d = typeof msg.createdAt.toDate === 'function' ? msg.createdAt.toDate() : new Date(msg.createdAt);
+              return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            } catch(e) { return ""; }
+          };
 
           return (
             <div key={msg.id} className={cn("flex flex-col", isMe ? 'items-end' : 'items-start')}>
@@ -279,7 +287,7 @@ export default function ChatPage() {
                 )}
 
                 <div className="flex justify-end mt-1">
-                  <span className="text-[8px] opacity-60 mr-2">{msg.createdAt?.toDate()?.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                  <span className="text-[8px] opacity-60 mr-2">{formattedMsgTime()}</span>
                   {isMe && (msg.isRead ? <CheckCheck className="h-3.5 w-3.5 text-blue-400" /> : <Check className="h-3.5 w-3.5 opacity-60" />)}
                 </div>
               </div>

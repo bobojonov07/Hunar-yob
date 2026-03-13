@@ -48,8 +48,8 @@ export default function MessagesList() {
     );
   }, [db, user]);
 
-  const { data: clientChats = [] } = useCollection<Chat>(clientChatsQuery as any);
-  const { data: artisanChats = [] } = useCollection<Chat>(artisanChatsQuery as any);
+  const { data: clientChats = [], loading: clientLoading } = useCollection<Chat>(clientChatsQuery as any);
+  const { data: artisanChats = [], loading: artisanLoading } = useCollection<Chat>(artisanChatsQuery as any);
 
   useEffect(() => {
     async function fetchConversationDetails() {
@@ -57,14 +57,14 @@ export default function MessagesList() {
 
       const allChatsMap = new Map<string, Chat>();
       [...clientChats, ...artisanChats].forEach(chat => {
-        if (!chat.deletedBy?.includes(user.uid)) {
+        if (chat && chat.id && !chat.deletedBy?.includes(user.uid)) {
           allChatsMap.set(chat.id, chat);
         }
       });
       
       const sortedChats = Array.from(allChatsMap.values()).sort((a, b) => {
-        const timeA = a.updatedAt?.toMillis() || 0;
-        const timeB = b.updatedAt?.toMillis() || 0;
+        const timeA = a.updatedAt?.toMillis?.() || 0;
+        const timeB = b.updatedAt?.toMillis?.() || 0;
         return timeB - timeA;
       });
 
@@ -192,7 +192,7 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
   const formattedTime = useMemo(() => {
     if (!conv.updatedAt) return "";
     try {
-      const date = conv.updatedAt.toDate();
+      const date = typeof conv.updatedAt.toDate === 'function' ? conv.updatedAt.toDate() : new Date(conv.updatedAt);
       const now = new Date();
       if (date.toDateString() === now.toDateString()) {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
