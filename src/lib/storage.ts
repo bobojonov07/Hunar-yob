@@ -1,4 +1,3 @@
-
 'use client';
 
 export type UserRole = 'Usto' | 'Client';
@@ -21,6 +20,7 @@ export interface UserProfile {
   premiumExpiresAt?: any; 
   favorites?: string[];
   fcmTokens?: string[];
+  notificationsEnabled?: boolean;
   lastActive?: any;
   createdAt: any;
   warningCount: number;

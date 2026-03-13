@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react";
@@ -10,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Settings, 
   LogOut, 
@@ -27,7 +28,8 @@ import {
   Clock,
   Trash2,
   Sparkles,
-  ArrowRight
+  BellRing,
+  BellOff
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -66,6 +68,32 @@ export default function Profile() {
         toast({ title: "Сурат навсозӣ шуд" });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const toggleNotifications = async (enabled: boolean) => {
+    if (!userProfileRef) return;
+    
+    if (enabled && "Notification" in window) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        toast({ 
+          title: "Рад шуд", 
+          description: "Лутфан дар танзимоти браузер иҷозат диҳед", 
+          variant: "destructive" 
+        });
+        return;
+      }
+    }
+
+    try {
+      await updateDoc(userProfileRef, { notificationsEnabled: enabled });
+      toast({ 
+        title: enabled ? "Огоҳиҳо фаъол шуданд" : "Огоҳиҳо хомӯш шуданд",
+        description: enabled ? "Акнун шумо паёмҳои навро мебинед" : "Шумо дигар огоҳӣ намегиред"
+      });
+    } catch (err) {
+      toast({ title: "Хатогӣ ҳангоми ивази танзимот", variant: "destructive" });
     }
   };
 
@@ -161,6 +189,32 @@ export default function Profile() {
                         <Sparkles className="mr-1 h-3 w-3" /> PREMIUM
                       </Badge>
                     )}
+                  </div>
+                </div>
+
+                {/* Notifications Toggle */}
+                <div className="pt-6 border-t border-dashed">
+                  <div className={cn(
+                    "p-6 rounded-[2rem] border-2 transition-all flex items-center justify-between",
+                    profile.notificationsEnabled ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-transparent"
+                  )}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                        profile.notificationsEnabled ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                      )}>
+                        {profile.notificationsEnabled ? <BellRing className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Огоҳиҳо</p>
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase">{profile.notificationsEnabled ? "ФАЪОЛ" : "ХОМӮШ"}</p>
+                      </div>
+                    </div>
+                    <Switch 
+                      checked={profile.notificationsEnabled || false} 
+                      onCheckedChange={toggleNotifications}
+                      className="data-[state=checked]:bg-primary"
+                    />
                   </div>
                 </div>
 

@@ -1,13 +1,12 @@
-
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useEffect, useRef, useMemo } from 'react';
+import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
-import { Chat } from '@/lib/storage';
+import { Chat, UserProfile } from '@/lib/storage';
 
 export function NotificationHandler() {
   const { user } = useUser();
@@ -16,9 +15,12 @@ export function NotificationHandler() {
   const pathname = usePathname();
   const lastUnreadCounts = useRef<Record<string, number>>({});
 
+  const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc<UserProfile>(userRef as any);
+
   // 1. Мониторинги чатҳои фаъол барои огоҳии фаврӣ (Foreground)
   useEffect(() => {
-    if (!user || !db) return;
+    if (!user || !db || !profile?.notificationsEnabled) return;
 
     const qClient = query(collection(db, "chats"), where("clientId", "==", user.uid));
     const qArtisan = query(collection(db, "chats"), where("artisanId", "==", user.uid));
@@ -59,24 +61,20 @@ export function NotificationHandler() {
       unsubClient();
       unsubArtisan();
     };
-  }, [user, db, pathname, toast]);
+  }, [user, db, pathname, toast, profile?.notificationsEnabled]);
 
   // 2. Танзими Firebase Messaging барои Push Notifications
   useEffect(() => {
-    if (!user || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (!user || !profile?.notificationsEnabled || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
     // ИНҶО КАЛИДИ VAPID-РО АЗ FIREBASE CONSOLE ГУЗОРЕД
     const VAPID_KEY = 'BC_ИНҶО_КАЛИДИ_ХУДРО_ГУЗОРЕД'; 
 
     const setupMessaging = async () => {
       try {
-        // Регистратсияи Service Worker
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('Service Worker бо муваффақият сабт шуд');
-
         const messaging = getMessaging();
         
-        // Дархости иҷозат
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, {
@@ -85,7 +83,6 @@ export function NotificationHandler() {
           });
 
           if (token) {
-            console.log('FCM Token:', token);
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
               fcmTokens: arrayUnion(token)
@@ -93,9 +90,7 @@ export function NotificationHandler() {
           }
         }
 
-        // Қабули паём ҳангоми кушода будани сайт
         onMessage(messaging, (payload) => {
-          console.log('Паёми Foreground:', payload);
           if (!pathname.includes(payload.data?.chatId || '')) {
             toast({
               title: payload.notification?.title || "Паёми нав",
@@ -110,7 +105,7 @@ export function NotificationHandler() {
     };
 
     setupMessaging();
-  }, [user, db, toast, pathname]);
+  }, [user, db, toast, pathname, profile?.notificationsEnabled]);
 
   return null;
 }
