@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
 import { Chat, UserProfile } from '@/lib/storage';
@@ -27,10 +28,13 @@ export function NotificationHandler() {
 
     const handleChatUpdate = (snapshot: any) => {
       snapshot.docChanges().forEach((change: any) => {
+        const data = change.doc.data();
+        const id = change.doc.id;
+        
         if (change.type === "modified") {
-          const chat = { ...change.doc.data(), id: change.doc.id } as Chat;
+          const chat = { ...data, id } as Chat;
           const currentUnread = chat.unreadCount?.[user.uid] || 0;
-          const previousUnread = lastUnreadCounts.current[chat.id] || 0;
+          const previousUnread = lastUnreadCounts.current[id] || 0;
 
           if (currentUnread > previousUnread && !pathname.includes(chat.listingId)) {
             toast({
@@ -38,16 +42,15 @@ export function NotificationHandler() {
               description: chat.lastMessage || "Шумо паёми нав доред",
             });
           }
-          lastUnreadCounts.current[chat.id] = currentUnread;
+          lastUnreadCounts.current[id] = currentUnread;
         } else if (change.type === "added") {
-          const chat = change.doc.data() as Chat;
-          lastUnreadCounts.current[change.doc.id] = chat.unreadCount?.[user.uid] || 0;
+          lastUnreadCounts.current[id] = data.unreadCount?.[user.uid] || 0;
         }
       });
     };
 
-    const unsubClient = onSnapshot(qClient, handleChatUpdate);
-    const unsubArtisan = onSnapshot(qArtisan, handleChatUpdate);
+    const unsubClient = onSnapshot(qClient, handleChatUpdate, (err) => console.error("Client chats sub error:", err));
+    const unsubArtisan = onSnapshot(qArtisan, handleChatUpdate, (err) => console.error("Artisan chats sub error:", err));
 
     return () => {
       unsubClient();
@@ -63,12 +66,12 @@ export function NotificationHandler() {
 
     const setupMessaging = async () => {
       try {
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('Service Worker registered with scope:', registration.scope);
+        const supported = await isSupported();
+        if (!supported) return;
 
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         const messaging = getMessaging();
         
-        // Дархости иҷозат
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, {
@@ -76,9 +79,7 @@ export function NotificationHandler() {
             serviceWorkerRegistration: registration
           });
 
-          if (token) {
-            console.log('FCM Token generated:', token);
-            const userRef = doc(db, 'users', user.uid);
+          if (token && userRef) {
             await updateDoc(userRef, {
               fcmTokens: arrayUnion(token)
             });
@@ -86,7 +87,6 @@ export function NotificationHandler() {
         }
 
         onMessage(messaging, (payload) => {
-          console.log('Foreground message received:', payload);
           toast({
             title: payload.notification?.title || "Огоҳӣ",
             description: payload.notification?.body || "Шумо паёми нав доред",
@@ -94,12 +94,12 @@ export function NotificationHandler() {
         });
 
       } catch (error) {
-        console.error('Хатогӣ дар танзими FCM:', error);
+        // Хомӯш кардани логи хатогӣ барои пешгирӣ аз "noise"
       }
     };
 
     setupMessaging();
-  }, [user, db, toast, profile?.notificationsEnabled, profile?.identificationStatus]);
+  }, [user, db, toast, profile?.notificationsEnabled, profile?.identificationStatus, userRef]);
 
   return null;
 }

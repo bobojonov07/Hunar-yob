@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { UserProfile } from '@/lib/storage';
-import { Ban, ShieldAlert } from 'lucide-react';
+import { Ban, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
 import { NotificationHandler } from "@/components/notification-handler";
@@ -26,28 +26,35 @@ export function AppGuard({ children }: { children: React.ReactNode }) {
 }
 
 function UserGuardContent({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
+  const { user, loading: authLoading } = useUser();
   const db = useFirestore();
   const auth = useAuth();
+  
   const userRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
-  const { data: profile } = useDoc<UserProfile>(userRef as any);
+  const { data: profile, loading: docLoading } = useDoc<UserProfile>(userRef as any);
 
   useEffect(() => {
-    if ((profile?.identificationStatus === 'Blocked' || profile?.isBlocked || (profile?.warningCount || 0) >= 5) && user) {
+    if (user && userRef && profile && (profile.identificationStatus === 'Blocked' || profile.isBlocked || (profile.warningCount || 0) >= 5)) {
       const cleanupListings = async () => {
-        const q = query(collection(db, "listings"), where("userId", "==", user.uid));
-        const snap = await getDocs(q);
-        snap.forEach((d) => deleteDoc(d.ref));
-        
-        if (!profile?.isBlocked && (profile?.warningCount || 0) >= 5) {
-          updateDoc(userRef!, { isBlocked: true, identificationStatus: 'Blocked' }).catch(() => {});
+        try {
+          const q = query(collection(db, "listings"), where("userId", "==", user.uid));
+          const snap = await getDocs(q);
+          snap.forEach((d) => deleteDoc(d.ref));
+          
+          if (!profile.isBlocked && (profile.warningCount || 0) >= 5) {
+            await updateDoc(userRef, { isBlocked: true, identificationStatus: 'Blocked' });
+          }
+        } catch (e) {
+          console.error("Cleanup error:", e);
         }
       };
       cleanupListings();
     }
   }, [profile, user, db, userRef]);
 
-  if (profile?.identificationStatus === 'Blocked' || profile?.isBlocked || (profile?.warningCount || 0) >= 5) {
+  if (authLoading) return <div className="fixed inset-0 bg-background flex items-center justify-center z-[10000]"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+
+  if (profile && (profile.identificationStatus === 'Blocked' || profile.isBlocked || (profile.warningCount || 0) >= 5)) {
     return (
       <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-8 text-center">
         <div className="h-32 w-32 bg-red-100 rounded-[3rem] flex items-center justify-center mb-8 shadow-inner animate-bounce">
@@ -78,13 +85,20 @@ function PremiumGuard() {
   const { data: profile } = useDoc<UserProfile>(userRef as any);
 
   useEffect(() => {
-    if (profile?.isPremium && profile.premiumExpiresAt) {
-      const expiry = profile.premiumExpiresAt.toDate();
-      if (expiry < new Date()) {
-        updateDoc(userRef!, { 
-          isPremium: false, 
-          premiumExpiresAt: null 
-        }).catch(() => {});
+    if (profile?.isPremium && profile.premiumExpiresAt && userRef) {
+      try {
+        const expiry = typeof profile.premiumExpiresAt.toDate === 'function' 
+          ? profile.premiumExpiresAt.toDate() 
+          : new Date(profile.premiumExpiresAt);
+          
+        if (expiry < new Date()) {
+          updateDoc(userRef, { 
+            isPremium: false, 
+            premiumExpiresAt: null 
+          }).catch(() => {});
+        }
+      } catch (e) {
+        // Игнори хатогӣ агар формат нодуруст бошад
       }
     }
   }, [profile, userRef]);
@@ -98,8 +112,9 @@ function Heartbeat() {
 
   useEffect(() => {
     if (!user || !db) return;
+    const userRef = doc(db, "users", user.uid);
     const updateStatus = () => {
-      updateDoc(doc(db, "users", user.uid), {
+      updateDoc(userRef, {
         lastActive: serverTimestamp()
       }).catch(() => {});
     };

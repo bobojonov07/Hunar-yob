@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageSquare, User as UserIcon, Home, Search } from "lucide-react";
@@ -10,11 +10,10 @@ import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 
 export function BottomNav() {
-  const { user: currentUser, loading } = useUser();
+  const { user: currentUser } = useUser();
   const db = useFirestore();
   const pathname = usePathname();
 
-  // Ҷустуҷӯи чатҳое, ки корбар дар онҳо ҳамчун мизоҷ ё усто аст
   const clientChatsQuery = useMemo(() => {
     if (!db || !currentUser?.uid) return null;
     return query(collection(db, "chats"), where("clientId", "==", currentUser.uid));
@@ -28,11 +27,10 @@ export function BottomNav() {
   const { data: clientChats = [] } = useCollection(clientChatsQuery as any);
   const { data: artisanChats = [] } = useCollection(artisanChatsQuery as any);
 
-  // Ҳисоб кардани шумораи умумии паёмҳои хонданашуда бо мантиқи устувор
   const unreadCount = useMemo(() => {
     if (!currentUser?.uid) return 0;
     
-    const allChats = [...clientChats, ...artisanChats];
+    const allChats = [...(Array.isArray(clientChats) ? clientChats : []), ...(Array.isArray(artisanChats) ? artisanChats : [])];
     const seenChatIds = new Set();
     let totalUnread = 0;
 
@@ -49,7 +47,7 @@ export function BottomNav() {
     return totalUnread;
   }, [clientChats, artisanChats, currentUser?.uid]);
 
-  if (loading || !currentUser) return null;
+  if (!currentUser) return null;
 
   const navItems = [
     { label: "Асосӣ", icon: Home, href: "/" },
