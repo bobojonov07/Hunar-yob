@@ -272,7 +272,7 @@ export default function Register() {
                 </div>
 
                 {/* Consent Checkbox */}
-                <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10 group cursor-pointer" onClick={() => setAgreed(!agreed)}>
+                <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10 group">
                   <div className="flex items-start space-x-4">
                     <Checkbox 
                       id="agreed" 
