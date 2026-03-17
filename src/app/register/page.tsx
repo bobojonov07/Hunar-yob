@@ -38,6 +38,7 @@ export default function Register() {
   const db = useFirestore();
 
   const calculateAge = (dateString: string) => {
+    if (!dateString) return 0;
     const today = new Date();
     const birthDate = new Date(dateString);
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -115,7 +116,6 @@ export default function Register() {
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/30">
       <Navbar />
       <div className="flex-1 flex flex-col items-center justify-center p-4 py-12 md:py-24 relative overflow-hidden">
-        {/* Abstract Background Decoration */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2" />
 
@@ -139,7 +139,6 @@ export default function Register() {
             
             <form onSubmit={handleSubmit} className="px-10 pb-16">
               <CardContent className="space-y-10 p-0 pt-10">
-                {/* Role Selection */}
                 <div className="space-y-4">
                   <Label className="font-black text-xs uppercase tracking-[0.2em] opacity-40 text-center block mb-4">Шумо кӣ ҳастед?</Label>
                   <RadioGroup value={role} onValueChange={(v) => setRole(v as UserRole)} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -172,7 +171,6 @@ export default function Register() {
 
                 <div className="h-px bg-gradient-to-r from-transparent via-muted to-transparent w-full opacity-50" />
 
-                {/* Form Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <Label className="font-black text-[10px] uppercase tracking-widest opacity-40 ml-4">Ному насаби пурра</Label>
@@ -271,8 +269,7 @@ export default function Register() {
                   </div>
                 </div>
 
-                {/* Consent Checkbox */}
-                <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10 group">
+                <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/20">
                   <div className="flex items-start space-x-4">
                     <Checkbox 
                       id="agreed" 
@@ -280,9 +277,11 @@ export default function Register() {
                       onCheckedChange={(v) => setAgreed(!!v)} 
                       className="mt-1 h-7 w-7 rounded-xl data-[state=checked]:bg-primary border-2 border-primary/20" 
                     />
-                    <Label htmlFor="agreed" className="text-[11px] text-muted-foreground font-bold leading-relaxed block cursor-pointer select-none">
-                      Ман бо <Link href="/about#terms" className="text-primary underline decoration-2 underline-offset-4 hover:text-primary/80" onClick={(e) => e.stopPropagation()}>Шартҳои истифода</Link>, <Link href="/about#privacy" className="text-primary underline decoration-2 underline-offset-4 hover:text-primary/80" onClick={(e) => e.stopPropagation()}>Сиёсати махфият</Link> розӣ ҳастам ва тасдиқ мекунам, ки аз 18-сола боло мебошам.
-                    </Label>
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="agreed" className="text-[11px] text-muted-foreground font-bold leading-relaxed cursor-pointer select-none">
+                        Ман бо <Link href="/about#terms" className="text-primary underline decoration-2 underline-offset-4 hover:text-primary/80" onClick={(e) => e.stopPropagation()}>Шартҳои истифода</Link>, <Link href="/about#privacy" className="text-primary underline decoration-2 underline-offset-4 hover:text-primary/80" onClick={(e) => e.stopPropagation()}>Сиёсати махфият</Link> розӣ ҳастам ва тасдиқ мекунам, ки аз 18-сола боло мебошам.
+                      </Label>
+                    </div>
                   </div>
                 </div>
               </CardContent>

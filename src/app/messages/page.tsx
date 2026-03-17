@@ -52,19 +52,23 @@ export default function MessagesList() {
   const { data: artisanChats = [], loading: artisanLoading } = useCollection<Chat>(artisanChatsQuery as any);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchConversationDetails() {
       if (!user || clientLoading || artisanLoading) return;
 
       const allChatsMap = new Map<string, Chat>();
-      [...clientChats, ...artisanChats].forEach(chat => {
+      const combined = [...clientChats, ...artisanChats];
+      
+      combined.forEach(chat => {
         if (chat && chat.id && !chat.deletedBy?.includes(user.uid)) {
           allChatsMap.set(chat.id, chat);
         }
       });
       
       const sortedChats = Array.from(allChatsMap.values()).sort((a, b) => {
-        const timeA = a.updatedAt?.toMillis?.() || 0;
-        const timeB = b.updatedAt?.toMillis?.() || 0;
+        const timeA = typeof a.updatedAt?.toMillis === 'function' ? a.updatedAt.toMillis() : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+        const timeB = typeof b.updatedAt?.toMillis === 'function' ? b.updatedAt.toMillis() : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
         return timeB - timeA;
       });
 
@@ -92,11 +96,14 @@ export default function MessagesList() {
         });
       }
       
-      setConversations(results);
-      setInitialLoading(false);
+      if (isMounted) {
+        setConversations(results);
+        setInitialLoading(false);
+      }
     }
 
     fetchConversationDetails();
+    return () => { isMounted = false; };
   }, [clientChats, artisanChats, user, db, clientLoading, artisanLoading]);
 
   const filteredConversations = useMemo(() => {
@@ -112,15 +119,13 @@ export default function MessagesList() {
     if (!confirm("Оё мехоҳед ин чатро аз рӯйхати худ нест кунед?")) return;
 
     const chatRef = doc(db, "chats", chatId);
-    updateDoc(chatRef, {
-      deletedBy: arrayUnion(user.uid)
-    }).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: chatRef.path,
-        operation: 'update',
-        requestResourceData: { deletedBy: user.uid }
-      }));
-    });
+    try {
+      await updateDoc(chatRef, {
+        deletedBy: arrayUnion(user.uid)
+      });
+    } catch (err) {
+      console.error("Delete chat error:", err);
+    }
   };
 
   if (!user) return <div className="min-h-screen flex items-center justify-center">Вуруд лозим аст...</div>;
@@ -231,15 +236,15 @@ function ConversationItem({ conv, currentUser }: { conv: Conversation, currentUs
             <div className="flex items-center gap-2">
               <p className={cn(
                 "text-xs truncate font-medium text-muted-foreground",
-                (conv.unreadCount?.[currentUser.uid] || 0) > 0 && "font-black text-secondary"
+                (conv.unreadCount?.[currentUser?.uid || ""] || 0) > 0 && "font-black text-secondary"
               )}>
                 {conv.lastMessage}
               </p>
             </div>
           </div>
-          {(conv.unreadCount?.[currentUser.uid] || 0) > 0 && (
+          {(conv.unreadCount?.[currentUser?.uid || ""] || 0) > 0 && (
             <div className="h-6 w-6 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white font-black shrink-0 shadow-md animate-pulse">
-              {conv.unreadCount[currentUser.uid]}
+              {conv.unreadCount![currentUser.uid]}
             </div>
           )}
         </CardContent>

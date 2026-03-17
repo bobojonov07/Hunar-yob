@@ -115,8 +115,8 @@ export default function Login() {
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Label className="font-black text-xs uppercase tracking-widest opacity-60">Почтаи электронӣ</Label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input type="email" placeholder="example@mail.tj" className="pl-12 h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
               </div>
@@ -125,25 +125,27 @@ export default function Login() {
                   <Label className="font-black text-xs uppercase tracking-widest opacity-60">Рамзи махфӣ</Label>
                   <Link href="/forgot-password" size="sm" className="text-[10px] font-black text-primary uppercase hover:underline">Фаромӯшии рамз?</Link>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input type={showPassword ? "text" : "password"} placeholder="******" className="pl-12 pr-12 h-14 rounded-2xl bg-muted/20 border-muted font-bold" value={password} onChange={(e) => setPassword(e.target.value)} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-muted-foreground">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-muted-foreground hover:text-primary transition-colors">
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
               
-              <div className="flex items-start space-x-4 p-5 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 transition-all hover:bg-primary/10">
-                <Checkbox 
-                  id="agreed-login" 
-                  checked={agreed} 
-                  onCheckedChange={(v) => setAgreed(!!v)} 
-                  className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
-                />
-                <Label htmlFor="agreed-login" className="text-[10px] text-muted-foreground font-bold leading-relaxed block cursor-pointer">
-                  Ман бо <Link href="/about#terms" className="text-primary underline">Шартҳои истифода</Link> ва <Link href="/about#privacy" className="text-primary underline">Сиёсати махфият</Link> розӣ ҳастам.
-                </Label>
+              <div className="p-5 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20">
+                <div className="flex items-start space-x-4">
+                  <Checkbox 
+                    id="agreed-login" 
+                    checked={agreed} 
+                    onCheckedChange={(v) => setAgreed(!!v)} 
+                    className="mt-1 h-6 w-6 rounded-lg data-[state=checked]:bg-primary" 
+                  />
+                  <Label htmlFor="agreed-login" className="text-[10px] text-muted-foreground font-bold leading-relaxed cursor-pointer select-none">
+                    Ман бо <Link href="/about#terms" className="text-primary underline" onClick={(e) => e.stopPropagation()}>Шартҳои истифода</Link> ва <Link href="/about#privacy" className="text-primary underline" onClick={(e) => e.stopPropagation()}>Сиёсати махфият</Link> розӣ ҳастам.
+                  </Label>
+                </div>
               </div>
 
               <Button type="submit" className="w-full bg-primary h-16 text-xl font-black rounded-[2rem] shadow-2xl transition-all hover:scale-[1.02] uppercase tracking-widest">ВОРИД ШУДАН</Button>
