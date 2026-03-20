@@ -24,7 +24,7 @@ git remote set-url origin https://github.com/bobojonov07/Hunar-yob.git
 
 3. **Ба GitHub бо зӯрӣ фиристед (Force Push):**
    ```bash
-   git push origin main --force
+   gitsh origin main --force
    ```
 
 ---
