@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useMemo } from "react";
@@ -57,7 +56,7 @@ export function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white border-t border-border px-4 h-16 flex items-center justify-around md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] bg-white border-t border-border px-4 h-16 flex items-center justify-around md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         return (
@@ -72,7 +71,7 @@ export function BottomNav() {
             <div className="relative">
               <item.icon className={cn("h-6 w-6", isActive && "fill-primary/10")} />
               {item.hasBadge && (
-                <span className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg animate-pulse z-10">
+                <span className="absolute -top-2.5 -right-2.5 h-6 w-6 bg-red-600 rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_15px_rgba(220,38,38,0.7)] animate-pulse z-10">
                   <span className="text-[10px] text-white font-black leading-none">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>

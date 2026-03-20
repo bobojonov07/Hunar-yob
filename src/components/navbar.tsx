@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useUser, useAuth, useFirestore, useDoc, useCollection } from "@/firebase";
@@ -37,7 +36,6 @@ export function Navbar() {
   const userProfileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
   const { data: profile } = useDoc<UserProfile>(userProfileRef as any);
 
-  // Ҷустуҷӯи чатҳо барои ҳисоби паёмҳои хонданашуда
   const clientChatsQuery = useMemo(() => {
     if (!db || !user?.uid) return null;
     return query(collection(db, "chats"), where("clientId", "==", user.uid));
@@ -53,7 +51,7 @@ export function Navbar() {
 
   const unreadCount = useMemo(() => {
     if (!user?.uid) return 0;
-    const all = [...clientChats, ...artisanChats];
+    const all = [...(Array.isArray(clientChats) ? clientChats : []), ...(Array.isArray(artisanChats) ? artisanChats : [])];
     const seen = new Set();
     let total = 0;
     all.forEach((chat: any) => {
@@ -91,7 +89,7 @@ export function Navbar() {
               <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 relative">
                 <Menu className="h-6 w-6 text-secondary" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                  <span className="absolute top-2 right-2 h-3 w-3 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.8)]" />
                 )}
               </Button>
             </SheetTrigger>
@@ -123,7 +121,7 @@ export function Navbar() {
                           <span className="font-black text-secondary text-sm tracking-tight">{item.label}</span>
                         </div>
                         {item.badge !== undefined && item.badge > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-md">
+                          <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.5)]">
                             {item.badge}
                           </span>
                         )}
@@ -197,8 +195,8 @@ export function Navbar() {
                 </AvatarFallback>
               </Avatar>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center shadow-md animate-pulse z-10">
-                  <span className="text-[9px] text-white font-black leading-none">
+                <span className="absolute -top-1.5 -right-1.5 h-6 w-6 bg-red-600 rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_15px_rgba(220,38,38,0.6)] animate-pulse z-10">
+                  <span className="text-[10px] text-white font-black leading-none">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 </span>

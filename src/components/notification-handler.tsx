@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
@@ -36,9 +35,12 @@ export function NotificationHandler() {
           const currentUnread = chat.unreadCount?.[user.uid] || 0;
           const previousUnread = lastUnreadCounts.current[id] || 0;
 
-          if (currentUnread > previousUnread && !pathname.includes(chat.listingId)) {
+          // Санҷиши дақиқ: агар корбар ҳозир дар ҳамин чат набошад
+          const isCurrentlyInThisChat = pathname.includes(`/chat/${chat.listingId}`) && pathname.includes(`client=${chat.clientId}`);
+
+          if (currentUnread > previousUnread && !isCurrentlyInThisChat) {
             toast({
-              title: "Паёми нав",
+              title: "ПАЁМИ НАВ ✉️",
               description: chat.lastMessage || "Шумо паёми нав доред",
             });
           }
@@ -49,8 +51,8 @@ export function NotificationHandler() {
       });
     };
 
-    const unsubClient = onSnapshot(qClient, handleChatUpdate, (err) => console.error("Client chats sub error:", err));
-    const unsubArtisan = onSnapshot(qArtisan, handleChatUpdate, (err) => console.error("Artisan chats sub error:", err));
+    const unsubClient = onSnapshot(qClient, handleChatUpdate);
+    const unsubArtisan = onSnapshot(qArtisan, handleChatUpdate);
 
     return () => {
       unsubClient();
@@ -94,7 +96,7 @@ export function NotificationHandler() {
         });
 
       } catch (error) {
-        // Хомӯш кардани логи хатогӣ барои пешгирӣ аз "noise"
+        // Ором нигоҳ доштани хатогиҳо
       }
     };
 
