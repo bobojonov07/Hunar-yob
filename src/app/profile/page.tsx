@@ -84,7 +84,7 @@ export default function Profile() {
       return;
     }
 
-    if (enabled && "Notification" in window) {
+    if (enabled && typeof window !== 'undefined' && "Notification" in window) {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         toast({ 
@@ -124,8 +124,14 @@ export default function Profile() {
 
   if (authLoading || !profile) return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
-  const registrationDate = profile.createdAt?.toDate()?.toLocaleDateString('tj-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
-  const premiumExpiryDate = profile.premiumExpiresAt?.toDate()?.toLocaleDateString('tj-TJ', { year: 'numeric', month: 'long', day: 'numeric' });
+  const registrationDate = profile.createdAt && typeof profile.createdAt.toDate === 'function' 
+    ? profile.createdAt.toDate().toLocaleDateString('tj-TJ', { year: 'numeric', month: 'long', day: 'numeric' })
+    : "";
+    
+  const premiumExpiryDate = profile.premiumExpiresAt && typeof profile.premiumExpiresAt.toDate === 'function'
+    ? profile.premiumExpiresAt.toDate().toLocaleDateString('tj-TJ', { year: 'numeric', month: 'long', day: 'numeric' })
+    : "";
+
   const isPremium = profile.isPremium;
 
   return (
@@ -273,8 +279,15 @@ export default function Profile() {
                       </div>
                     </div>
                     {profile.identificationStatus !== 'Verified' && profile.identificationStatus !== 'Pending' && (
-                      <Button asChild size="sm" className="bg-secondary text-white font-black rounded-xl h-10 px-4 text-[10px] uppercase tracking-widest hover:scale-105 transition-transform">
-                        <Link href="/verify">ТАСДИҚ КАРДАН</Link>
+                      <Button 
+                        size="sm" 
+                        className="bg-secondary text-white font-black rounded-xl h-10 px-4 text-[10px] uppercase tracking-widest hover:scale-105 transition-transform"
+                        onClick={() => toast({ 
+                          title: "Дар ҳолати коркард", 
+                          description: "Ин бахш дар ояндаи наздик фаъол мешавад." 
+                        })}
+                      >
+                        ТАСДИҚ КАРДАН
                       </Button>
                     )}
                   </div>
